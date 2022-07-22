@@ -163,6 +163,8 @@ FUNCTION r402_tm(p_row,p_col)
 DEFINE lc_qbe_sn      LIKE gbm_file.gbm01       #No.FUN-580031
 DEFINE p_row,p_col    LIKE type_file.num5,      #No.FUN-680136 SMALLINT
        l_cmd	      LIKE type_file.chr1000    #No.FUN-680136 VARCHAR(1000)
+DEFINE l_oeb01        LIKE oeb_file.oeb01       #20220722
+DEFINE l_oeb03        LIKE oeb_file.oeb03       #20220722
  
    LET p_row = 4 LET p_col = 10
  
@@ -231,6 +233,16 @@ DEFINE p_row,p_col    LIKE type_file.num5,      #No.FUN-680136 SMALLINT
                    CALL cl_create_qry() RETURNING g_qryparam.multiret
                    DISPLAY g_qryparam.multiret TO pml04
                    NEXT FIELD pml04
+              ##---- 20220722 add by momo (S)
+              WHEN INFIELD(ta_pml01)   #訂單單號序號
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.form = "q_oeb01"
+                 # LET g_qryparam.state= "c"
+                   CALL cl_create_qry() RETURNING l_oeb01,l_oeb03
+                   LET g_qryparam.multiret = l_oeb01,l_oeb03 USING "&&&"
+                   DISPLAY g_qryparam.multiret TO ta_pml01
+                   NEXT FIELD ta_pml01
+              ##---- 20220722 add by momo (E)
               OTHERWISE
                    EXIT CASE
          END CASE
