@@ -508,6 +508,8 @@
 # Modify.........: No:2205178090 20220517 By Ruby 輸入單價後須即時更新未稅/含稅金額
 # Modify.........: No:2206148267 20220616 By momo query_mrp 調整串查 aimq103
 # Modify.........: No:2207208510 20220722 By momo 單價0複製的請購單保留 原資料創建日pmkcrat
+# Modify.........: No:2208028580 20220802 By momo 「依分量計價更新供應商」邏輯增加判斷
+# Modify.........: No:2207258547 20220802 By momo 資料清單增加顯示 pmkud01
 
 DATABASE ds
  
@@ -588,7 +590,8 @@ DEFINE g_pmk_l       DYNAMIC ARRAY OF RECORD
                   pmkconu  LIKE pmk_file.pmkconu,
                   pmkconu_desc LIKE gen_file.gen02,
                   pmk47    LIKE pmk_file.pmk47,
-                  pmkplant LIKE pmk_file.pmkplant
+                  pmkplant LIKE pmk_file.pmkplant,
+                  pmkud01  LIKE pmk_file.pmkud01     #20220802 add
                      END RECORD,
        l_ac4      LIKE type_file.num5,
        g_rec_b4   LIKE type_file.num5,
@@ -15757,7 +15760,8 @@ FUNCTION t420_list_fill()
           CONTINUE FOREACH
        END IF
        SELECT pmk46,pmk01,pmk03,pmk04,pmk02,pmk09,pmc03,pmk49,
-              pmk18,pmkcond,pmkconu,gen02,pmk47,pmkplant
+              pmk18,pmkcond,pmkconu,gen02,pmk47,pmkplant,
+              pmkud01                                            #20220802 add
          INTO g_pmk_l[l_i].*
          FROM pmk_file
               LEFT OUTER JOIN gen_file ON pmkconu = gen01
@@ -16788,7 +16792,7 @@ FUNCTION t420_update_pmr()
             
          LET l_pmi03=''
          SELECT pmi03 INTO l_pmi03 
-           FROM pmi_file,pmj_file,pmr_file
+           FROM pmi_file a,pmj_file,pmr_file
            WHERE pmi01=pmj01 
             AND  pmj01=pmr01 AND pmj02=pmr02 
             AND  pmi05='Y' AND pmi03 != l_pml_o.ta_pml03 
@@ -16798,8 +16802,10 @@ FUNCTION t420_update_pmr()
             AND  pmj03 = l_pml_o.pml04
             AND  pmj12='1'
             AND  NVL(ta_pmj02,'9999/12/31') > SYSDATE 
-            AND  pmj09 = (SELECT MAX(pmj09) FROM pmj_file 
-                           WHERE pmj03=l_pml_o.pml04
+            AND  pmj09 = (SELECT MAX(pmj09) FROM pmj_file,pmi_file b #20220802 modify
+                           WHERE pmj01 = b.pmi01                     #20200802 add
+                             AND b.pmi03 = a.pmi03                   #20220802 add                     
+                             AND pmj03=l_pml_o.pml04
                              AND pmj12='1')
          IF cl_null(l_pmi03) THEN 
             #EXIT FOREACH 
