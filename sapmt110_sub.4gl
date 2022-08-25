@@ -177,6 +177,8 @@
 # Modify.........: No:2007104880 20200722 By momo 特採入庫時，系統自動產生「限定批號」, 格式TC-廠商-YYMMDD
 # Modify.........: No:2012115582 20201215 By momo 廠商國別代碼”非TW”, 卡控 rva21、rva08、rva09 為必填
 # Modify.........: No:2207198503 20220728 By momo 增加判斷 交期是否提早30天
+# Modify.........: No:22080035   20220816 By momo 特採入庫時，系統自動產生「限定批號」 --> NM營運中心不使用
+# Modify.........: No:22080059   20220825 By momo 供應商留置時可收貨、入庫pmc05='2'
 
 DATABASE ds
 #FUN-850022
@@ -611,9 +613,19 @@ DEFINE l_pmn33    LIKE pmn_file.pmn33        #交貨日 20220728
   #FUN-E80075 add str
    CALL s_chk_pmc05(l_rva.rva05)
    IF NOT cl_null(g_errno) THEN
-      CALL cl_err('',g_errno,0)
-      LET g_success = 'N'
-      RETURN
+      ##---- 20220825 modify by momo 留置時可收貨(S)
+      SELECT COUNT(*) INTO l_cnt FROM pmc_file
+       WHERE pmc01 = l_rva.rva05
+         AND pmc05 = '2'
+      IF l_cnt = 1 THEN
+         CALL cl_err('','cpm-025',0)
+         LET g_errno = ''
+      ELSE
+         CALL cl_err('',g_errno,0)
+         LET g_success = 'N'
+         RETURN
+      END IF
+      ##---- 20220825 modify by momo 留置時可收貨(E)
    END IF
   #FUN-E80075 add end
 
@@ -4710,7 +4722,7 @@ FUNCTION t110sub_ins_rvv(p_chr,p_qc,p_rvu00,p_rvv01,p_rvu03,p_qcl05,p_rva,p_rvb,
    LET l_rvv.rvv031 = p_rvb.rvb051   #20180508 modify
 
    ##----- 20200722 add by momo 特採批號 (S)
-   IF p_rvu00 = '1' THEN
+   IF p_rvu00 = '1' AND g_plant <> 'NM' THEN  #20220816 NM 不使用該功能
    LET l_cnt = 0
    SELECT COUNT(*) INTO l_cnt
      FROM qcs_file
@@ -6167,8 +6179,18 @@ FUNCTION t110sub_g(p_rva01,p_ask_flag,p_argv2,p_argv6)
    #FUN-E80075 add str
    CALL s_chk_pmc05(l_rva.rva05)
    IF NOT cl_null(g_errno) THEN
-      CALL cl_err(l_rva.rva05,g_errno,1)
-      RETURN
+      ##---- 20220825 modify (S)
+      SELECT COUNT(*) INTO l_cnt FROM pmc_file
+       WHERE pmc01 = l_rva.rva05
+         AND pmc05 = '2'
+      IF l_cnt = 1 THEN
+         CALL cl_err(l_rva.rva05,'cpm-025',0)
+         LET g_errno = ''
+      ELSE
+         CALL cl_err(l_rva.rva05,g_errno,1)
+         RETURN
+      END IF
+      ##---- 20220825 modify (E)
    END IF
    #FUN-E80075 add end
  
