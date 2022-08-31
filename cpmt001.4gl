@@ -702,6 +702,7 @@ FUNCTION t001_a()
    LET g_tc_evaa.tc_evaa06 = 'N'
    LET g_tc_evaa.tc_evaa07 = 'A'
    LET g_tc_evaa.tc_evaa08 = '0'   
+   LET g_tc_evaa.tc_evaa11 = 0  
    LET g_tc_evaa.tc_evaamksg = 'N' 
    LET g_gen02 = NULL
    LET g_gem02 = NULL
@@ -837,14 +838,6 @@ FUNCTION t001_u()
          EXIT WHILE
       END IF
  
-      IF g_tc_evaa.tc_evaa01 != g_tc_evaa01_t THEN            # 更改單號
-         UPDATE tc_evab_file SET tc_evab01 = g_tc_evaa.tc_evaa01
-          WHERE tc_evab01 = g_tc_evaa01_t
-         IF SQLCA.sqlcode OR SQLCA.sqlerrd[3] = 0 THEN
-            CALL cl_err3("upd","tc_evab_file",g_tc_evaa01_t,"",SQLCA.sqlcode,"","tc_evab",1)
-            CONTINUE WHILE
-         END IF
-      END IF
  
       LET g_tc_evaa.tc_evaa08 = '0'  
       DISPLAY BY NAME g_tc_evaa.tc_evaa08  
@@ -904,10 +897,12 @@ DEFINE
          CALL cl_set_docno_format("tc_evaa01")
 
       BEFORE FIELD tc_evaa01
-        SELECT rye03 INTO g_tc_evaa.tc_evaa01 FROM rye_file
-               WHERE rye01 = 'apm' AND ryeacti = 'Y' and rye02='A' AND ta_rye01='cpmt001'
-            DISPLAY BY NAME g_tc_evaa.tc_evaa01
- 
+        IF cl_null(g_tc_evaa.tc_evaa01) THEN
+           SELECT rye03 INTO g_tc_evaa.tc_evaa01 FROM rye_file
+            WHERE rye01 = 'apm' AND ryeacti = 'Y' and rye02='A' AND ta_rye01='cpmt001'
+           DISPLAY BY NAME g_tc_evaa.tc_evaa01
+        END IF
+
       AFTER FIELD tc_evaa01
          IF NOT cl_null(g_tc_evaa.tc_evaa01) THEN
             CALL s_check_no("apm",g_tc_evaa.tc_evaa01,g_tc_evaa01_t,"A","tc_evaa_file","tc_evaa01","") RETURNING li_result,g_tc_evaa.tc_evaa01
@@ -1489,8 +1484,6 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
            LET l_ac = ARR_CURR()
            LET l_lock_sw = 'N'            #DEFAULT
            LET l_n  = ARR_COUNT()
-           CALL t001_set_entry_b()
-           CALL t001_set_no_entry_b()
  
            BEGIN WORK
  
@@ -1623,15 +1616,6 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
            IF cl_null(g_tc_evab[l_ac].tc_evab06) THEN
               NEXT FIELD tc_evab06
            END IF 
-           
-        BEFORE FIELD tc_evab06
-              CALL t001_set_entry_b()
-              CALL t001_set_no_entry_b()
-              CALL t001_tc_evaa06()        
-              IF g_tc_evaa.tc_evaa06 = '3' THEN
-                 CALL cl_err('','abm-013',0)
-              END IF
- 
                       
                       
         BEFORE DELETE                     
@@ -1721,13 +1705,6 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
  
         ON ACTION CONTROLG
            CALL cl_cmdask()
- 
-        ON ACTION itemno
-           IF g_sma.sma38 matches'[Yy]' THEN
-              CALL cl_cmdrun("aimi109 ")
-           ELSE
-              CALL cl_err(g_sma.sma38,'mfg0035',1)
-           END IF
            
         ON ACTION CONTROLP
            CASE           
@@ -1756,16 +1733,32 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
          CALL cl_set_head_visible("","AUTO")      
     END INPUT
  
+    CALL t001_sum()
     LET g_tc_evaa.tc_evaamodu = g_user
     LET g_tc_evaa.tc_evaadate = g_today
     LET g_tc_evaa.tc_evaa08 = '0'  
-    UPDATE tc_evaa_file SET tc_evaamodu = g_tc_evaa.tc_evaamodu,tc_evaadate = g_tc_evaa.tc_evaadate,tc_evaa08 = g_tc_evaa.tc_evaa08 
+    UPDATE tc_evaa_file 
+       SET tc_evaamodu = g_tc_evaa.tc_evaamodu,
+           tc_evaadate = g_tc_evaa.tc_evaadate,
+           tc_evaa.tc_evaa08 = g_tc_evaa.tc_evaa08,
+           tc_evaa.tc_evaa11 = g_tc_evaa.tc_evaa11 
      WHERE tc_evaa01 = g_tc_evaa.tc_evaa01
-    DISPLAY BY NAME g_tc_evaa.tc_evaamodu,g_tc_evaa.tc_evaadate,g_tc_evaa.tc_evaa08  
+    DISPLAY BY NAME g_tc_evaa.tc_evaamodu,g_tc_evaa.tc_evaadate,
+                    g_tc_evaa.tc_evaa08,g_tc_evaa.tc_evaa11
  
     CLOSE t001_bcl
     COMMIT WORK
     CALL t001_delHeader()
+END FUNCTION
+
+FUNCTION t001_sum()
+   SELECT SUM(tc_evab05*tc_evab06*NVL(azk052,1)) INTO g_tc_evaa.tc_evaa11
+     FROM tc_evab_file,tc_evaa_file,azk_file
+    WHERE tc_evab01 = g_tc_evaa.tc_evaa01
+      AND tc_evaa01 = tc_evab01
+      AND tc_evaa10 = azk01
+      AND tc_evaa02 = azk02
+   DISPLAY BY NAME g_tc_evaa.tc_evaa11
 END FUNCTION
 
 FUNCTION t001_delHeader()
@@ -2234,28 +2227,11 @@ END FUNCTION
  
 FUNCTION t001_set_no_entry(p_cmd)
 DEFINE p_cmd LIKE type_file.chr1
-   IF p_cmd = 'u' AND g_chkey = 'N' AND ( NOT g_before_input_done ) THEN
+   IF p_cmd = 'u' AND g_chkey = 'N' THEN
       CALL cl_set_comp_entry("tc_evaa01",FALSE)
    END IF
 END FUNCTION
  
-FUNCTION t001_set_entry_b() 
-   IF g_tc_evaa.tc_evaa06='3' THEN
-     #CALL cl_set_comp_entry("tc_evab06",TRUE)
-   END IF
-END FUNCTION
- 
-FUNCTION t001_set_no_entry_b()
-   IF g_tc_evaa.tc_evaa06<>'3' THEN
-    # CALL cl_set_comp_entry("tc_evab06",FALSE)
-   END IF
-END FUNCTION
- 
-FUNCTION t001_tc_evaa06()
-   IF g_tc_evaa.tc_evaa06<>'3' THEN
-     # LET g_tc_evab[l_ac].tc_evab06=NULL
-   END IF
-END FUNCTION
  
 FUNCTION t001_tc_evab03(p_cmd)       
  

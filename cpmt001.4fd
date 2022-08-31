@@ -90,7 +90,7 @@
               <Item lstrtext="false" name="W" text="Cancel"/>
             </ComboBox>
             <Label posX="3" posY="7" text="tc_evaa11"/>
-            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_evaa11" color="red" colorCondition="black" columnCount="" fieldId="30" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="16" lstrcomment="false" name="tc_evaa_file.tc_evaa11" noEntry="false" notNull="true" posX="16" posY="7" precisionDecimal="20" required="true" rowCount="" scaleDecimal="6" sqlTabName="tc_evaa_file" sqlType="DECIMAL" stepX="" stepY="" tabIndex="503" table_alias_name="" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_evaa11" color="red" colorCondition="black" columnCount="" fieldId="30" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="16" lstrcomment="false" name="tc_evaa_file.tc_evaa11" noEntry="true" notNull="true" posX="16" posY="7" precisionDecimal="20" required="true" rowCount="" scaleDecimal="6" sqlTabName="tc_evaa_file" sqlType="DECIMAL" stepX="" stepY="" tabIndex="503" table_alias_name="" widget="Edit"/>
           </Grid>
         </Page>
         <Page lstrtext="false" name="info" text="Info">
