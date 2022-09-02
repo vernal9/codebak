@@ -31,6 +31,7 @@
 # Modify.........: No.TQC-D20016 13/02/19 By xuxz 添加備註二
 # Modify.........: No.TQC-D20017 13/02/19 By xuxz 添加採購單號開窗
 # Modify.........: No.22080005   20220810 By momo 增加動態資料欄位與是否低於安全存量顯示
+# Modify.........: No.22080055   20220902 By momo 增加 ima41 年平均用量
  
 DATABASE ds
  
@@ -88,6 +89,7 @@ MAIN
               "pmn06.pmn_file.pmn06,",
               "l_ima021.ima_file.ima021,",
               "ima27.ima_file.ima27,",      #安全存量 20220812
+              "ima41.ima_file.ima41,",      #年平均用量 20220902
               "pmn50.pmn_file.pmn50,",
               "pmc03.pmc_file.pmc03,",
               "pmc10.pmc_file.pmc10,",
@@ -130,7 +132,7 @@ MAIN
                "        ?,", #TQC-D20016 add 備註二
                "        ?,?,?,?,?, ?,?,?,?,?,?,?, ",
                "        ?,?,?,?,?, ?,?,?,?,?, ",       #20220810
-               "        ?,?,?,?,? )"                   #20220810                                                                                   
+               "        ?,?,?,?,?, ? )"                #20220810   #20220902 add                                                                                
                                                                                                                                     
    PREPARE insert_prep FROM g_sql                                                                                                   
    IF STATUS THEN                                                                                                                   
@@ -399,6 +401,7 @@ FUNCTION r503()
           g_cnt1     LIKE type_file.num5,          #NO.FUN-750098
           l_za05     LIKE za_file.za05,            #No.FUN-680136 VARCHAR(40)
           l_ima27    LIKE ima_file.ima27,          #安全存量 20220812
+          l_ima41    LIKE ima_file.ima41,          #平均用量 20220902
           l_order    ARRAY[3] of LIKE pmn_file.pmn04,    #No.FUN-680136 VARCHAR(40) #FUN-5B0105 20->40
           sr         RECORD
                      order1    LIKE    pmn_file.pmn04,   #No.FUN-680136 VARCHAR(40) #FUN-5B0105 20->40
@@ -580,8 +583,9 @@ DEFINE g_ima RECORD
        OPEN r503_c2 USING sr.pmm09
        FETCH LAST r503_c2 INTO l_pmd02,l_pmd05
        CLOSE r503_c2
- 
-       SELECT ima021,ima27 INTO l_ima021,l_ima27 FROM ima_file  #20220812 add
+       LET l_ima27=0
+       LET l_ima41=0
+       SELECT ima021,ima27,ima41 INTO l_ima021,l_ima27,l_ima41 FROM ima_file  #20220812 add #20220902 add
         WHERE ima01=sr.pmn04
        IF tm.c='Y' THEN
           SELECT COUNT(*) INTO g_cnt FROM pmz_file
@@ -598,6 +602,7 @@ DEFINE g_ima RECORD
                      sr.pmm09,l_pmd02,sr.pmm12,sr.pmn01,sr.pmn02,                                                                   
                      sr.pmn14,sr.pmn36,sr.pmn34,sr.pmn06,l_ima021,  
                      l_ima27,                                              #20220812                                                                
+                     l_ima41,                                              #20220902                                                            
                      sr.pmn50,sr.pmc03,sr.pmc10,sr.gen02,l_gen02,                                                                   
                      sr.pmm04,sr.pmn15,sr.pmz03,sr.pmz05,sr.pmz06,sr.pmz07,                                                                  
                      sr.pmz08,sr.pmz09,sr.pmz10,sr.pmz11,sr.pmz12,g_cnt1,g_cnt,#TQC-D20016 add pmz12
@@ -613,6 +618,7 @@ DEFINE g_ima RECORD
                      sr.pmm09,l_pmd02,sr.pmm12,sr.pmn01,sr.pmn02,                                                                   
                      sr.pmn14,sr.pmn36,sr.pmn34,sr.pmn06,l_ima021,     
                      l_ima27,                                                  #20220812                                                              
+                     l_ima41,                                                  #20220902                                                              
                      sr.pmn50,sr.pmc03,sr.pmc10,sr.gen02,l_gen02,                                                                   
                      sr.pmm04,sr.pmn15,sr.pmz03,sr.pmz05,sr.pmz06,sr.pmz07,                                                                  
                      sr.pmz08,sr.pmz09,sr.pmz10,sr.pmz11,sr.pmz12,g_cnt1,g_cnt,#TQC-D20016 add pmz12
@@ -628,6 +634,7 @@ DEFINE g_ima RECORD
                      sr.pmm09,l_pmd02,sr.pmm12,sr.pmn01,sr.pmn02,                                                                   
                      sr.pmn14,sr.pmn36,sr.pmn34,sr.pmn06,l_ima021, 
                      l_ima27,                                                 #20220812                                                                 
+                     l_ima41,                                                 #20220902                                                                 
                      sr.pmn50,sr.pmc03,sr.pmc10,sr.gen02,l_gen02,                                                                   
                      sr.pmm04,sr.pmn15,sr.pmz03,sr.pmz05,sr.pmz06,sr.pmz07,                                                                  
                      sr.pmz08,sr.pmz09,sr.pmz10,sr.pmz11,sr.pmz12,g_cnt1,g_cnt,#TQC-D20016 add pmz12
