@@ -221,7 +221,7 @@ FUNCTION t001_cs()
       ON ACTION CONTROLP
          CASE
             WHEN INFIELD(tc_evab03) 
-              CALL q_sel_ima( TRUE, "q_ima08","","","","","","","",'')  RETURNING  g_qryparam.multiret
+              CALL q_sel_ima( TRUE, "q_ima","","","","","","","",'')  RETURNING  g_qryparam.multiret
               DISPLAY g_qryparam.multiret TO tc_evab03
               NEXT FIELD tc_evab03              
                             
@@ -854,7 +854,6 @@ FUNCTION t001_u()
  
    CLOSE t001_cl
    COMMIT WORK
-   CALL cl_flow_notify(g_tc_evaa.tc_evaa01,'U')
  
    CALL t001_b_fill("1=1")
    CALL t001_bp_refresh()
@@ -1601,6 +1600,8 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
               END IF
               CALL t001_tc_evab03('d') 
            END IF
+
+
            
         AFTER FIELD tc_evab04
            IF cl_null(g_tc_evab[l_ac].tc_evab04) THEN
@@ -1709,7 +1710,7 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
         ON ACTION CONTROLP
            CASE           
             WHEN INFIELD(tc_evab03) 
-              CALL q_sel_ima(FALSE, "q_ima08", "", "" , "", "", "", "" ,"",'' )  RETURNING g_tc_evab[l_ac].tc_evab03 
+              CALL q_sel_ima(FALSE, "q_ima", "", "" , "", "", "", "" ,"",'' )  RETURNING g_tc_evab[l_ac].tc_evab03 
               CALL t001_tc_evab03('d')
               NEXT FIELD tc_evab03
                           
@@ -1740,8 +1741,8 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
     UPDATE tc_evaa_file 
        SET tc_evaamodu = g_tc_evaa.tc_evaamodu,
            tc_evaadate = g_tc_evaa.tc_evaadate,
-           tc_evaa.tc_evaa08 = g_tc_evaa.tc_evaa08,
-           tc_evaa.tc_evaa11 = g_tc_evaa.tc_evaa11 
+           tc_evaa08 = g_tc_evaa.tc_evaa08,
+           tc_evaa11 = g_tc_evaa.tc_evaa11 
      WHERE tc_evaa01 = g_tc_evaa.tc_evaa01
     DISPLAY BY NAME g_tc_evaa.tc_evaamodu,g_tc_evaa.tc_evaadate,
                     g_tc_evaa.tc_evaa08,g_tc_evaa.tc_evaa11
@@ -1753,11 +1754,10 @@ END FUNCTION
 
 FUNCTION t001_sum()
    SELECT SUM(tc_evab05*tc_evab06*NVL(azk052,1)) INTO g_tc_evaa.tc_evaa11
-     FROM tc_evab_file,tc_evaa_file,azk_file
+     FROM tc_evab_file,tc_evaa_file
+     LEFT JOIN azk_file ON tc_evaa10 = azk01 AND tc_evaa02 = azk02
     WHERE tc_evab01 = g_tc_evaa.tc_evaa01
       AND tc_evaa01 = tc_evab01
-      AND tc_evaa10 = azk01
-      AND tc_evaa02 = azk02
    DISPLAY BY NAME g_tc_evaa.tc_evaa11
 END FUNCTION
 
@@ -1845,9 +1845,7 @@ DEFINE  i        LIKE type_file.num5
           CALL cl_err('foreach:',SQLCA.sqlcode,1)
           EXIT FOREACH
        END IF
-       SELECT ima02 INTO g_tc_evab[g_cnt].tc_evab04
-         FROM ima_file
-        WHERE ima01 = g_tc_evab[g_cnt].tc_evab03 
+       
        LET g_cnt = g_cnt + 1
        IF g_cnt > g_max_rec THEN
           CALL cl_err( '', 9035, 0 )
@@ -2238,10 +2236,11 @@ FUNCTION t001_tc_evab03(p_cmd)
 DEFINE  p_cmd   LIKE type_file.chr1   
  
    LET g_errno = " "
-  SELECT ima02 INTO g_tc_evab[l_ac].tc_evab04
-    FROM ima_file
-   WHERE ima01 = g_tc_evab[l_ac].tc_evab03
-   
+   IF g_tc_evab[l_ac].tc_evab03[1,4]<>'MISC' THEN
+     SELECT ima02 INTO g_tc_evab[l_ac].tc_evab04
+       FROM ima_file
+      WHERE ima01 = g_tc_evab[l_ac].tc_evab03
+   END IF
    CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = '100'
                            LET g_tc_evab[l_ac].tc_evab04 = NULL
         OTHERWISE          LET g_errno = SQLCA.SQLCODE USING '-------'
@@ -2249,6 +2248,8 @@ DEFINE  p_cmd   LIKE type_file.chr1
    
    IF g_tc_evab[l_ac].tc_evab03[1,4]='MISC' THEN
       CALL cl_set_comp_entry("tc_evab04",TRUE)
+   ELSE
+      CALL cl_set_comp_entry("tc_evab04",FALSE)
    END IF
 
    IF cl_null(g_errno) OR p_cmd = 'd' THEN
@@ -2343,9 +2344,8 @@ DEFINE   p_type             LIKE type_file.chr1
         DISPLAY BY NAME g_tc_evaa.tc_evaa08 
    END IF
  
-   CLOSE t001_cl
    COMMIT WORK
-   CALL cl_flow_notify(g_tc_evaa.tc_evaa01,'V')
+   CLOSE t001_cl
  
 END FUNCTION
 
