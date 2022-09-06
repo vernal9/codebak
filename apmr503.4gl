@@ -584,15 +584,16 @@ DEFINE g_ima RECORD
        FETCH LAST r503_c2 INTO l_pmd02,l_pmd05
        CLOSE r503_c2
        LET l_ima27=0
-       LET l_ima41=0
+       LET l_ima41=1
        SELECT ima021,ima27,ima41 INTO l_ima021,l_ima27,l_ima41 FROM ima_file  #20220812 add #20220902 add
         WHERE ima01=sr.pmn04
+       IF l_ima41 = 0 THEN LET l_ima41 = 1 END IF
        IF tm.c='Y' THEN
           SELECT COUNT(*) INTO g_cnt FROM pmz_file
           WHERE pmz01=sr.pmn01 AND pmz02=sr.pmn02
           IF l_flag=1 AND g_cnt>0 THEN
-          LET l_flag=0
-          LET g_cnt1=0
+             LET l_flag=0
+             LET g_cnt1=0
           END IF
           IF g_cnt>0 THEN
           SELECT gen02 INTO l_gen02 FROM gen_file
