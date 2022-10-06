@@ -16896,17 +16896,6 @@ FUNCTION t420_changeso()
           END IF
        END IF
 
-    #20221006 add by momo (S)
-    IF cl_null(tm.ta_pml01) THEN
-       IF NOT cl_confirm("cpm-028") THEN  #20221006
-          NEXT FIELD ta_pml01
-       ELSE
-          LET tm.ta_pml01 = ''
-          LET l_oeb01 = ''
-          LET l_oeb03 = ''
-       END IF
-    END IF
-    #20221006 add by momo (E)
     
 
     ON ACTION cancel
@@ -16920,6 +16909,17 @@ FUNCTION t420_changeso()
     END IF
 
     BEGIN WORK
+     #20221006 add by momo (S)
+     IF cl_null(tm.ta_pml01) THEN
+        IF NOT cl_confirm("cpm-028") THEN  #20221006
+           EXIT WHILE
+        ELSE
+           LET tm.ta_pml01 = ''
+           LET l_oeb01 = ''
+           LET l_oeb03 = ''
+        END IF
+     END IF
+     #20221006 add by momo (E)
      IF tm.all = 'Y' THEN  
         UPDATE pml_file SET ta_pml01 = tm.ta_pml01,
                             pml24 = l_oeb01,
