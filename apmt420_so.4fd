@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{7836f560-0000-4000-937a-55a285b5b826}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{6f2d45f8-0000-4000-a21f-fcb64583eedc}" where="">
+    <RecordField colName="pml02" fieldIdRef="1" fieldType="TABLE_COLUMN" name="pml_file.pml02" sqlTabName="pml_file" sqlType="SMALLINT" table_alias_name="" uid="{aad8761d-0000-4000-9904-4b5c1c38327c}"/>
+    <RecordField colName="ta_pml01" fieldIdRef="2" fieldType="TABLE_COLUMN" name="pml_file.ta_pml01" sqlTabName="pml_file" sqlType="VARCHAR" table_alias_name="" uid="{4425fc3d-9234-4bcd-8508-3c30741429f7}"/>
+    <RecordField colName="" defaultValue="Y" fieldIdRef="3" name="all" sqlTabName="" table_alias_name="" uid="{f4736d75-600e-4d20-9a5f-5094ef521796}"/>
+  </Record>
+  <Form gridHeight="7" gridWidth="41" lstrtext="false" name="apmt420_so" spacing="normal" text="apmt420_so">
+    <Grid gridHeight="6" gridWidth="37" lstrcomment="false" name="gr3" posX="1" posY="0">
+      <Label posX="2" posY="1" text="ta_pml01"/>
+      <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ta_pml01" columnCount="" comment="so" fieldId="2" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="23" image="zoom" lstrcomment="false" lstrtitle="false" name="pml_file.ta_pml01" notNull="false" picture="" posX="12" posY="1" required="false" rowCount="" sqlTabName="pml_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" widget="ButtonEdit"/>
+      <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" defaultValue="Y" fieldId="3" gridHeight="1" gridWidth="7" name="all" notNull="true" posX="2" posY="3" required="true" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="2" table_alias_name="" text="All" title="CheckBox1" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+      <Label posX="2" posY="4" text="pml02"/>
+      <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="pml02" columnCount="" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" lstrcomment="false" lstrtitle="false" name="pml_file.pml02" noEntry="false" notNull="false" posX="12" posY="4" required="false" rowCount="" sqlTabName="pml_file" sqlType="SMALLINT" stepX="" stepY="" tabIndex="3" table_alias_name="" widget="Edit"/>
+    </Grid>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewA0ADQAMgA1AGYAYwAzAGQALQA5ADIAMwA0AC0ANABiAGMAZAAtADgANQAwADgALQAzAGMAMwAwADcANAAxADQAMgA5AGYANwB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewBmADQANwAzADYAZAA3ADUALQA2ADAAMABlAC0ANABkADIAMAAtADkAYQA1AGYALQA1ADAAOQA0AGUAZgA1ADIAMQA3ADkANgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewBhAGEAZAA4ADcANgAxAGQALQAwADAAMAAwAC0ANAAwADAAMAAtADkAOQAwADQALQA0AGIANQBjADEAYwAzADgAMwAyADcAYwB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewA2AGYAMgBkADQANQBmADgALQAwADAAMAAwAC0ANAAwADAAMAAtAGEAMgAxAGYALQBmAGMAYgA2ADQANQA4ADMAZQBlAGQAYwB9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>

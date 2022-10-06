@@ -510,6 +510,7 @@
 # Modify.........: No:2207208510 20220722 By momo 單價0複製的請購單保留 原資料創建日pmkcrat
 # Modify.........: No:2208028580 20220802 By momo 「依分量計價更新供應商」邏輯增加判斷
 # Modify.........: No:2207258547 20220802 By momo 資料清單增加顯示 pmkud01
+# Modify.........: NO:22100004   20221006 By momo 訂單單號序號調整鈕，調整為可清為空
 
 DATABASE ds
  
@@ -16878,9 +16879,7 @@ FUNCTION t420_changeso()
       END IF
 
     AFTER FIELD ta_pml01
-      IF cl_null(tm.ta_pml01) THEN
-         NEXT FIELD ta_pml01
-      ELSE
+      IF NOT cl_null(tm.ta_pml01) THEN
          SELECT oeb01,oeb03 INTO l_oeb01,l_oeb03
            FROM oeb_file  
           WHERE oeb01||LPAD(oeb03,3,'0') = tm.ta_pml01
@@ -16896,6 +16895,18 @@ FUNCTION t420_changeso()
              NEXT FIELD pml02
           END IF
        END IF
+
+    #20221006 add by momo (S)
+    IF cl_null(tm.ta_pml01) THEN
+       IF NOT cl_confirm("cpm-028") THEN  #20221006
+          NEXT FIELD ta_pml01
+       ELSE
+          LET tm.ta_pml01 = ''
+          LET l_oeb01 = ''
+          LET l_oeb03 = ''
+       END IF
+    END IF
+    #20221006 add by momo (E)
     
 
     ON ACTION cancel
@@ -16934,6 +16945,11 @@ FUNCTION t420_changeso()
      IF STATUS OR SQLCA.SQLCODE THEN
         CALL s_errmsg('','','upd pml_file',SQLCA.sqlcode,1)
      ELSE
+        IF cl_null(tm.ta_pml01) THEN
+           LET g_msg = TIME
+           INSERT INTO azo_file(azo01,azo02,azo03,azo04,azo05,azo06,azoplant,azolegal)
+                VALUES ('E-apmt420',g_user,g_today,g_msg,g_pmk.pmk01,'cpm-028',g_plant,g_legal)
+        END IF
         COMMIT WORK
         EXIT WHILE
      END IF
