@@ -858,10 +858,10 @@ FUNCTION r622_bom(p_level,p_key,p_total)
  
             #材料成本之算法和其他的幾個成本的計算方式不同                                                                                                                                      
             SELECT count(*) INTO l_cnt FROM ecu_file WHERE ecu01=sr[i].bmb03 and ecuacti='Y'
-            #無製程且BOM為展開
+            #無製程且BOM為不為展開
             IF l_cnt=0 and sr[i].bmb19<>'3' THEN
-            LET l_num = l_num + 1      
-                IF cl_null(sr[i].imaud02) THEN LET sr[i].imaud02 = 'N' END IF                                                                                                                                                                                                                                                                                                                                                                            
+                LET l_num = l_num + 1      
+                IF cl_null(sr[i].imaud02) THEN LET sr[i].imaud02 = 'N' END IF        
                 EXECUTE insert_prep USING l_num,p_level,sr[i].bmb02,g_bma01_a,p_key,l_bma05,l_ima02,l_ima021,l_ima08,l_ima63,l_ima55,
                                  sr[i].bmb03,sr[i].ima02,sr[i].ima021,sr[i].ima08,
                                  sr[i].imaud02,
@@ -971,7 +971,11 @@ FUNCTION r622_bom(p_level,p_key,p_total)
                   IF sr[i].bmb19<>'3' THEN
                      IF l_ae=1 THEN
                         LET l_num = l_num + 1                                                                                                                                                                                                                                                                                                                                                                          
-                        IF cl_null(sr[i].imaud02) THEN LET sr[i].imaud02 = 'N' END IF                                                                                                                                                                                                                                                                                                                                                                            
+                        IF cl_null(sr[i].imaud02) THEN LET sr[i].imaud02 = 'N' END IF     
+                        IF sr1[l_ae].labcsts > 0 THEN  #20221007
+                           LET sr[i].mcsts = 0
+                           LET sr1[l_ae].mcsts = 0
+                        END IF                        #20221007                                                                                                                                                                                                                                                                                                                                                   
                         EXECUTE insert_prep USING l_num,p_level,sr[i].bmb02,g_bma01_a,p_key,l_bma05,l_ima02,l_ima021,l_ima08,l_ima63,l_ima55,
                                       sr[i].bmb03,sr[i].ima02,sr[i].ima021,sr[i].ima08,
                                       sr[i].imaud02,
