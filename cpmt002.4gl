@@ -130,7 +130,9 @@ FUNCTION t002_cs()
    ELSE
  
       CONSTRUCT BY NAME g_wc ON tc_evac01,tc_evac02,tc_evac03,tc_evac04,
-                                tc_evac05,tc_evac06,tc_evac07,tc_evac08,tc_evac09,tc_evacmksg,
+                                tc_evac05,tc_evac06,tc_evac07,tc_evac08,tc_evac09,
+                                tc_evac10,tc_evacconf,
+                                tc_evacmksg,
                                 tc_evacuser,tc_evacgrup,tc_evacmodu,tc_evacdate,tc_evacacti
  
          BEFORE CONSTRUCT
@@ -932,13 +934,17 @@ DEFINE
        AFTER FIELD tc_evac05
          IF NOT cl_null(g_tc_evac.tc_evac05) THEN
             LET g_gen02_05 = NULL
-            SELECT gen02 INTO g_gen02_05 FROM gen_file
+            SELECT gen02,gen03,gem02
+              INTO g_gen02_05,g_tc_evac.tc_evac06,g_gem02
+              FROM gen_file,gem_file
              WHERE gen01 = g_tc_evac.tc_evac05
             IF cl_null(g_gen02_05) THEN
                CALL cl_err('','aap-038',0)
                NEXT FIELD tc_evac05
             END IF
             DISPLAY g_gen02_05 TO gen02_05
+            DISPLAY BY NAME g_tc_evac.tc_evac06
+            DISPLAY g_gem02 TO gem02  
          END IF
  
       AFTER FIELD tc_evac06                
