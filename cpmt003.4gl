@@ -113,6 +113,9 @@ DEFINE g_tc_evad_l    DYNAMIC ARRAY OF RECORD
        pmc03_l        LIKE pmc_file.pmc03,
        tc_evad12_l    LIKE tc_evad_file.tc_evad12,
        tc_evad14_l    LIKE tc_evad_file.tc_evad14,
+       tc_evad15_l    LIKE tc_evad_file.tc_evad15,
+       tc_evad16_l    LIKE tc_evad_file.tc_evad16,
+       pmc03_2_l      LIKE pmc_file.pmc03,
        tc_evae03_l    LIKE tc_evae_file.tc_evae03,
        tc_evae07_l    LIKE tc_evae_file.tc_evae07,
        ima02_l        LIKE ima_file.ima02,
@@ -487,7 +490,7 @@ DEFINE  l_node         om.DomNode,
          WHEN "output"
             IF cl_chk_act_auth() THEN
                LET l_wc='tc_evad01="',g_tc_evad.tc_evad01,'"'
-               LET g_msg = "cpmr100",
+               LET g_msg = "cpmr300",
                    " '",g_today CLIPPED,"' ''",
                    " '",g_lang CLIPPED,"' 'Y' '' '1'",
                    " '",l_wc CLIPPED,"' "
@@ -777,9 +780,9 @@ FUNCTION t003_bp(p_ud)
         LET g_action_choice = "easyflow_approval"
         EXIT DISPLAY
  
-      ON ACTION confirm     
-         LET g_action_choice="confirm"
-         EXIT DISPLAY
+      #ON ACTION confirm     
+      #   LET g_action_choice="confirm"
+      #   EXIT DISPLAY
  
       ON ACTION undo_mass  
          LET g_action_choice="undo_mass"
@@ -889,6 +892,7 @@ FUNCTION t003_a()
    MESSAGE ""
    CLEAR FORM
    CALL g_tc_evae.clear()
+   CALL g_tc_evaf.clear()
    LET g_wc = NULL
    LET g_wc2= NULL
  
@@ -1074,7 +1078,7 @@ DEFINE
                  g_tc_evad.tc_evad05,g_tc_evad.tc_evad06,g_tc_evad.tc_evad07,g_tc_evad.tc_evad08,
                  g_tc_evad.tc_evad09,g_tc_evad.tc_evad10,g_tc_evad.tc_evad11,
                  g_tc_evad.tc_evad12,g_tc_evad.tc_evad13,
-                 g_tc_evad.tc_evad14,g_tc_evad.tc_evad15                                    
+                 g_tc_evad.tc_evad14,g_tc_evad.tc_evad15,g_tc_evad.tc_evad16                               
        WITHOUT DEFAULTS
  
       BEFORE INPUT
@@ -1158,7 +1162,25 @@ DEFINE
               FROM pmc_file
              WHERE pmc01 = g_tc_evad.tc_evad06
             DISPLAY g_pmc03 TO pmc03
-         END IF                       
+         END IF    
+
+      AFTER FIELD tc_evad16
+         IF NOT cl_null(g_tc_evad.tc_evad16) THEN
+            LET l_cnt = 0
+            SELECT COUNT(*) INTO l_cnt
+              FROM pmc_file
+             WHERE pmc01 = g_tc_evad.tc_evad16
+               AND pmcacti ='Y'
+            IF l_cnt <= 0 THEN
+               CALL cl_err('','aap-000',0)
+               NEXT FIELD tc_evad16
+            END IF
+            LET g_pmc03 = NULL
+            SELECT pmc03 INTO g_pmc03
+              FROM pmc_file
+             WHERE pmc01 = g_tc_evad.tc_evad16
+            DISPLAY g_pmc03 TO pmc03_2
+         END IF                   
          
  
       ON ACTION CONTROLR
@@ -1201,6 +1223,15 @@ DEFINE
                DISPLAY BY NAME g_tc_evad.tc_evad06
                CALL t003_tc_evad06('d')
                NEXT FIELD tc_evad06
+
+            WHEN INFIELD(tc_evad16) 
+               CALL cl_init_qry_var()
+               LET g_qryparam.form ="q_pmc2"
+               LET g_qryparam.default1 = g_tc_evad.tc_evad16
+               CALL cl_create_qry() RETURNING g_tc_evad.tc_evad16
+               DISPLAY BY NAME g_tc_evad.tc_evad16
+               CALL t003_tc_evad06('d')
+               NEXT FIELD tc_evad16
 
             WHEN INFIELD(tc_evad14)
                CALL cl_init_qry_var()
@@ -1267,6 +1298,7 @@ END FUNCTION
  
 FUNCTION t003_tc_evad06(p_cmd)
    DEFINE l_pmc03   LIKE pmc_file.pmc03,
+          l_pmc03_2 LIKE pmc_file.pmc03,
           p_cmd     LIKE type_file.chr1
  
    LET g_errno = ' '
@@ -1280,6 +1312,19 @@ FUNCTION t003_tc_evad06(p_cmd)
  
    IF cl_null(g_errno) OR p_cmd = 'd' THEN
       DISPLAY l_pmc03 TO pmc03
+   END IF
+
+   LET g_errno = ' '
+   SELECT pmc03 INTO l_pmc03_2 FROM pmc_file
+    WHERE pmc01 = g_tc_evad.tc_evad16
+
+   IF SQLCA.SQLCODE = 100  THEN
+      LET g_errno = 'mfg3008'
+      LET l_pmc03_2 = NULL
+   END IF
+
+   IF cl_null(g_errno) OR p_cmd = 'd' THEN
+      DISPLAY l_pmc03_2 TO pmc03_2
    END IF
  
 END FUNCTION
@@ -1424,6 +1469,7 @@ FUNCTION t003_show()
                    g_tc_evad.tc_evad04,g_tc_evad.tc_evad05,g_tc_evad.tc_evad07,g_tc_evad.tc_evad10,g_tc_evad.tc_evad11,
                    g_tc_evad.tc_evad09,g_tc_evad.tc_evad06,g_tc_evad.tc_evad08,  
                    g_tc_evad.tc_evad12,g_tc_evad.tc_evad13,g_tc_evad.tc_evad06,g_tc_evad.tc_evad14,g_tc_evad.tc_evad15,
+                   g_tc_evad.tc_evad16,
                    g_tc_evad.tc_evaduser,g_tc_evad.tc_evadgrup,g_tc_evad.tc_evadmodu,
                    g_tc_evad.tc_evaddate,g_tc_evad.tc_evadacti
    
@@ -1567,6 +1613,7 @@ FUNCTION t003_r()
        CALL cl_del_doc()                
       DELETE FROM tc_evad_file WHERE tc_evad01 = g_tc_evad.tc_evad01
       DELETE FROM tc_evae_file WHERE tc_evae01 = g_tc_evad.tc_evad01
+      DELETE FROM tc_evaf_file WHERE tc_evaf01 = g_tc_evad.tc_evad01
       CLEAR FORM
       CALL g_tc_evae.clear()
       OPEN t003_count
@@ -1800,8 +1847,8 @@ DEFINE l_tc_evad06   LIKE tc_evad_file.tc_evad06
               END IF
               DELETE FROM tc_evae_file
                WHERE tc_evae01 = g_tc_evad.tc_evad01
-                 AND tc_evae02 = g_tc_evae_t.tc_evae02
-                 AND tc_evae03 = g_tc_evae_t.tc_evae03
+                 AND tc_evae02 = g_tc_evae[l_ac].tc_evae02
+                 AND tc_evae03 = g_tc_evae[l_ac].tc_evae03
               IF SQLCA.sqlcode THEN
                  CALL cl_err3("del","tc_evae_file",g_tc_evad.tc_evad01,g_tc_evae_t.tc_evae02,SQLCA.sqlcode,"","",1)
                  ROLLBACK WORK
@@ -1914,7 +1961,6 @@ DEFINE l_tc_evad06   LIKE tc_evad_file.tc_evad06
  
     LET g_tc_evad.tc_evadmodu = g_user
     LET g_tc_evad.tc_evaddate = g_today
-    LET g_tc_evad.tc_evad13 = '0'  
     UPDATE tc_evad_file 
        SET tc_evadmodu = g_tc_evad.tc_evadmodu,
            tc_evaddate = g_tc_evad.tc_evaddate,
@@ -2035,7 +2081,7 @@ DEFINE l_sql     STRING
               ELSE
                  FETCH t003_bcl2 INTO g_tc_evaf[l_ac2].*
                  IF SQLCA.sqlcode THEN
-                    CALL cl_err(g_tc_evaf_t.tc_evaf02,SQLCA.sqlcode,1)
+                    #CALL cl_err(g_tc_evaf_t.tc_evaf02,SQLCA.sqlcode,1)
                     LET l_lock_sw = "Y"
                  END IF
                              
@@ -2111,9 +2157,6 @@ DEFINE l_sql     STRING
                       
 
         BEFORE FIELD tc_evaf06
-           IF cl_null(g_tc_evaf[l_ac2].tc_evaf06) THEN
-              LET g_tc_evaf[l_ac2].tc_evaf06 = g_today
-           END IF
 
         AFTER FIELD tc_evaf07
            IF cl_null(g_tc_evaf[l_ac2].tc_evaf07) THEN
@@ -2248,7 +2291,6 @@ DEFINE l_sql     STRING
  
     LET g_tc_evad.tc_evadmodu = g_user
     LET g_tc_evad.tc_evaddate = g_today
-    LET g_tc_evad.tc_evad13 = '0'  
     UPDATE tc_evad_file 
        SET tc_evadmodu = g_tc_evad.tc_evadmodu,
            tc_evaddate = g_tc_evad.tc_evaddate,
@@ -2549,7 +2591,8 @@ FUNCTION t003_y_chk()
     IF g_tc_evad.tc_evad13 = '9' THEN 
        LET g_success = 'N'
        RETURN 
-    END IF  
+    END IF
+
     IF g_tc_evad.tc_evad12 = '1' THEN  #已核准
        CALL cl_err('','mfg3212',1)
        LET g_success = 'N'
@@ -2667,7 +2710,7 @@ FUNCTION t003_ef()
         LET g_success = 'N'
         RETURN
      END IF
-     IF g_tc_evad.tc_evad13 = '1' THEN     
+     IF g_tc_evad.tc_evad13 = '1' OR g_tc_evad.tc_evad13 = 'S' THEN     
         CALL cl_err('','abm-884',1)
         LET g_success = 'N'
         RETURN
@@ -2778,6 +2821,9 @@ DEFINE   p_type             LIKE type_file.chr1
        DISPLAY BY NAME g_tc_evad.tc_evad12
        CALL cl_set_comp_required("tc_evad15",TRUE)
 
+     AFTER FIELD tc_evad15
+       LET g_tc_evad_t.tc_evad15 = g_tc_evad.tc_evad15
+
      AFTER INPUT
        IF INT_FLAG THEN
           LET INT_FLAG = 0
@@ -2818,6 +2864,7 @@ DEFINE   p_type             LIKE type_file.chr1
         IF p_type = 1 THEN        
             LET g_tc_evad.tc_evad13='0' 
             LET g_tc_evad.tc_evad12='X' 
+            LET g_tc_evad.tc_evad15 = g_tc_evad_t.tc_evad15
         ELSE 
             LET g_tc_evad.tc_evad13='0'
             LET g_tc_evad.tc_evad12='N'
@@ -2921,19 +2968,19 @@ FUNCTION t003_bp1(p_ud)
          ACCEPT DISPLAY  
          
  
-      ON ACTION detail
-         LET g_action_choice="detail"
-         LET l_ac2 = 1
-         EXIT DISPLAY
+     # ON ACTION detail
+     #    LET g_action_choice="detail"
+     #    LET l_ac2 = 1
+     #    EXIT DISPLAY
 
-      ON ACTION maintain_part
-         LET g_action_choice="maintain_part"
-         LET l_ac = 1
-         EXIT DISPLAY
+      #ON ACTION maintain_part
+      #   LET g_action_choice="maintain_part"
+      #   LET l_ac = 1
+      #   EXIT DISPLAY
 
-      ON ACTION apji100
-         LET g_action_choice="apji100"
-         EXIT DISPLAY
+    #  ON ACTION apji100
+    #     LET g_action_choice="apji100"
+    #     EXIT DISPLAY
  
       ON ACTION help
          LET g_action_choice="help"
@@ -2951,9 +2998,9 @@ FUNCTION t003_bp1(p_ud)
          LET g_action_choice="controlg"
          EXIT DISPLAY
          
-      ON ACTION fin
-         LET g_action_choice="fin"
-         EXIT DISPLAY
+     # ON ACTION fin
+     #    LET g_action_choice="fin"
+     #    EXIT DISPLAY
 
       ON ACTION accept
           LET g_action_flag = 'main'
@@ -3012,12 +3059,17 @@ DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08
       END IF
 
       SELECT tc_evad01,tc_evad02,tc_evad03,gen02,tc_evad05,tc_evad06,pmc03,tc_evad12,tc_evad14,
+             tc_evad15,tc_evad16,'',
              '','','','','','','','',0
         INTO g_tc_evad_l[l_cnt].*
         FROM gen_file,tc_evad_file,pmc_file 
        WHERE tc_evad03=gen01
          AND pmc01 = tc_evad06
          AND tc_evad01 = l_tc_evad01
+
+       SELECT pmc03 INTO g_tc_evad_l[l_cnt].pmc03_2_l
+         FROM pmc_file
+        WHERE pmc01 = g_tc_evad_l[l_cnt].tc_evad16_l
 
        SELECT tc_evae03,tc_evae07,ima02,ima021
          INTO g_tc_evad_l[l_cnt].tc_evae03_l,g_tc_evad_l[l_cnt].tc_evae07_l,
@@ -3039,7 +3091,7 @@ DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08
        IF cl_null(l_tc_evaf08) THEN
           LET l_tc_evaf08 = g_today
        END IF
-       LET g_tc_evad_l[l_cnt].delay = l_tc_evaf08-g_tc_evad_l[l_cnt].tc_evaf07_l
+       LET g_tc_evad_l[l_cnt].delay = g_tc_evad_l[l_cnt].tc_evaf07_l-l_tc_evaf08
 
        LET l_cnt = l_cnt + 1
        IF l_cnt > g_max_rec THEN
