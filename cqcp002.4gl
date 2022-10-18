@@ -371,7 +371,9 @@ DEFINE l_ima930   LIKE ima_file.ima930   #DEV-D40021 --add
    
    LET l_sql1 ="SELECT rvb_file.*,tc_evae03,tc_evae01 FROM rvb_file  ",
                " INNER JOIN tc_evae_file ON tc_evae05=rvb04 AND tc_evae06=rvb03 ",  #20221003
-               " WHERE rvb01=? and rvb19='1' "
+               " INNER JOIN tc_evad_file ON tc_evad01 = tc_evae01 ",
+               " WHERE rvb01=? and rvb19='1' ",
+               "   AND tc_evadacti='Y' "
    PREPARE p001_p11 FROM l_sql1
    IF SQLCA.SQLCODE THEN
       CALL cl_err('prepare p001_p11 error :',SQLCA.SQLCODE,1)
