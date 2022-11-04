@@ -4,6 +4,7 @@
 # Descriptions...: 
 # Date & Author..: NO.22080034  20220817 By momo 固定資產評估維護作業
 # Modify.........: No.22090004  20220907 By momo 固資「修理或改良」，需加入"原固資財產編號"
+# Modify.........: No.22100057  20221103 By momo 如尚未有財產編號，需於原財編欄位改填"請購單號"
 
 DATABASE ds
  
@@ -80,7 +81,9 @@ DEFINE g_tc_evaa_l    DYNAMIC ARRAY OF RECORD
        pmm01_l        LIKE pmm_file.pmm01,
        rva01_l        LIKE rva_file.rva01,
        tc_evac01_l    LIKE tc_evac_file.tc_evac01,
-       rvu01_l        LIKE rvu_file.rvu01
+       rvu01_l        LIKE rvu_file.rvu01,
+       apa01_l        LIKE apa_file.apa01,
+       faj02_l        LIKE faj_file.faj02
        END RECORD
 
 MAIN
@@ -1048,7 +1051,12 @@ DEFINE
                    AND fajconf = 'Y'
                    AND faj20 = gem01
                 IF cl_null(g_tc_evaa.tc_evaa04) THEN
-                   NEXT FIELD tc_evaa14
+                   SELECT 1 INTO l_cnt FROM pmk_file   #無財編時檢核請購單 20221103
+                    WHERE pmk01 = g_tc_evaa.tc_evaa04
+                      AND pmk18='Y'
+                   IF l_cnt <> 1 THEN
+                      NEXT FIELD tc_evaa14
+                   END IF
                 ELSE
                    DISPLAY BY NAME g_tc_evaa.tc_evaa04
                    DISPLAY BY NAME g_tc_evaa.tc_evaa09
@@ -2148,16 +2156,6 @@ FUNCTION t001_y_chk()
        RETURN
     END IF
 
-    IF g_tc_evaa.tc_evaa06 = '3' THEN  #已承認
-       SELECT COUNT(*) INTO l_n FROM tc_evab_file
-        WHERE tc_evab01 = g_tc_evaa.tc_evaa01
-          AND (tc_evab06 IS NULL OR tc_evab10 IS NULL)
-       IF l_n > 0 THEN
-          CALL cl_err('','abm-013',0)
-          LET g_success = 'N'
-          RETURN
-       END IF
-    END IF
 
     IF g_tc_evaa.tc_evaaacti = 'N' THEN  #本筆資料無效
        CALL cl_err('','abm-889',1)
@@ -2170,28 +2168,6 @@ FUNCTION t001_y_chk()
        IF NOT cl_confirm('axm-108') THEN LET g_success = 'N' RETURN END IF  #詢問是否執行確認功能 
     END IF
 #CHI-C30107 -------------- add ----------------- end
-    IF g_tc_evaa.tc_evaa01 IS NULL THEN
-       CALL cl_err('',-400,0)
-       LET g_success = 'N'
-       RETURN
-    END IF
-
-    IF g_tc_evaa.tc_evaa08 = '1' THEN  #已核准
-       CALL cl_err('','mfg3212',1)
-       LET g_success = 'N'
-       RETURN
-    END IF   
-  
-    IF g_tc_evaa.tc_evaa06 = '3' THEN  #已承認
-       SELECT COUNT(*) INTO l_n FROM tc_evab_file
-        WHERE tc_evab01 = g_tc_evaa.tc_evaa01
-          AND (tc_evab06 IS NULL OR tc_evab10 IS NULL)
-       IF l_n > 0 THEN
-          CALL cl_err('','abm-013',0)
-          LET g_success = 'N'
-          RETURN
-       END IF
-    END IF   
     
     IF g_tc_evaa.tc_evaaacti = 'N' THEN  #本筆資料無效
        CALL cl_err('','abm-889',1)
@@ -3092,8 +3068,8 @@ END FUNCTION
 
 FUNCTION t001_list_fill()
 DEFINE l_cnt          LIKE type_file.num10
-DEFINE l_tc_evaa01        LIKE tc_evaa_file.tc_evaa01
-
+DEFINE l_tc_evaa01    LIKE tc_evaa_file.tc_evaa01
+DEFINE l_pmn02        LIKE pmn_file.pmn02
 
    CALL g_tc_evaa_l.clear()
    LET l_cnt = 1
@@ -3117,10 +3093,11 @@ DEFINE l_tc_evaa01        LIKE tc_evaa_file.tc_evaa01
           AND pml16 <> '9'
 
        #採購
-       SELECT pmn01 INTO g_tc_evaa_l[l_cnt].pmm01_l
+       SELECT pmn01,pmn02 INTO g_tc_evaa_l[l_cnt].pmm01_l,l_pmn02
          FROM pmn_file
         WHERE pmn24 = g_tc_evaa_l[l_cnt].pmk01_l
           AND pmn16 <> '9'
+          AND rownum = 1
 
        #收貨
        SELECT rva01 INTO g_tc_evaa_l[l_cnt].rva01_l
@@ -3128,6 +3105,33 @@ DEFINE l_tc_evaa01        LIKE tc_evaa_file.tc_evaa01
         WHERE rva01=rvb01
           AND rvaconf <> 'X'
           AND rvb04= g_tc_evaa_l[l_cnt].pmm01_l
+          AND rvb03 = l_pmn02
+       #驗收
+       SELECT tc_evac01 INTO g_tc_evaa_l[l_cnt].tc_evac01_l
+         FROM tc_evac_file
+        WHERE tc_evac03 = g_tc_evaa_l[l_cnt].rva01_l
+          AND tc_evac10 <> '9'
+
+       #入庫
+       SELECT rvu01 INTO g_tc_evaa_l[l_cnt].rvu01_l
+         FROM rvu_file
+        WHERE rvu02 = g_tc_evaa_l[l_cnt].rva01_l
+          AND rvuconf <> 'X'
+          AND rvv37 = l_pmn02
+       #應付
+       SELECT apb01 INTO g_tc_evaa_l[l_cnt].apa01_l
+         FROM apb_file,apa_file
+        WHERE apb01=apa01
+          AND apa14='Y'
+          AND apb06 = g_tc_evaa_l[l_cnt].pmm01_l
+          AND apb07 = l_pmn02
+          AND rownum = 1
+
+       #固資
+       SELECT faj02 INTO g_tc_evaa_l[l_cnt].faj02_l
+         FROM faj_file
+        WHERE faj47 = g_tc_evaa_l[l_cnt].pmm01_l
+          AND faj471 = l_pmn02
 
        LET l_cnt = l_cnt + 1
        IF l_cnt > g_max_rec THEN
