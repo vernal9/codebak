@@ -81,6 +81,7 @@
 # Modify.........:               20180917 By momo 新增顯示地址碼名稱與地址
 # Modify.........: NO:1901282652 20190213 By momo 增加資料清單
 # Modify.........: NO:22080004   20220803 By momo Bug資料清單匯出EXCEL帶出內容錯誤
+# Modify.........: NO:22110018   20221115 By momo 客訢單相關調整
 
 DATABASE ds
  
@@ -564,7 +565,8 @@ FUNCTION t710_menu()
              IF cl_chk_act_auth() THEN
                 LET g_ohc.ohcud02 = g_ohc.ohcud02[1,18]
                 IF NOT cl_null(g_ohc.ohcud02) THEN
-                  LET g_msg = "cxmp451 '",g_ohc.ohcud02,"' '",g_ohc.ohc01,"' "
+                 #LET g_msg = "cxmp451 '",g_ohc.ohcud02,"' '",g_ohc.ohc01,"' "
+                  LET g_msg = "cxmt7101 '",g_ohc.ohc01,"' "
                   CALL cl_cmdrun(g_msg CLIPPED)
                 END IF   #TQC-970420    
             END IF
@@ -646,7 +648,7 @@ DEFINE li_result LIKE type_file.num5                            #No.FUN-550070  
         END IF
         DISPLAY BY NAME g_ohc.ohc01
  
-        CALL t710_package() #20191226 呼叫包裝方式詢問
+        #CALL t710_package() #20191226 呼叫包裝方式詢問 #20221115
 
         INSERT INTO ohc_file VALUES (g_ohc.*)
         IF SQLCA.sqlcode THEN   			#置入資料庫不成功
@@ -2835,13 +2837,14 @@ END FUNCTION
 #20190213 add end----
 ##---- 20190213 add by momo (E)
 
+#----- 20221115 By momo 包裝方式輸入方式更改
 ##---- 20191226 add by momo (S)
-FUNCTION t710_package()
-   DEFINE l_package LIKE type_file.chr1000
+#FUNCTION t710_package()
+#   DEFINE l_package LIKE type_file.chr1000
            
-      PROMPT "出貨包裝方式：" FOR l_package
-      LET g_ohc.ohcud01 = "出貨包裝方式：", l_package,' ',g_ohc.ohcud01
-      DISPLAY BY NAME g_ohc.ohcud01
+#      PROMPT "出貨包裝方式：" FOR l_package
+#      LET g_ohc.ohcud01 = "出貨包裝方式：", l_package,' ',g_ohc.ohcud01
+#      DISPLAY BY NAME g_ohc.ohcud01
 
-END FUNCTION
+#END FUNCTION
 ##---- 20191226 add by momo (E)
