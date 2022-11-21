@@ -369,8 +369,10 @@ FUNCTION cpmr300()
         WHERE tc_evaf01 = sr.tc_evad.tc_evad01
           AND tc_evaf08 IS NULL
 
-       IF sr.tc_evaf.tc_evaf04='M07' THEN
-          CONTINUE FOREACH
+       IF g_bgjob = 'Y' THEN
+          IF sr.tc_evaf.tc_evaf04='M07' THEN
+             CONTINUE FOREACH
+          END IF
        END IF
 
        EXECUTE insert_prep USING sr.tc_evad.tc_evad01,sr.tc_evad.tc_evad02,sr.tc_evad.tc_evad03,

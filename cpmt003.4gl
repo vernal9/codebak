@@ -4,6 +4,7 @@
 # Descriptions...: 模具
 # Date & Author..: NO.22080028  20220921 By momo 模具資料表維護作業
 # Modify.........: No.
+# Modify.........: No.22100031  20221024 By momo 查詢QC單調整
 
 DATABASE ds
  
@@ -91,8 +92,8 @@ DEFINE g_gen02             LIKE gen_file.gen02
 DEFINE g_gem02             LIKE gem_file.gem02
 DEFINE g_pmc03             LIKE pmc_file.pmc03 
 DEFINE g_flag              LIKE type_file.chr1
-DEFINE g_argv1             LIKE tc_evad_file.tc_evad01  #單號                    #FUN-BC0038
-DEFINE g_argv2             STRING               #執行功能                #FUN-EC0003 add
+DEFINE g_argv1             LIKE tc_evad_file.tc_evad01  #單號        
+DEFINE g_argv2             STRING                       #執行功能               
 DEFINE g_laststage         LIKE type_file.chr1  #是否為簽核最後一站flag  #FUN-BC0038
 DEFINE g_chr1,g_chr2       LIKE type_file.chr1  #VARCHAR(1)              #FUN-BC0038
 #資料清單
@@ -662,7 +663,9 @@ DEFINE  l_node         om.DomNode,
             END IF
          WHEN "qry_qc" #查詢QC單
             IF cl_chk_act_auth() THEN
-               LET g_cmd = "aqct110 '",g_tc_evae[l_ac].rvb01,"' "
+               LET g_cmd = "aqct110 '",g_tc_evae[l_ac].rvb01,"' "         #20221024
+               #LET g_wc = " qcs10 = '",g_tc_evad.tc_evad01,"' "          #20221024
+               #LET g_cmd = 'p_query "tqrcqc0001" "',g_wc CLIPPED,'"'     #20221024
                CALL cl_cmdrun_wait(g_cmd)
             END IF
       END CASE
@@ -686,7 +689,9 @@ FUNCTION t003_bp(p_ud)
  
       BEFORE ROW
          LET l_ac = ARR_CURR()
-         CALL cl_show_fld_cont()     
+         CALL cl_show_fld_cont()    
+
+      CALL t003_icon() 
 
       ON ACTION page_list
          LET g_action_flag="page_list"
@@ -1490,6 +1495,7 @@ FUNCTION t003_show()
  
    CALL t003_b_fill(g_wc2)                 #單身
    CALL t003_b2_fill(g_wc3)                 #單身
+   CALL t003_icon()
    CALL t003_bp_refresh()
    CALL t003_show_pic() #圖示  
    CALL cl_show_fld_cont()              
@@ -3113,4 +3119,49 @@ END FUNCTION
 
 ##--- 資料清單 (E)
 
- 
+FUNCTION t003_icon()
+   DEFINE w               ui.Window
+   DEFINE n               om.DomNode
+   DEFINE l_cnt   LIKE type_file.num5
+   DEFINE lr_key          RECORD
+         gca01              LIKE gca_file.gca01,
+         gca02              LIKE gca_file.gca02,
+         gca03              LIKE gca_file.gca03
+                         END RECORD
+
+
+   LET l_cnt = 0
+   LET g_doc.column1= "tc_evad01"
+   LET g_doc.value1 = g_tc_evad.tc_evad01
+   LET lr_key.gca01 = g_doc.column1 CLIPPED || "=" || g_doc.value1 CLIPPED
+
+   SELECT COUNT(*) INTO l_cnt FROM gca_file WHERE gca01=lr_key.gca01
+
+   IF l_cnt > 0 THEN
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","related_document")
+      CALL n.setAttribute("image","open2")
+   ELSE
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","related_document")
+      CALL n.setAttribute("image","")
+   END IF
+
+   
+   LET l_cnt = 0
+   SELECT 1 INTO l_cnt FROM qcs_file 
+    WHERE qcs10 = g_tc_evad.tc_evad01
+      AND qcs14 <> 'X'
+
+   IF l_cnt > 0 THEN
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","qry_qc")
+      CALL n.setAttribute("image","open2")
+   ELSE
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","qry_qc")
+      CALL n.setAttribute("image","")
+   END IF
+
+
+END FUNCTION 
