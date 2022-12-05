@@ -179,6 +179,8 @@
 # Modify.........: No:2207198503 20220728 By momo 增加判斷 交期是否提早30天
 # Modify.........: No:22080035   20220816 By momo 特採入庫時，系統自動產生「限定批號」 --> NM營運中心不使用
 # Modify.........: No:22080059   20220825 By momo 供應商留置時可收貨、入庫pmc05='2'
+# Modify.........: No:22100028   20221025 By momo CAP 性質不可直接入庫
+# Modify.........: No:22110051   20221202 By momo 固資料號已驗收才可產生入庫單
 
 DATABASE ds
 #FUN-850022
@@ -2795,6 +2797,25 @@ FUNCTION t110sub_y1(l_rva,p_argv5,p_argv2,p_rvu03_flag,p_argv6)
    END IF
 
    #-->免檢驗表示全部可直接入庫
+   ##--- 20221202 ima131 FA 開頭不可直接產生入庫，需驗收核可(S)
+   LET l_cnt = 0
+   SELECT 1 INTO l_cnt 
+     FROM ima_file,rvb_file
+    WHERE ima01 = rvb05
+      AND ima131 LIKE 'FA%'
+      AND rvb01 = l_rva.rva01
+      AND NOT EXISTS (SELECT 1 FROM tc_evac_file
+                       WHERE tc_evac03 = rvb01
+                         AND tc_evacconf='Y')
+   
+  #IF l_rva.rva10='CAP' AND g_sma.sma886[7]='Y' THEN  #20221025 #20221202 mark
+   IF l_cnt = 1 AND g_sma.sma886[7]='Y' THEN          #20221202
+      CALL cl_err(l_rva.rva10,'cpm-029',1)            #20221025
+      LET g_sma.sma886[7]='N'                         #20221025
+   END IF                                             #20221025
+
+   ##--- 20221202 ima131 FA 開頭不可直接產生入庫，需驗收核可(S)
+
    IF l_ins_rvu = 'Y' AND g_sma.sma886[7]='Y' THEN
      #IF l_rva.rva06 > g_today THEN           #MOD-B50165 #MOD-BA0157 mark 
         LET p_rvu03_flag = '1'   #TQC-AB0392 
@@ -4259,6 +4280,23 @@ FUNCTION t110sub_ins_rvu(p_chr,p_qc,p_qcl05,p_flag,p_rva,p_rvb,p_rvbi,p_qco,p_sm
    DEFINE p_msg1      STRING     #FUN-C40015
 
    INITIALIZE l_rvu.* TO NULL
+
+   ##--- 20221202 ima131 FA 開頭不可直接產生入庫，需驗收核可(S)
+   LET l_cnt = 0
+   SELECT 1 INTO l_cnt 
+     FROM ima_file,rvb_file
+    WHERE ima01 = rvb05
+      AND ima131 LIKE 'FA%'
+      AND rvb01 = p_rva.rva01
+      AND NOT EXISTS (SELECT 1 FROM tc_evac_file
+                       WHERE tc_evac03 = rvb01
+                         AND tc_evacconf='Y')
+   IF l_cnt = 1 THEN
+      CALL cl_err3("","","","","cpm-030","",l_rvu.rvu01,1)
+      LET g_success='N'
+      RETURN NULL,NULL,p_msg,p_msg1   #FUN-C40015 
+   END IF
+   ##--- 20221202 ima131 FA 開頭不可直接產生入庫，需驗收核可(E)
 
   #用傳入的參數來判斷是驗退還是入庫
    IF p_chr = 'o' THEN      #異動類別   
@@ -6328,6 +6366,7 @@ FUNCTION t110sub_g(p_rva01,p_ask_flag,p_argv2,p_argv6)
           WHERE qcs01 = l_rvb.rvb01
             AND qcs02 = l_rvb.rvb02
             AND qcs14 = 'Y'           #No.MOD-930262 add
+         IF l_rva.rva10='CAP' THEN LET l_qcs091=l_rvb.rvb33 END IF #20221027 add 固資可入庫量抓收貨單可入庫
          IF cl_null(l_qcs091) THEN LET l_qcs091 = 0 END IF   #No.MOD-930220 add
          IF cl_null(l_qcs38) THEN LET l_qcs38 = 0 END IF   #MOD-A70160
          IF cl_null(l_qcs41) THEN LET l_qcs41 = 0 END IF   #MOD-A70160 

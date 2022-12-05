@@ -3695,9 +3695,12 @@ FUNCTION t110_rva05(p_cmd)   #廠商編號
          LET g_errno = 'mfg3001' LET l_pmc03 = NULL
       WHEN l_pmcacti='N'
          LET g_errno = '9028'
-        WHEN l_pmcacti MATCHES '[PH]'       LET g_errno = '9038'
+      #WHEN l_pmcacti MATCHES '[PH]'  #20220826 mark      
+      WHEN l_pmcacti MATCHES '[P]'    #20220826 modify
+         LET g_errno = '9038'
       WHEN l_pmc30 = '2'
          LET g_errno = 'mfg3227'
+      
       OTHERWISE
          LET g_errno = SQLCA.SQLCODE USING '-------'
    END CASE

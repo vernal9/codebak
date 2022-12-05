@@ -209,6 +209,7 @@
 # Modify.........: 20180328 modify by momo 報工單新增由t720sub_ecm 改為 cpmp003
 # Modify.........: No.           19/01/21 By Ruby 當入庫單別為不計算成本，倉庫別又不存在不計成本倉則擋掉
 # Modify.........: No.22080059   20220825 By momo 留置廠商可收貨入庫 pmc05='2'
+# Modify.........: NO.22110051   20221202 By momo 產品分類碼ima131 屬FA開頭需登打cpmt002，檢核是否執行
 
 DATABASE ds
 
@@ -6093,6 +6094,23 @@ FUNCTION t720sub_y_chk(p_rvu01,p_argv1,p_argv2,p_argv3,p_chr,p_ask_post)
       CALL cl_err('','mfg9999',1)
       LET g_success = 'N' RETURN   #20181227  
    END IF
+
+   ##--- 20221202 固資料件檢核是否已驗收(S)
+   LET l_cnt = 0
+   SELECT 1 INTO l_cnt
+     FROM ima_file
+    WHERE ima131 LIKE 'FA%'
+      AND EXISTS (SELECT 1 FROM rvv_file 
+                   WHERE rvv31=ima01 AND rvv01=l_rvu.rvu01) 
+      AND NOT EXISTS (SELECT 1 FROM tc_evac_file
+                       WHERE tc_evac03 = l_rvu.rvu02
+                         AND tc_evacconf='Y')
+   IF l_cnt = 1 THEN
+      CALL cl_err('','cpm-030',1)
+      LET g_success = 'N'
+      RETURN
+   END IF
+   ##--- 20221202 固資料件檢核是否已驗收(E)
  
   #FUN-E80075 add str
    CALL s_chk_pmc05(l_rvu.rvu04)
