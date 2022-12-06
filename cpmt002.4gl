@@ -3,6 +3,7 @@
 # Pattern name...: cpmt002.4gl
 # Descriptions...: 
 # Date & Author..: NO.22080034  20220905 By momo 固定資產驗收維護作業
+# Modify.........: No.22110052  20221205 By momo 增加資料清單
 
 
 DATABASE ds
@@ -47,9 +48,31 @@ DEFINE g_faf02             LIKE faf_file.faf02
 DEFINE g_flag              LIKE type_file.chr1
 DEFINE g_argv1             LIKE tc_evac_file.tc_evac01  #單號                    
 DEFINE g_argv2             STRING               #執行功能                
+DEFINE g_argv3             LIKE tc_evac_file.tc_evac03  #收貨單號                    
 DEFINE g_laststage         LIKE type_file.chr1  #是否為簽核最後一站flag  
 DEFINE g_chr1,g_chr2       LIKE type_file.chr1  #VARCHAR(1)             
 DEFINE g_tc_evaa05         LIKE tc_evaa_file.tc_evaa05 
+DEFINE g_tc_evad01         LIKE tc_evad_file.tc_evad01
+#---  page_list (S) ---
+DEFINE   w    ui.Window
+DEFINE   f    ui.Form
+DEFINE   page om.DomNode
+DEFINE   g_action_flag  STRING
+DEFINE   g_rec_b1       LIKE type_file.num10
+DEFINE   l_ac1          LIKE type_file.num10
+DEFINE   g_tc_evac_l    DYNAMIC ARRAY OF RECORD
+           tc_evac01_l     LIKE tc_evac_file.tc_evac01,
+           tc_evac05_l     LIKE tc_evac_file.tc_evac05,
+           gen02_l         LIKE gen_file.gen02,
+           tc_evac06_l     LIKE tc_evac_file.tc_evac06,
+           gem02_l         LIKE gem_file.gem02,
+           tc_evac07_l     LIKE tc_evac_file.tc_evac07,
+           faf02_l         LIKE faf_file.faf02,
+           tc_evac08_l     LIKE tc_evac_file.tc_evac08,
+           tc_evac03_l     LIKE tc_evac_file.tc_evac03,
+           rvu01_l         LIKE rvu_file.rvu01
+                         END RECORD
+#---  page_list (E) ---
 
 MAIN
    IF FGL_GETENV("FGLGUI") <> "0" THEN      #判斷是否為背景執行程式 FUN-EC0001 add
@@ -75,6 +98,7 @@ MAIN
  
    LET g_argv1 = ARG_VAL(1)              #單號
    LET g_argv2 = ARG_VAL(2)              #執行功能 
+   LET g_argv3 = ARG_VAL(3)              #收貨單號
    IF fgl_getenv('EASYFLOW') = "1" THEN  #判斷是否為簽核模式
       LET g_argv1 = aws_efapp_wsk(1)     #取得單號,參數:key-1
    END IF
@@ -110,7 +134,12 @@ MAIN
          OTHERWISE
             CALL t002_q()
       END CASE
+   ELSE
+      IF NOT cl_null(g_argv3) THEN
+         CALL t002_a()
+      END IF
    END IF
+
    
    CALL t002_menu()
    CLOSE WINDOW t002_w                 #結束畫面
@@ -225,10 +254,8 @@ FUNCTION t002_cs()
   
    LET g_wc = g_wc CLIPPED,cl_get_extra_cond('tc_evacuser', 'tc_evacgrup')
  
-   CONSTRUCT g_wc2 ON rvb02,rvb04,rvb03,   
-                      rvb05,rvb051,rvb07
-             FROM s_rvb[1].rvbb02,rvb[1].rvb04,s_rvb[1].rvb03,
-                  s_rvb[1].rvb05,s_rvb[1].tc_evab051,s_rvb[1].tc_evab07
+   CONSTRUCT g_wc2 ON rvb04,rvb05,rvb051
+             FROM s_rvb[1].rvb04,s_rvb[1].rvb05,s_rvb[1].rvb051
  
       BEFORE CONSTRUCT
         CALL cl_qbe_display_condition(lc_qbe_sn)
@@ -296,12 +323,44 @@ END FUNCTION
  
 FUNCTION t002_menu() 
 DEFINE l_creator  LIKE type_file.chr1  #是否退回填表人      
-DEFINE l_flowuser LIKE type_file.chr1  #是否有指定加簽人員  
+DEFINE l_flowuser LIKE type_file.chr1  #是否有指定加簽人員 
+#--- page_list (S)
+DEFINE  l_node         om.DomNode,
+        win            ui.Window,
+        f              ui.Form 
+#--- page_list (E) 
 
    LET l_flowuser = "N"  #FUN-BC0018
  
    WHILE TRUE
-      CALL t002_bp("G")
+      ##---- 20221206 page_list (S)
+      #CALL t002_bp("G")
+      CASE
+         WHEN (g_action_flag IS NULL) OR (g_action_flag = "main")
+            CALL t002_bp("G")
+         WHEN (g_action_flag = "page_list")
+            CALL t002_list_fill()
+            CALL t002_bp1("G")
+            IF NOT cl_null(g_action_choice) AND l_ac1>0 THEN #將清單的資料回傳到主畫面
+               SELECT tc_evac01
+                 INTO g_tc_evac.tc_evac01 FROM tc_evac_file
+                WHERE tc_evac01=g_tc_evac_l[l_ac1].tc_evac01_l
+            END IF
+            IF g_action_choice!= "" THEN
+               LET g_action_flag = 'main'
+               LET l_ac1 = ARR_CURR()
+               LET g_jump = l_ac1
+               LET g_no_ask = TRUE
+               IF g_rec_b1 >0 THEN
+                   CALL t002_fetch('/')
+               END IF
+               CALL cl_set_comp_visible("page_list", FALSE)
+               CALL ui.interface.refresh()
+               CALL cl_set_comp_visible("page_list", TRUE)
+             END IF
+      END CASE
+     
+      ##---- 20221206 page_list (E)
       CASE g_action_choice
          WHEN "insert"
             IF cl_chk_act_auth() THEN
@@ -457,12 +516,33 @@ DEFINE l_flowuser LIKE type_file.chr1  #是否有指定加簽人員
         WHEN "easyflow_approval"          #執行EF簽核,"EasyFlow送簽"功能
            IF cl_chk_act_auth() THEN
                 CALL t002_ef()
-           END IF 
+           END IF
+           ##---模具量產　20221013--- 
+           SELECT DISTINCT tc_evae01 INTO g_tc_evad01
+             FROM tc_evae_file,rvb_file
+            WHERE tc_evae05 = rvb04
+              AND tc_evae06 = rvb03
+              AND rvb01 = g_tc_evac.tc_evac03
+           IF NOT cl_null(g_tc_evad01) THEN
+              LET g_msg = 'cpmt003' CLIPPED ," '",g_tc_evad01 CLIPPED,"' ''"
+              CALL cl_cmdrun(g_msg) 
+           END IF
+           ##---模具量產　--- 
 
  
          WHEN "exporttoexcel"     
             IF cl_chk_act_auth() THEN
-              CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_rvb),'','')
+               LET w = ui.Window.getCurrent()
+               LET f = w.getForm()
+               LET l_node = f.findNode("Table","g_rvb")
+               CASE
+                 WHEN (g_action_flag IS NULL) OR (g_action_flag = 'main')
+                      CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_rvb),'','')
+                 WHEN (g_action_flag = 'page_list')
+                      LET page = f.FindNode("Page","page_list")
+                      CALL cl_export_to_excel(page,base.TypeInfo.create(g_tc_evac_l),'','')
+                 END CASE
+               LET g_action_choice = NULL
             END IF
  
          WHEN "related_document"  #相關文件
@@ -505,6 +585,12 @@ FUNCTION t002_bp(p_ud)
       BEFORE ROW
          LET l_ac = ARR_CURR()
          CALL cl_show_fld_cont()                 
+         CALL t002_icon()
+
+      #--20221206 page_list
+      ON ACTION page_list
+         LET g_action_flag="page_list"
+         EXIT DISPLAY 
  
       ON ACTION insert
          LET g_action_choice="insert"
@@ -704,6 +790,9 @@ FUNCTION t002_a()
    LET g_gem02 = NULL
    LET g_faf02 = NULL
    LET g_gem02_08 = NULL
+   IF NOT cl_null(g_argv3) THEN 
+      LET g_tc_evac.tc_evac03 = g_argv3 
+   END IF
  
    #預設值及將數值類變數清成零
    LET g_tc_evac_t.* = g_tc_evac.*
@@ -761,6 +850,7 @@ FUNCTION t002_a()
       
       EXIT WHILE
    END WHILE
+   CALL t002_b_fill("1=1")
  
 END FUNCTION
  
@@ -912,6 +1002,14 @@ DEFINE
 
       AFTER FIELD tc_evac03
          IF NOT cl_null(g_tc_evac.tc_evac03) THEN
+            LET l_n = 0
+            SELECT 1 INTO l_n FROM tc_evac_file
+             WHERE tc_evac03 = g_tc_evac.tc_evac03
+               AND tc_evac10 <> '9'
+            IF l_n = 1 THEN
+               CALL cl_err('','axm-298',1)
+               NEXT FIELD tc_evac03
+            END IF
             CALL t002_tc_evac03('d')
             CALL t002_show()
             NEXT FIELD tc_evac04
@@ -1146,18 +1244,23 @@ FUNCTION t002_tc_evac03(p_cmd)
           l_tc_evaa05 LIKE tc_evaa_file.tc_evaa05,
           l_tc_evaa07 LIKE tc_evaa_file.tc_evaa07,
           l_tc_evaa14 LIKE tc_evaa_file.tc_evaa14,
+          l_tc_evaa04 LIKE tc_evaa_file.tc_evaa04,
           l_sum_total LIKE tc_evaa_file.tc_evaa11 
    DEFINE l_cnt       LIKE type_file.num5
 
    LET g_errno = ' '
-   SELECT SUM(rvb88),tc_evaa01,tc_evaa05,tc_evaa07,tc_evaa14,tc_evaa04 
-     INTO l_sum_total,l_tc_evaa01,l_tc_evaa05,l_tc_evaa07,l_tc_evaa14,g_tc_evac.tc_evac06
+
+   SELECT SUM(rvb88) INTO l_sum_total FROM rvb_file WHERE rvb01=g_tc_evac.tc_evac03
+
+   SELECT tc_evaa01,tc_evaa05,tc_evaa07,tc_evaa14,tc_evaa04 
+     INTO l_tc_evaa01,l_tc_evaa05,l_tc_evaa07,l_tc_evaa14,l_tc_evaa04
      FROM rvb_file
      LEFT JOIN pmn_file ON pmn01 = rvb04
      LEFT JOIN pml_file ON pml01 = pmn24
      LEFT JOIN tc_evaa_file ON tc_evaa01 = pml24
     WHERE rvb01 = g_tc_evac.tc_evac03
-   GROUP BY tc_evaa01,tc_evaa05,tc_evaa07,tc_evaa14,tc_evaa04
+
+   IF cl_null(g_tc_evac.tc_evac06) THEN LET l_tc_evaa04 = g_tc_evac.tc_evac06 END IF
 
    LET g_tc_evaa05 = l_tc_evaa05
    
@@ -1373,18 +1476,19 @@ FUNCTION t002_show()
    DISPLAY BY NAME g_tc_evac.tc_evac01,g_tc_evac.tc_evac02,g_tc_evac.tc_evac03, g_tc_evac.tc_evacoriu,g_tc_evac.tc_evacorig,
                    g_tc_evac.tc_evac04,g_tc_evac.tc_evac05,g_tc_evac.tc_evac07,g_tc_evac.tc_evac10,g_tc_evac.tc_evac11,
                    g_tc_evac.tc_evac09,g_tc_evac.tc_evac06,g_tc_evac.tc_evac08,g_tc_evac.tc_evacmksg,  
-                   g_tc_evac.tc_evac12,g_tc_evac.tc_evac13,g_tc_evac.tc_evac14,g_tc_evac.tc_evac06,
+                   g_tc_evac.tc_evac12,g_tc_evac.tc_evac13,g_tc_evac.tc_evac14,
                    g_tc_evac.tc_evac15,g_tc_evac.tc_evac16,
                    g_tc_evac.tc_evacuser,g_tc_evac.tc_evacgrup,g_tc_evac.tc_evacmodu,
                    g_tc_evac.tc_evacdate,g_tc_evac.tc_evacacti,g_tc_evac.tc_evacconf
                    
+   CALL t002_icon() 
    CALL t002_tc_evac01('d')
    CALL t002_tc_evac04('d')
    CALL t002_tc_evac06('d')
    CALL t002_tc_evac07('d')                    
    CALL t002_tc_evac03('d')
    CALL t002_b_fill(g_wc2)                 #單身
-   CALL t002_show_pic() #圖示  
+   CALL t002_show_pic() #圖示 
    CALL cl_show_fld_cont()              
 END FUNCTION
  
@@ -1972,3 +2076,212 @@ DEFINE   p_type             LIKE type_file.chr1
   
  
 END FUNCTION
+
+FUNCTION t002_icon()
+   DEFINE w               ui.Window
+   DEFINE n               om.DomNode 
+   DEFINE l_cnt   LIKE type_file.num5
+   DEFINE lr_key          RECORD
+         gca01              LIKE gca_file.gca01,
+         gca02              LIKE gca_file.gca02,
+         gca03              LIKE gca_file.gca03
+                         END RECORD
+
+
+   LET l_cnt = 0
+   LET g_doc.column1= "tc_evac01"
+   LET g_doc.value1 = g_tc_evac.tc_evac01
+   LET lr_key.gca01 = g_doc.column1 CLIPPED || "=" || g_doc.value1 CLIPPED
+
+   SELECT COUNT(*) INTO l_cnt FROM gca_file WHERE gca01=lr_key.gca01
+    
+   IF l_cnt > 0 THEN
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","related_document")
+      CALL n.setAttribute("image","open2")
+   ELSE
+      LET w = ui.Window.getCurrent()
+      LET n = w.findNode("Action","related_document")
+      CALL n.setAttribute("image","")
+   END IF
+   
+
+   
+END FUNCTION
+
+#--- 20221206 page_list (S)
+FUNCTION t002_bp1(p_ud)
+   DEFINE   p_ud   LIKE type_file.chr1    
+ 
+   IF p_ud <> "G"  THEN
+      RETURN
+   END IF
+ 
+   LET g_action_choice = " "
+ 
+   CALL cl_set_act_visible("accept,cancel", FALSE)
+   DISPLAY ARRAY g_tc_evac_l TO s_tc_evac_l.* ATTRIBUTE(COUNT=g_rec_b,UNBUFFERED)
+ 
+      BEFORE DISPLAY
+         CALL cl_navigator_setting( g_curs_index, g_row_count )
+ 
+      BEFORE ROW
+         LET l_ac1 = ARR_CURR()
+         CALL cl_show_fld_cont()                 
+         CALL t002_icon()
+
+      ON ACTION main
+         LET g_action_flag = 'main'
+         LET l_ac1 = ARR_CURR()
+         LET g_jump = l_ac1
+         LET g_no_ask = TRUE
+         IF g_rec_b1 >0 THEN
+             CALL t002_fetch('/')
+         END IF
+         CALL cl_set_comp_visible("page_list", FALSE)
+         CALL ui.interface.refresh()
+         CALL cl_set_comp_visible("page_list", TRUE)
+         EXIT DISPLAY 
+ 
+      ON ACTION insert
+         LET g_action_choice="insert"
+         EXIT DISPLAY
+ 
+      ON ACTION query
+         LET g_action_choice="query"
+         EXIT DISPLAY
+ 
+
+      ON ACTION output
+         LET g_action_choice="output"
+         EXIT DISPLAY
+ 
+      ON ACTION help
+         LET g_action_choice="help"
+         EXIT DISPLAY
+ 
+      ON ACTION locale
+         CALL cl_dynamic_locale()
+         CALL cl_show_fld_cont()                   
+ 
+      ON ACTION exit
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+ 
+      ON ACTION controlg
+         LET g_action_choice="controlg"
+         EXIT DISPLAY
+         
+      ON ACTION ACCEPT
+         LET g_action_flag = 'main'
+         LET l_ac1 = ARR_CURR()
+         LET g_jump = l_ac1
+         LET g_no_ask = TRUE
+         CALL t002_fetch('/')
+         CALL cl_set_comp_visible("page_list", FALSE)
+         CALL cl_set_comp_visible("page_list", TRUE)
+         CALL ui.interface.refresh()
+         EXIT DISPLAY
+ 
+      ON ACTION cancel
+         LET INT_FLAG=FALSE          
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+ 
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE DISPLAY
+ 
+      ON ACTION about        
+         CALL cl_about()    
+ 
+      ON ACTION exporttoexcel      
+         LET g_action_choice = 'exporttoexcel'
+         EXIT DISPLAY
+ 
+      ON ACTION controls                                       
+         CALL cl_set_head_visible("","AUTO")       
+ 
+      ON ACTION related_document                #相關文件
+         LET g_action_choice="related_document"          
+         EXIT DISPLAY
+ 
+      ON ACTION agree
+         LET g_action_choice = 'agree'
+         EXIT DISPLAY
+         
+      ON ACTION deny
+         LET g_action_choice = 'deny'
+         EXIT DISPLAY
+
+      ON ACTION modify_flow
+         LET g_action_choice = 'modify_flow'
+         EXIT DISPLAY
+
+      ON ACTION withdraw
+         LET g_action_choice = 'withdraw'
+         EXIT DISPLAY
+
+      ON ACTION org_withdraw
+         LET g_action_choice = 'org_withdraw'
+         EXIT DISPLAY
+
+      ON ACTION phrase
+         LET g_action_choice = 'phrase'
+         EXIT DISPLAY
+
+      ON ACTION approval_status           
+        LET g_action_choice = "approval_status"
+        EXIT DISPLAY
+    
+ 
+      &include "qry_string.4gl"
+ 
+   END DISPLAY
+   CALL cl_set_act_visible("accept,cancel", TRUE)
+END FUNCTION
+
+FUNCTION t002_list_fill()
+
+DEFINE l_cnt          LIKE type_file.num10
+DEFINE l_tc_evac01    LIKE tc_evac_file.tc_evac01
+
+   CALL g_tc_evac_l.clear()
+   LET l_cnt = 1
+
+   FOREACH t002_cs INTO l_tc_evac01
+      IF SQLCA.sqlcode THEN
+         CALL cl_err('foreach item_cur',SQLCA.sqlcode,1)
+         CONTINUE FOREACH
+      END IF
+
+      SELECT tc_evac01,tc_evac05,gen02,tc_evac06,gem02,
+             tc_evac07,faf02,tc_evac08,tc_evac03,rvu01
+        INTO g_tc_evac_l[l_cnt].*
+        FROM gen_file,gem_file,faf_file,tc_evac_file
+      LEFT JOIN rvu_file ON tc_evac03 = rvu02
+     　WHERE tc_evac01 = l_tc_evac01
+         AND tc_evac05 = gen01
+         AND tc_evac06 = gem01
+         AND tc_evac07 = faf01
+
+      LET l_cnt = l_cnt + 1
+       IF l_cnt > g_max_rec THEN
+       IF g_action_choice ="query"  THEN
+            CALL cl_err( '', 9035, 0 )
+          END IF
+          EXIT FOREACH
+       END IF
+       
+    END FOREACH
+
+    OPEN t002_cs
+    LET g_rec_b1 = l_cnt - 1
+    DISPLAY g_rec_b1 TO FORMONLY.cnt
+    DISPLAY ARRAY g_tc_evac_l TO s_tc_evac_l.* ATTRIBUTE(COUNT=g_rec_b1,UNBUFFERED)
+       BEFORE DISPLAY
+          EXIT DISPLAY
+    END DISPLAY
+
+END FUNCTION
+#--- 20221206 page_list (E)
