@@ -5,6 +5,8 @@
 # Date & Author..: NO.22080028  20220921 By momo 模具資料表維護作業
 # Modify.........: No.
 # Modify.........: No.22100031  20221024 By momo 查詢QC單調整
+# Modify.........: NO:22100050  20221028 By momo 卡控同廠商+同料號不可新增第二筆模具資料
+# Modify.........: No:22120006  20221207 By momo 財產編號」及「客供料號」 "已核准"後可更改
 
 DATABASE ds
  
@@ -117,7 +119,7 @@ DEFINE g_tc_evad_l    DYNAMIC ARRAY OF RECORD
        tc_evad15_l    LIKE tc_evad_file.tc_evad15,
        tc_evad16_l    LIKE tc_evad_file.tc_evad16,
        pmc03_2_l      LIKE pmc_file.pmc03,
-       tc_evae03_l    LIKE tc_evae_file.tc_evae03,
+       tc_evae03_l    LIKE type_file.chr1000,
        tc_evae07_l    LIKE tc_evae_file.tc_evae07,
        ima02_l        LIKE ima_file.ima02,
        ima021_l       LIKE ima_file.ima021,
@@ -156,6 +158,11 @@ MAIN
       LET g_argv1 = aws_efapp_wsk(1)     #取得單號,參數:key-1
    END IF
  
+   #整批更新(S)
+   UPDATE tc_evad_file SET tc_evad12='Y'
+    WHERE tc_evad13='1' AND tc_evad12='N'
+      AND tc_evadacti='Y'
+   #整批更新(E)
  
    LET g_forupd_sql = "SELECT * FROM tc_evad_file WHERE tc_evad01 = ? FOR UPDATE"   
    LET g_forupd_sql = cl_forupd_sql(g_forupd_sql)
@@ -210,7 +217,8 @@ FUNCTION t003_cs()
    ELSE
  
       CONSTRUCT BY NAME g_wc ON tc_evad01,tc_evad02,tc_evad03,tc_evad04,tc_evad05,tc_evad06,
-                                tc_evad07,tc_evad08,tc_evad13,tc_evad12,tc_evad14, 
+                                tc_evad07,tc_evad08,tc_evad13,tc_evad12,tc_evad14,tc_evad15,
+                                tc_evad16, 
                                 tc_evaduser,tc_evadgrup,tc_evadmodu,tc_evaddate,tc_evadacti
  
          BEFORE CONSTRUCT
@@ -493,7 +501,7 @@ DEFINE  l_node         om.DomNode,
                LET l_wc='tc_evad01="',g_tc_evad.tc_evad01,'"'
                LET g_msg = "cpmr300",
                    " '",g_today CLIPPED,"' ''",
-                   " '",g_lang CLIPPED,"' 'Y' '' '1'",
+                   " '",g_lang CLIPPED,"' 'N' '' '1'",
                    " '",l_wc CLIPPED,"' "
                CALL cl_cmdrun(g_msg)
             END IF
@@ -668,6 +676,12 @@ DEFINE  l_node         om.DomNode,
                #LET g_cmd = 'p_query "tqrcqc0001" "',g_wc CLIPPED,'"'     #20221024
                CALL cl_cmdrun_wait(g_cmd)
             END IF
+         ##---- 20221207 add (S) 量產後調整欄位
+         WHEN "modify_after" 
+            IF cl_chk_act_auth() THEN
+               CALL t003_modify_after()
+            END IF
+         ##---- 20221207 add (E)
       END CASE
    END WHILE
 END FUNCTION
@@ -804,6 +818,11 @@ FUNCTION t003_bp(p_ud)
          EXIT DISPLAY
       ON ACTION qry_qc
          LET g_action_choice="qry_qc"
+         EXIT DISPLAY
+
+      ##--- 20221207 add
+      ON ACTION modify_after #量產後調整
+         LET g_action_choice = "modify_after"
          EXIT DISPLAY
 
       ON ACTION accept
@@ -1815,6 +1834,18 @@ DEFINE l_tc_evad06   LIKE tc_evad_file.tc_evad06
            END IF                                  
            IF NOT cl_null(g_tc_evae[l_ac].tc_evae03) THEN
               LET l_n1 = 0
+              ##---- 20221028 add
+              SELECT COUNT(*) INTO l_n1 FROM tc_evae_file,tc_evad_file
+               WHERE tc_evae01 = tc_evad01
+                 AND tc_evae03 = g_tc_evae[l_ac].tc_evae03
+                 AND tc_evad06 = g_tc_evad.tc_evad06
+                 AND tc_evad01 <> g_tc_evad.tc_evad01 #排除自己
+                 AND tc_evadacti='Y'
+              IF l_n1 > 0 THEN
+                 CALL cl_err('','axm-298',1)
+                 NEXT FIELD tc_evae03
+              END IF
+              ##---- 20221028 add
               SELECT COUNT(*) INTO l_n1 FROM ima_file
                WHERE ima01 = g_tc_evae[l_ac].tc_evae03
                  AND ima08<>'Z'
@@ -3054,6 +3085,7 @@ FUNCTION t003_list_fill()
 DEFINE l_cnt          LIKE type_file.num10
 DEFINE l_tc_evad01    LIKE tc_evad_file.tc_evad01
 DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08  
+DEFINE l_tc_evae02    LIKE tc_evae_file.tc_evae02  #最大版次
 
    CALL g_tc_evad_l.clear()
    LET l_cnt = 1
@@ -3063,6 +3095,11 @@ DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08
          CALL cl_err('foreach item_cur',SQLCA.sqlcode,1)
          CONTINUE FOREACH
       END IF
+
+      #最大版次
+      SELECT MAX(tc_evae02) INTO l_tc_evae02
+        FROM tc_evae_file
+       WHERE tc_evae01 = l_tc_evad01
 
       SELECT tc_evad01,tc_evad02,tc_evad03,gen02,tc_evad05,tc_evad06,pmc03,tc_evad12,tc_evad14,
              tc_evad15,tc_evad16,'',
@@ -3082,6 +3119,7 @@ DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08
               g_tc_evad_l[l_cnt].ima02_l,g_tc_evad_l[l_cnt].ima021_l
          FROM ima_file,tc_evae_file
         WHERE tc_evae01 = l_tc_evad01
+          AND tc_evae02 = l_tc_evae02
           AND tc_evae03=ima01
           AND rownum = 1
         ORDER BY tc_evae02 DESC
@@ -3098,6 +3136,19 @@ DEFINE l_tc_evaf08    LIKE tc_evaf_file.tc_evaf08
           LET l_tc_evaf08 = g_today
        END IF
        LET g_tc_evad_l[l_cnt].delay = g_tc_evad_l[l_cnt].tc_evaf07_l-l_tc_evaf08
+
+       ##---- 顯示所有零件料號
+        
+       LET g_sql = "SELECT listagg(tc_evae03,',') WITHIN GROUP (ORDER BY tc_evae03) ",
+                   " FROM tc_evae_file ",
+                   " WHERE tc_evae01 = '",l_tc_evad01,"' ",
+                   "   AND tc_evae02 = '",l_tc_evae02,"' ",
+                   " GROUP BY tc_evae01"
+       PREPARE item FROM g_sql
+       DECLARE item_curs CURSOR FOR item
+       FOREACH item_curs INTO g_tc_evad_l[l_cnt].tc_evae03_l
+       END FOREACH
+       ##---- 顯示所有零件料號
 
        LET l_cnt = l_cnt + 1
        IF l_cnt > g_max_rec THEN
@@ -3165,3 +3216,58 @@ FUNCTION t003_icon()
 
 
 END FUNCTION 
+
+##--- 20221207 add by momo (S)
+FUNCTION t003_modify_after()
+  DEFINE l_cnt      LIKE type_file.num5
+
+   IF g_action_choice = "modify_after" THEN
+      
+      INPUT g_tc_evad.tc_evad14,g_tc_evad.tc_evad11 
+        WITHOUT DEFAULTS FROM tc_evad14,tc_evad11
+
+      BEFORE FIELD tc_evad14
+        IF cl_null(g_tc_evad.tc_evad14) THEN
+           IF cl_confirm('cfa-002') THEN
+              SELECT faj02 INTO g_tc_evad.tc_evad14
+                FROM faj_file,tc_evae_file
+               WHERE faj47 = tc_evae05
+                 AND faj471 = tc_evae06
+                 AND tc_evae01 = g_tc_evad.tc_evad01
+                 AND rownum = 1
+               DISPLAY BY NAME g_tc_evad.tc_evad14
+           END IF
+        END IF
+
+      AFTER FIELD tc_evad14
+        IF NOT cl_null(g_tc_evad.tc_evad14) THEN
+           LET l_cnt = 0
+           SELECT 1 INTO l_cnt FROM faj_file
+            WHERE faj02 = g_tc_evad.tc_evad14
+           IF l_cnt = 0 THEN
+              NEXT FIELD tc_evad14
+           END IF
+        END IF
+  
+      AFTER INPUT
+        IF INT_FLAG THEN
+           LET INT_FLAG = 0
+           RETURN
+        END IF
+
+        ON ACTION CONTROLG
+          CALL cl_cmdask()
+
+        ON IDLE g_idle_seconds
+          CALL cl_on_idle()
+          CONTINUE INPUT
+      END INPUT
+
+     UPDATE tc_evad_file SET tc_evad14 = g_tc_evad.tc_evad14,
+                             tc_evad11 = g_tc_evad.tc_evad11
+       WHERE tc_evad01 = g_tc_evad.tc_evad01
+
+   END IF
+
+END FUNCTION
+##--- 20221207 add by momo (E)
