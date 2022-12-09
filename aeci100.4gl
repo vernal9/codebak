@@ -157,6 +157,7 @@
 # Modify.........: No:2105266281 20210531 By momo 品名、規格 開放查詢
 # Modify.........: No:           20210705 By momo 複製時檢核轉出單位需等於生產單位
 # Modify.........: No:22080024   20220810 By momo 增加顯示 imaacti ; 追加卡控,料號資料有效碼為『 N 』的資料不可複製
+# Modify.........: No:22120013   20221209 By momo 增加資料串聯功能
 
 DATABASE ds
 
@@ -362,6 +363,11 @@ DEFINE   g_ecu_1        DYNAMIC ARRAY OF RECORD
                                        END RECORD
 ##---- 20190709 新增資料清單 (E)
 
+##---- 20221209 by momo (S) 增加資料串聯
+DEFINE  g_argv1      LIKE ecu_file.ecu01
+DEFINE  g_argv2      LIKE ecu_file.ecu02
+DEFINE  g_argv3      LIKE ecu_file.ecu012
+##---- 20221209 by momo (E)
 
 MAIN
     OPTIONS
@@ -382,6 +388,10 @@ MAIN
 
      CALL  cl_used(g_prog,g_time,1) RETURNING g_time #No.MOD-580088  HCN 20050818  #No.FUN-6A0100
    LET p_row = 1 LET p_col = 3
+
+   LET g_argv1=ARG_VAL(1)  #20221209
+   LET g_argv2=ARG_VAL(2)  #20221209
+   LET g_argv3=ARG_VAL(3)  #20221209
 
    OPEN WINDOW i100_w AT p_row,p_col WITH FORM "cec/42f/aeci100"
          ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
@@ -423,6 +433,19 @@ MAIN
    CALL i100_tree_fill_1(g_ecu.ecu01,g_ecu.ecu02,g_ecu.ecu012)      #填充树结构
 #FUN-B90117--END--
 
+   ##--- 20221209 add by momo (S)
+   IF NOT cl_null(ARG_VAL(1)) THEN
+      LET g_ecu.ecu01 = g_argv1
+      LET g_ecu.ecu02 = g_argv2
+      LET g_ecu.ecu012 = g_argv3
+      LET g_data_keyvalue = g_ecu.ecu01,"/",g_ecu.ecu02,"/",g_ecu.ecu012       #FUN-F50015 add
+      SELECT * INTO g_ecu.* FROM ecu_file       # 重讀DB,因TEMP有不被更新特性
+       WHERE ecu01 = g_ecu.ecu01
+         AND ecu02 = g_ecu.ecu02
+         AND ecu012 = g_ecu.ecu012      
+      CALL i100_show()
+   END IF
+   ##--- 20221209 add by momo (E)
    CALL i100()
 
    CLOSE WINDOW i100_w
@@ -435,6 +458,14 @@ FUNCTION i100()
    INITIALIZE g_ecu.* TO NULL
    INITIALIZE g_ecu_t.* TO NULL
    INITIALIZE g_ecu_o.* TO NULL
+   ##--- 20221209 add
+   IF NOT cl_null(ARG_VAL(1)) THEN
+      LET g_ecu.ecu01 = g_argv1
+      LET g_ecu.ecu02 = g_argv2
+      LET g_ecu.ecu012 = g_argv3
+      LET g_data_keyvalue = g_ecu.ecu01,"/",g_ecu.ecu02,"/",g_ecu.ecu012       #FUN-F50015 add
+   END IF
+   ##--- 20221209 add
 
 #  LET g_forupd_sql = "SELECT * FROM ecu_file WHERE ecu01 = ? AND ecu02 =? FOR UPDATE"  #FUN-A50081
    LET g_forupd_sql = "SELECT * FROM ecu_file WHERE ecu01 = ? AND ecu02 =? and ecu012 = ? FOR UPDATE"  #FUN-A50081
@@ -732,7 +763,7 @@ DEFINE   l_cmd   LIKE type_file.chr1000  #20181224
          WHEN "insert"
             IF cl_chk_act_auth() THEN
                ##---20181225 add by momo (S)
-               IF NOT s_dc_ud_flag('0',g_plant,g_plant,'a') THEN
+               IF NOT s_dc_ud_flag('1',g_plant,g_plant,'a') THEN
                   CALL cl_err(g_plant,'aoo-078',1)
                
                ELSE
@@ -1357,7 +1388,8 @@ FUNCTION i100_update_working_time()        #更新報工機工時
                 #M009 180129 By TSD.Nic -----(S)
                 #"  WHERE ecb01 = ? AND ecb02 = ? "
                 " ,ecu_file ",
-                "  WHERE ecb01 = ecu01 AND ecb02 = ecu02 AND ecu10 = 'Y' ",
+               #"  WHERE ecb01 = ecu01 AND ecb02 = ecu02 AND ecu10 = 'Y' ",     #221007 mark by ruby
+                "  WHERE ecb01 = ecu01 AND ecb02 = ecu02 ",                     #221007 add by ruby
                #"  AND ecu01 IN (SELECT shb10 FROM shb_file WHERE shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"') ",  #180705 add by ruby        #20211008 mark
                 "  AND EXISTS(SELECT * FROM shb_file WHERE shbconf !='X' AND shb10=ecu01 AND shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"' )",  #20211008 modify
                 "  AND (ecb19 > 0 OR ecb21 > 0 )",                                            #20191210 標準工時 > 0

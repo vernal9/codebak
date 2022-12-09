@@ -712,7 +712,7 @@ FUNCTION i700_menu()
             CLOSE WINDOW i700_w4        #No.TQC-790064
 
          ##---20221208 add by momo (S) WO Confirm
-         WHEN "wo_confirm"
+         WHEN "wo_confirm" #工單確認
             IF cl_chk_act_auth() THEN
                IF cl_confirm('aap-017') THEN
                   LET g_success = 'Y'
@@ -725,6 +725,10 @@ FUNCTION i700_menu()
                   END IF
                END IF
             END IF
+
+         WHEN "aeci100"
+            LET g_cmd = "aeci100 '",g_sfb.sfb05,"' '",g_sfb.sfb06,"' ' ' "
+            CALL cl_cmdrun_wait(g_cmd)
          ##---20221208 add by momo (E)
 
          WHEN "exporttoexcel"
@@ -2944,7 +2948,11 @@ FUNCTION i700_bp(p_ud)
 
       ##--- 20221208 add (S)
       ON ACTION wo_confirm
-         LET g_action_choice = 'wo_confirm'
+         LET g_action_choice = "wo_confirm"
+         EXIT DISPLAY
+
+      ON ACTION aeci100
+         LET g_action_choice = "aeci100"
          EXIT DISPLAY
       ##--- 20221208 add (E)
 
