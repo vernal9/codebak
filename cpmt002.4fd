@@ -49,7 +49,7 @@
     <RecordField colName="tc_evaa07" fieldIdRef="43" fieldType="TABLE_COLUMN" name="tc_evaa_file.tc_evaa07" sqlTabName="tc_evaa_file" sqlType="VARCHAR" table_alias_name="" uid="{c4d13912-6f6e-41bb-8c70-f9b11bddc12f}"/>
     <RecordField colName="tc_evaa01" fieldIdRef="44" fieldType="NON_DATABASE" name="sum_total" sqlTabName="tc_evaa_file" sqlType="VARCHAR" table_alias_name="tc_evaa" uid="{f28ee9d2-c961-42dd-be2e-03fe9c5f0b47}"/>
     <RecordField colName="tc_evac16" defaultValue="N" fieldIdRef="45" fieldType="TABLE_COLUMN" name="tc_evac_file.tc_evac16" sqlTabName="tc_evac_file" sqlType="VARCHAR" table_alias_name="" uid="{1c123352-3fbf-4eb5-8d1e-d410fa44fe11}"/>
-    <RecordField colName="tc_evaa14" fieldIdRef="46" fieldType="TABLE_COLUMN" name="tc_evaa_file.tc_evaa14" sqlTabName="tc_evaa_file" sqlType="VARCHAR" table_alias_name="tc_evaa" uid="{d355d52f-1b50-44fa-8599-ee3ffd71dbd5}"/>
+    <RecordField colName="tc_evac17" fieldIdRef="46" fieldType="TABLE_COLUMN" name="tc_evac_file.tc_evac17" sqlTabName="tc_evac_file" sqlType="CHAR" table_alias_name="tc_evaa" uid="{d355d52f-1b50-44fa-8599-ee3ffd71dbd5}"/>
   </Record>
   <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_tc_evac_l" order="" uid="{64fe4c1b-f79e-4e21-857c-ed2b5deb5773}" where="">
     <RecordField colName="" fieldIdRef="47" name="tc_evac01_l" sqlTabName="" table_alias_name="" uid="{00290647-b948-4454-b869-988bd1721ba9}"/>
@@ -141,8 +141,8 @@
                     <Item lstrtext="false" name="C" text="校正"/>
                     <Item lstrtext="false" name="O" text="其他"/>
                   </ComboBox>
-                  <Label posX="105" posY="1" text="tc_evaa14"/>
-                  <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_evaa14" columnCount="" fieldId="46" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="14" name="tc_evaa_file.tc_evaa14" posX="116" posY="1" rowCount="" sqlTabName="tc_evaa_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="515" table_alias_name="tc_evaa" title="Edit1" widget="Edit"/>
+                  <Label posX="105" posY="1" text="tc_evac17"/>
+                  <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_evac17" columnCount="" fieldId="46" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="14" name="tc_evac_file.tc_evac17" posX="116" posY="1" rowCount="" sqlTabName="tc_evac_file" sqlType="CHAR" stepX="" stepY="" tabIndex="515" table_alias_name="tc_evaa" title="Edit1" widget="Edit"/>
                   <Label posX="3" posY="2" text="rvb88"/>
                   <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_evaa01" columnCount="" fieldId="44" fieldType="NON_DATABASE" gridHeight="1" gridWidth="14" name="sum_total" posX="17" posY="2" rowCount="" sqlTabName="tc_evaa_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="513" table_alias_name="tc_evaa" title="Edit1" widget="Edit"/>
                 </Group>

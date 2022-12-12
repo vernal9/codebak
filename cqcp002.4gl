@@ -435,6 +435,13 @@ DEFINE l_ima930   LIKE ima_file.ima930   #DEV-D40021 --add
              LET l_qcs.qcs04 = g_today
              LET l_qcs.qcs041 = TIME
              LET l_qcs.qcs10 = l_tc_evae01
+             #回寫收貨單需檢驗 20221026
+             UPDATE rvb_file SET rvb39='Y',rvb40='',rvb41='',rvb33=0 
+              WHERE rvb01 = l_rva.rva01 AND rvb02= l_rvb.rvb02
+             IF SQLCA.sqlcode OR SQLCA.sqlerrd[3] = 0 THEN
+                CALL cl_err3("upd","rvb_file",l_rvb.rvb02,"",STATUS,"","upd rvb39:",1)
+                LET g_success = 'N'
+             END IF
 
              SELECT pmm_file.*,pmn_file.* INTO l_pmm.*,l_pmn.* 
               FROM pmm_file,pmn_file
@@ -695,6 +702,7 @@ DEFINE l_ima930   LIKE ima_file.ima930   #DEV-D40021 --add
                    LET g_success = 'N'											
                    EXIT FOREACH											
                 END IF
+                
                 SELECT ima921 INTO l_ima921 FROM ima_file
                  WHERE ima01 = l_qcs.qcs021
                 IF l_ima918="Y" OR l_ima921="Y" THEN 
