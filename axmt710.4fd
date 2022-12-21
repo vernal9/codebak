@@ -149,8 +149,9 @@
                     <Label posX="1" posY="7" text="userdefined_field03"/>
                     <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ohcud03" columnCount="" fieldId="39" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="15" lstrcomment="false" lstrtitle="false" name="ohc_file.ohcud03" posX="22" posY="7" rowCount="" sqlTabName="ohc_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="50" table_alias_name="" widget="Edit"/>
                     <Label posX="1" posY="8" text="userdefined_field05"/>
-                    <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ohcud05" columnCount="" fieldId="43" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="15" items="使用新包材, 沿用舊包材" lstrcomment="false" lstrtitle="false" name="ohc_file.ohcud05" posX="22" posY="8" rowCount="" sqlTabName="ohc_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="54" table_alias_name="" widget="ComboBox">
-                      <Item lstrtext="false" name="使用新包材" text="使用新包材"/>
+                    <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ohcud05" columnCount="" fieldId="43" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="15" items="使用單軸新包材, 使用連結新包材, 沿用舊包材" lstrcomment="false" lstrtitle="false" name="ohc_file.ohcud05" posX="22" posY="8" rowCount="" sqlTabName="ohc_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="54" table_alias_name="" widget="ComboBox">
+                      <Item lstrtext="false" name="使用單軸新包材" text="使用單軸新包材"/>
+                      <Item lstrtext="false" name="使用連結新包材" text="使用連結新包材"/>
                       <Item lstrtext="false" name="沿用舊包材" text="沿用舊包材"/>
                     </ComboBox>
                     <Label posX="1" posY="9" text="Note"/>
