@@ -606,13 +606,15 @@ FUNCTION i600sub_chk_bmb03(p_bma01,p_bma06)
    DEFINE l_ima140   LIKE ima_file.ima140 #停產否 20210911
    DEFINE l_ta_ima03 LIKE ima_file.ta_ima03 #外徑+導程 20210915
    DEFINE l_ima06    LIKE ima_file.ima06    #分群碼 20210922
+   DEFINE l_bmb06    LIKE bmb_file.bmb06    #組成用量 20221121
+   DEFINE l_imaud08  LIKE ima_file.imaud08  #螺桿/研磨長度 20221121 
 
    LET l_ima01 = NULL
    LET l_imaacti = NULL
    LET l_ima08 = ''  #20180612
 
    DECLARE i600_bmb03_cs CURSOR FOR
-     SELECT bmb03,bmb19,bmb14,bmb09   #20180612 add bmb19 #20201130 add bmb09
+     SELECT bmb03,bmb19,bmb14,bmb09,bmb06   #20180612 add bmb19 #20201130 add bmb09 #20221121
        FROM bmb_file
       WHERE bmb01 = p_bma01
         AND bmb29 = p_bma06
@@ -622,11 +624,19 @@ FUNCTION i600sub_chk_bmb03(p_bma01,p_bma06)
    ELSE                                #M014 180209 By TSD.Andy
       CALL s_showmsg_init()
    END IF                               #M014 180202 By TSD.Andy
-   FOREACH i600_bmb03_cs INTO l_bmb03,l_bmb19,l_bmb14,l_bmb09 #20180612 add #20201130 add 
-      SELECT ima01,imaacti,ima08,ima140,ta_ima03,ima06                          #20180612 add #20210911 add #20210915 add
-        INTO l_ima01,l_imaacti,l_ima08,l_ima140,l_ta_ima03,l_ima06              #20180612 add #20210911 add #20210915 add
+   FOREACH i600_bmb03_cs INTO l_bmb03,l_bmb19,l_bmb14,l_bmb09,l_bmb06 #20180612 add #20201130 add #20221121
+      SELECT ima01,imaacti,ima08,ima140,ta_ima03,ima06,imaud08                  #20180612 add #20210911 add #20210915 add #20221121
+        INTO l_ima01,l_imaacti,l_ima08,l_ima140,l_ta_ima03,l_ima06,l_imaud08    #20180612 add #20210911 add #20210915 add #20221121
         FROM ima_file
        WHERE ima01 = l_bmb03
+
+      ##--- 20221121 add by momo (S)
+      IF l_imaud08 > 0 AND l_imaud08 < l_bmb06 THEN
+         CALL s_errmsg('bmb06',l_bmb03,l_imaud08,'cbm-016',1)
+         LET g_success = 'N'       #20221222 強制卡控  
+         EXIT FOREACH
+      END IF
+      ##--- 20221121 add by momo (E)
 
       ##---- 20210911 add by momo (S) 料件停產
       IF l_ima140 = 'Y' THEN
