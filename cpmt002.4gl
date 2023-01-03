@@ -4,6 +4,7 @@
 # Descriptions...: 
 # Date & Author..: NO.22080034  20220905 By momo 固定資產驗收維護作業
 # Modify.........: No.22110052  20221205 By momo 增加資料清單
+# Modify.........: No.22120025  20221212 By momo 增加「原財產編號」維護欄位
 
 
 DATABASE ds
@@ -13,6 +14,7 @@ GLOBALS "../../../tiptop/config/top.global"
 DEFINE g_tc_evac         RECORD LIKE tc_evac_file.*,      
        g_tc_evac_t       RECORD LIKE tc_evac_file.*,       
        g_tc_evac_o       RECORD LIKE tc_evac_file.*,       
+       g_tc_evaa         RECORD LIKE tc_evaa_file.*,    #20221212 
        g_tc_evac01_t     LIKE tc_evac_file.tc_evac01,          
        g_t1          LIKE smy_file.smyslip,              
        g_ydate       LIKE type_file.dat,          
@@ -970,7 +972,9 @@ DEFINE
                  g_tc_evac.tc_evac10,g_tc_evac.tc_evacmksg,
                  g_tc_evac.tc_evac11,
                  g_tc_evac.tc_evac12,g_tc_evac.tc_evac13,
-                 g_tc_evac.tc_evac14,g_tc_evac.tc_evac15    
+                 g_tc_evac.tc_evac14,g_tc_evac.tc_evac15,
+                 g_tc_evac.tc_evac17,                           #20221212
+                 g_tc_evaa.tc_evaa07                            #20221212
        WITHOUT DEFAULTS
  
       BEFORE INPUT
@@ -1006,6 +1010,7 @@ DEFINE
             SELECT 1 INTO l_n FROM tc_evac_file
              WHERE tc_evac03 = g_tc_evac.tc_evac03
                AND tc_evac10 <> '9'
+               AND tc_evac01 <> g_tc_evac.tc_evac01
             IF l_n = 1 THEN
                CALL cl_err('','axm-298',1)
                NEXT FIELD tc_evac03
@@ -1112,7 +1117,17 @@ DEFINE
             IF cl_null(g_tc_evac.tc_evac15) THEN
                CALL cl_err('','cpm-026','1')
             END IF
+         END IF 
+
+      ##---- 20221212 (S)
+      AFTER FIELD tc_evaa07
+         IF g_tc_evaa.tc_evaa07='M' THEN
+            CALL cl_set_comp_required("tc_evac17",TRUE)
+         ELSE 
+            CALL cl_set_comp_required("tc_evac17",FALSE)
          END IF
+
+      ##---- 20221212 (E)
             
  
       ON ACTION CONTROLR
@@ -1263,13 +1278,17 @@ FUNCTION t002_tc_evac03(p_cmd)
    IF cl_null(g_tc_evac.tc_evac06) THEN LET l_tc_evaa04 = g_tc_evac.tc_evac06 END IF
 
    LET g_tc_evaa05 = l_tc_evaa05
-   
-   DISPLAY l_tc_evaa01 TO tc_evaa01
-   DISPLAY l_tc_evaa05 TO tc_evaa05
-   DISPLAY l_tc_evaa07 TO tc_evaa07
-   DISPLAY l_tc_evaa14 TO tc_evaa14
-   DISPLAY l_sum_total TO sum_total
-   DISPLAY BY NAME g_tc_evac.tc_evac06
+
+   IF NOT cl_null(g_tc_evac.tc_evac17) THEN #20221212
+      LET l_tc_evaa14 = g_tc_evac.tc_evac17
+   END IF
+      
+      DISPLAY l_tc_evaa01 TO tc_evaa01
+      DISPLAY l_tc_evaa05 TO tc_evaa05
+      DISPLAY l_tc_evaa07 TO tc_evaa07
+      DISPLAY l_tc_evaa14 TO tc_evac17 #20221212
+      DISPLAY l_sum_total TO sum_total
+      DISPLAY BY NAME g_tc_evac.tc_evac06
 
    LET l_cnt = 0
    SELECT 1 INTO l_cnt
@@ -1288,6 +1307,20 @@ FUNCTION t002_tc_evac03(p_cmd)
    ELSE
       CALL cl_set_comp_required("tc_evac08",FALSE)
    END IF
+
+   ##--- 20221212 add by momo (S)
+   IF cl_null(l_tc_evaa07) THEN
+      IF p_cmd = 'a' AND ( NOT g_before_input_done ) THEN
+         CALL cl_set_comp_required("tc_evaa07",TRUE)
+      ELSE
+         CALL cl_set_comp_required("tc_evaa07",FALSE)
+      END IF
+      CALL cl_set_comp_entry("tc_evaa14",TRUE)
+      IF g_tc_evaa.tc_evaa07='M' THEN
+         CALL cl_set_comp_required("tc_evaa14",TRUE) 
+      END IF
+   END IF
+   ##--- 20221212 add by momo (E)
 
    IF NOT cl_null(l_tc_evaa14) THEN
       SELECT faj19,faj20,faj21,faj24
@@ -1478,6 +1511,7 @@ FUNCTION t002_show()
                    g_tc_evac.tc_evac09,g_tc_evac.tc_evac06,g_tc_evac.tc_evac08,g_tc_evac.tc_evacmksg,  
                    g_tc_evac.tc_evac12,g_tc_evac.tc_evac13,g_tc_evac.tc_evac14,
                    g_tc_evac.tc_evac15,g_tc_evac.tc_evac16,
+                   g_tc_evac.tc_evac17,                                                            #20221212
                    g_tc_evac.tc_evacuser,g_tc_evac.tc_evacgrup,g_tc_evac.tc_evacmodu,
                    g_tc_evac.tc_evacdate,g_tc_evac.tc_evacacti,g_tc_evac.tc_evacconf
                    
