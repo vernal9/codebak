@@ -748,6 +748,10 @@ FUNCTION cxmr620()
                  cl_get_target_table(m_plant, 'azi_file'),               
                  " WHERE oga01 = ogb_file.ogb01 ",
                  "   AND oga23 = azi_file.azi01 ",
+		 ##--- 221228 剔除買進賣出(S)
+                 "   AND NOT EXISTS (SELECT 1 FROM ",cl_get_target_table(m_plant, 'pmn_file'),                              #20221228 add        
+                 "          WHERE ogb31 = pmn24 AND ogb32 = pmn25 AND ogb04= pmn04 AND pmn16 between '1' and '8') ",        #20221228 add 
+                 ##--- 221228 剔除買進賣出(E)
                  "   AND oga09 = '2' ", 
                  "   AND ogaconf = 'Y' ", 
                  "   AND ",tm.wc CLIPPED	
@@ -837,7 +841,7 @@ FUNCTION cxmr620()
           # WHERE ima1007 = l_ima1007 AND rownum = 1       #20220804
           ##---- 20220804 取用標準件
           SELECT imaud02 INTO l_imaud02
-            FROM ima_file,tc_aaf_file
+            FROM ty.ima_file,ty.tc_aaf_file  #20221228 指定使用TY
            WHERE ima01 = tc_aaf02
              AND tc_aaf01 = l_ima1007
        ELSE
