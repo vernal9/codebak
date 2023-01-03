@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{c1163271-0000-4000-ac90-7df18e052cd9}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_sfa" order="" uid="{3e96c730-0000-4000-a61f-947d2e25d7e3}" where="">
+    <RecordField colName="" fieldIdRef="7" name="sure" sqlTabName="" table_alias_name="" uid="{9b40ae49-0000-4000-889f-55840ddbffc9}"/>
+    <RecordField colName="sfa03" fieldIdRef="9" fieldType="TABLE_COLUMN" name="sfa_file.sfa03" sqlTabName="sfa_file" sqlType="VARCHAR" table_alias_name="tc_ohc_file" uid="{e20f1544-0000-4000-88c6-0beae7dcc2eb}"/>
+    <RecordField colName="ima02" fieldIdRef="4" fieldType="TABLE_COLUMN" name="ima_file.ima02" sqlTabName="ima_file" sqlType="VARCHAR" table_alias_name="" uid="{b5c84dd3-0f89-4c2c-a3db-f4dcf8c8005b}"/>
+    <RecordField colName="ima021" fieldIdRef="5" fieldType="TABLE_COLUMN" name="ima_file.ima021" sqlTabName="ima_file" sqlType="VARCHAR" table_alias_name="" uid="{d5c8e875-be4c-4047-89ec-3ce6744b54d2}"/>
+    <RecordField colName="sfa12" fieldIdRef="8" fieldType="TABLE_COLUMN" name="sfa_file.sfa12" sqlTabName="sfa_file" sqlType="VARCHAR" table_alias_name="" uid="{f6d18f07-c993-4c89-9e76-47c288dc69dd}"/>
+    <RecordField colName="sfa06" fieldIdRef="6" fieldType="TABLE_COLUMN" name="sfa_file.sfa06" precisionDecimal="15" scaleDecimal="3" sqlTabName="sfa_file" sqlType="DECIMAL" table_alias_name="tc_ohc_file" uid="{bb405ed6-4331-4cb9-add8-1210e7786603}"/>
+    <RecordField colName="tc_ohc04" fieldIdRef="10" fieldType="TABLE_COLUMN" name="tc_ohc_file.tc_ohc04" precisionDecimal="15" scaleDecimal="3" sqlTabName="tc_ohc_file" sqlType="DECIMAL" table_alias_name="" uid="{169f1e59-ba6f-4d04-bf99-6a66eb3382ef}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{93dbb9d0-0000-4000-97bf-deb3fa45588f}" where="">
+    <RecordField colName="" fieldIdRef="1" fieldType="NON_DATABASE" name="ta_sfb01" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{24bf36b9-0000-4000-88f2-ee809e8fdbff}"/>
+    <RecordField colName="" fieldIdRef="2" fieldType="NON_DATABASE" name="cn3" sqlTabName="" table_alias_name="" uid="{3f93b076-0000-4000-9437-beb41e3faea7}"/>
+    <RecordField colName="" fieldIdRef="3" fieldType="NON_DATABASE" name="cn2" sqlTabName="" table_alias_name="" uid="{076c398d-0000-4000-94b0-7c42a56e98ff}"/>
+  </Record>
+  <Form gridHeight="26" gridWidth="120" name="apmp451" spacing="normal" text="apmp451">
+    <VBox gridHeight="26" gridWidth="116" name="VBox1" posX="0" posY="0">
+      <Folder gridHeight="6" gridWidth="116" lstrcomment="false" name="folder01" posX="0" posY="1">
+        <Page lstrtext="false" name="page01" text="Main">
+          <Grid gridHeight="4" gridWidth="48" lstrcomment="false" name="gr4886" posX="0" posY="0">
+            <Group gridHeight="3" gridWidth="47" lstrcomment="false" lstrtext="false" name="group01" posX="1" posY="0">
+              <Label posX="1" posY="1" text="SO No."/>
+              <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter a P/R # to Close  &lt;^P&gt; Qry P/R " fieldId="1" fieldType="NON_DATABASE" gridHeight="1" gridWidth="18" image="zoom" lstrcomment="false" lstrtitle="false" name="ta_sfb01" notNull="true" posX="22" posY="1" required="true" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" widget="ButtonEdit"/>
+            </Group>
+          </Grid>
+        </Page>
+      </Folder>
+      <Table gridHeight="16" gridWidth="116" lstrcomment="false" name="s_sfa" posX="0" posY="7" totalRows="10">
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="7" gridHeight="1" gridWidth="5" lstrcomment="false" lstrtext="false" lstrtitle="false" name="sure" notNull="true" posX="0" posY="0" required="true" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="Sure" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="sfa03" columnCount="" fieldId="9" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="16" lstrcomment="false" lstrtitle="false" name="sfa_file.sfa03" noEntry="true" posX="5" posY="0" rowCount="" sqlTabName="sfa_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="3" table_alias_name="tc_ohc_file" title="Item No." widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima02" columnCount="" fieldId="4" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="15" name="ima_file.ima02" noEntry="true" posX="21" posY="0" rowCount="" sqlTabName="ima_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="6" table_alias_name="" title="ima02" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima021" columnCount="" fieldId="5" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="13" name="ima_file.ima021" noEntry="true" posX="36" posY="0" rowCount="" sqlTabName="ima_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" title="ima021" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="sfa12" columnCount="" fieldId="8" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="8" name="sfa_file.sfa12" noEntry="true" posX="49" posY="0" rowCount="" sqlTabName="sfa_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="9" table_alias_name="" title="sfa12" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="sfa06" columnCount="" fieldId="6" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="8" name="sfa_file.sfa06" noEntry="true" posX="57" posY="0" precisionDecimal="15" rowCount="" scaleDecimal="3" sqlTabName="sfa_file" sqlType="DECIMAL" stepX="" stepY="" tabIndex="8" table_alias_name="tc_ohc_file" title="sfa06" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ohc04" columnCount="" fieldId="10" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="8" name="tc_ohc_file.tc_ohc04" posX="65" posY="0" rowCount="" sqlTabName="tc_ohc_file" sqlType="DECIMAL" stepX="" stepY="" tabIndex="10" table_alias_name="" title="tc_ohc04" widget="Edit"/>
+      </Table>
+      <Grid gridHeight="2" gridWidth="116" lstrcomment="false" name="gr4887" posX="0" posY="23">
+        <Button comment="Select All" gridHeight="1" gridWidth="14" lstrcomment="false" lstrtext="false" name="select_all" posX="2" posY="0" tabIndex=""/>
+        <Button comment="Cancel All" gridHeight="1" gridWidth="12" lstrcomment="false" lstrtext="false" name="cancel_all" posX="19" posY="0" tabIndex=""/>
+        <Label posX="33" posY="0" text="Select Counts"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="2" fieldType="NON_DATABASE" gridHeight="1" gridWidth="10" lstrcomment="false" lstrtitle="false" name="cn3" posX="54" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl1584" posX="1" posY="1"/>
+        <Label posX="12" posY="1" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="3" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" noEntry="true" posX="18" posY="1" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl1585" posX="26" posY="1"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewAxADYAOQBmADEAZQA1ADkALQBiAGEANgBmAC0ANABkADAANAAtAGIAZgA5ADkALQA2AGEANgA2AGUAYgAzADMAOAAyAGUAZgB9QCQAAAAAAABAZSAAAAAAAAAAAAAAAAAAAQAAAEwAewAzAGUAOQA2AGMANwAzADAALQAwADAAMAAwAC0ANAAwADAAMAAtAGEANgAxAGYALQA5ADQANwBkADIAZQAyADUAZAA3AGUAMwB9AAAAAAAAAAAAAAAAAAAAAD9ok3S8an76AQAAAEwAewBiAGIANAAwADUAZQBkADYALQA0ADMAMwAxAC0ANABjAGIAOQAtAGEAZABkADgALQAxADIAMQAwAGUANwA3ADgANgA2ADAAMwB9QCQAAAAAAABAYmAAAAAAAAAAAAAAAAAAAQAAAEwAewA5AGIANAAwAGEAZQA0ADkALQAwADAAMAAwAC0ANAAwADAAMAAtADgAOAA5AGYALQA1ADUAOAA0ADAAZABkAGIAZgBmAGMAOQB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewBmADYAZAAxADgAZgAwADcALQBjADkAOQAzAC0ANABjADgAOQAtADkAZQA3ADYALQA0ADcAYwAyADgAOABkAGMANgA5AGQAZAB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQAAAEwAewA5ADMAZABiAGIAOQBkADAALQAwADAAMAAwAC0ANAAwADAAMAAtADkANwBiAGYALQBkAGUAYgAzAGYAYQA0ADUANQA4ADgAZgB9QHgwAAAAAABANwAAAAAAAD9QYk3S8an8AQAAAEwAewAwADcANgBjADMAOQA4AGQALQAwADAAMAAwAC0ANAAwADAAMAAtADkANABiADAALQA3AGMANAAyAGEANQA2AGUAOQA4AGYAZgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewBlADIAMABmADEANQA0ADQALQAwADAAMAAwAC0ANAAwADAAMAAtADgAOABjADYALQAwAGIAZQBhAGUANwBkAGMAYwAyAGUAYgB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewAzAGYAOQAzAGIAMAA3ADYALQAwADAAMAAwAC0ANAAwADAAMAAtADkANAAzADcALQBiAGUAYgA0ADEAZQAzAGYAYQBlAGEANwB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewBiADUAYwA4ADQAZABkADMALQAwAGYAOAA5AC0ANABjADIAYwAtAGEAMwBkAGIALQBmADQAZABjAGYAOABjADgAMAAwADUAYgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewBkADUAYwA4AGUAOAA3ADUALQBiAGUANABjAC0ANAAwADQANwAtADgAOQBlAGMALQAzAGMAZQA2ADcANAA0AGIANQA0AGQAMgB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewAyADQAYgBmADMANgBiADkALQAwADAAMAAwAC0ANAAwADAAMAAtADgAOABmADIALQBlAGUAOAAwADkAZQA4AGYAZABiAGYAZgB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>
