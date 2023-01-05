@@ -12,6 +12,7 @@
 # Modify.........: No:2006234807 20200702 By momo 批次更新作業追加欄位
 # Modify.........: No:2106256554 20210706 By momo 批次更新作業追加欄位
 # Modify.........: No:22080007   20220812 By momo 追加 ima130 銷售特性
+# Modify.........: No:22120051   20230103 By momo 追加QBE與INPUT欄位
  
 DATABASE ds
  
@@ -24,19 +25,21 @@ DEFINE
     tm            RECORD
                   i_ima02       LIKE ima_file.ima02,
                   i_ima021      LIKE ima_file.ima021,
-                  ima09         LIKE ima_file.ima09,
+                  i_ima09       LIKE ima_file.ima09,
                   i_ta_ima06    LIKE ima_file.ta_ima06,
-                  ta_ima01      LIKE ima_file.ta_ima01,
-                  ta_ima08      LIKE ima_file.ta_ima08,      
-                  ima1007       LIKE ima_file.ima1007,
-                  ima10         LIKE ima_file.ima10,   #20200702
-                  ima11         LIKE ima_file.ima11,   #20200702    
-                  ta_ima07      LIKE ima_file.ta_ima07,#20200702  
+                  i_ta_ima01    LIKE ima_file.ta_ima01,
+                  i_ta_ima08    LIKE ima_file.ta_ima08,      
+                  i_ima1007     LIKE ima_file.ima1007,
+                  i_ima10       LIKE ima_file.ima10,   #20200702
+                  i_ima11       LIKE ima_file.ima11,   #20200702    
+                  i_ta_ima07    LIKE ima_file.ta_ima07,#20200702  
                   i_ima1401     LIKE ima_file.ima1401, #20210706
                   i_ima109      LIKE ima_file.ima109,  #20210706
                   i_ima131      LIKE ima_file.ima131,  #20210706
                   i_imaacti     LIKE ima_file.imaacti, #20210706
-                  i_ima130      LIKE ima_file.ima130   #20220812
+                  i_ima130      LIKE ima_file.ima130,  #20220812
+                  i_ta_ima05    LIKE ima_file.ta_ima05,#20230103
+                  i_ta_ima03    LIKE ima_file.ta_ima03 #20230103
                   END RECORD,
     g_bne2        DYNAMIC ARRAY OF RECORD 
                   bne02         LIKE bne_file.bne02,
@@ -109,6 +112,9 @@ MAIN
     
    CALL cl_ui_init()
    CALL cl_set_combo_items_plus("ta_ima07","aimi100","ta_ima07")  #20220113
+   CALL cl_set_combo_items_plus("ta_ima05","aimi100","ta_ima05")  #20230103
+   CALL cl_set_combo_items_plus("i_ta_ima07","aimi100","ta_ima07")  #20220113
+   CALL cl_set_combo_items_plus("i_ta_ima05","aimi100","ta_ima05")  #20220113
  
  
    CALL cl_opmsg('z')
@@ -150,7 +156,8 @@ FUNCTION p115_tm()
    INITIALIZE tm.* TO NULL
    CALL cl_set_head_visible("","YES")     #No.FUN-6B0033
  
-   CONSTRUCT BY NAME g_wc ON ima01,ima02,ima021,ima06,ima131,imaacti,ima130 #20210701 #20220812
+   CONSTRUCT BY NAME g_wc ON ima01,ima02,ima021,ima06,ima131,imaacti,ima130, #20210701 #20220812
+                             ima09,ima1007,ta_ima05,ta_ima07                 #20230103
 
    BEFORE CONSTRUCT         #20210705
      DISPLAY 'Y' TO imaacti #20210705
@@ -181,6 +188,21 @@ FUNCTION p115_tm()
                CALL cl_create_qry() RETURNING g_qryparam.multiret
                DISPLAY g_qryparam.multiret TO ima131
               NEXT FIELD ima131
+           WHEN INFIELD(ima1007)
+               CALL cl_init_qry_var()
+               LET g_qryparam.state = "c"
+               LET g_qryparam.form = "cq_ima1007"
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+               DISPLAY g_qryparam.multiret TO ima1007
+              NEXT FIELD ima1007
+           WHEN INFIELD(ima09)
+              CALL cl_init_qry_var()
+              LET g_qryparam.state = "c"
+              LET g_qryparam.form ="q_azf"
+              LET g_qryparam.arg1     = "D"
+              CALL cl_create_qry() RETURNING g_qryparam.multiret
+              DISPLAY g_qryparam.multiret TO ima1007
+             NEXT FIELD ima1007
         END CASE 
  
       ON IDLE g_idle_seconds
@@ -215,54 +237,55 @@ FUNCTION p115_tm()
       EXIT PROGRAM 
    END IF
    
-   LET tm.ima09 = '' 
-   LET tm.ta_ima01 = ''
-   LET tm.ta_ima08 = ''
-   LET tm.ima1007 = ''
+   LET tm.i_ima09 = '' 
+   LET tm.i_ta_ima01 = ''
+   LET tm.i_ta_ima08 = ''
+   LET tm.i_ima1007 = ''
 
    CALL cl_set_head_visible("","YES")     #No.FUN-6B0033
  
-   INPUT BY NAME tm.i_ima02,tm.i_ima021,tm.ima09,tm.i_ta_ima06,
-                 tm.ta_ima01,tm.ta_ima08,tm.ima1007,
-                 tm.ima10,tm.ima11,tm.ta_ima07,                     #20200702
+   INPUT BY NAME tm.i_ima02,tm.i_ima021,tm.i_ima09,tm.i_ta_ima06,
+                 tm.i_ta_ima01,tm.i_ta_ima08,tm.i_ima1007,
+                 tm.i_ima10,tm.i_ima11,tm.i_ta_ima07,                     #20200702
                  tm.i_ima1401,tm.i_ima109,tm.i_ima131,tm.i_imaacti, #20210706
-                 tm.i_ima130                                        #20220812
+                 tm.i_ima130,                                       #20220812
+                 tm.i_ta_ima05,tm.i_ta_ima03                        #20230103
                    WITHOUT DEFAULTS 
  
  
-      AFTER FIELD ima09        #其他分群碼一
-         IF NOT cl_null(tm.ima09) THEN
-            SELECT azf01 INTO tm.ima09 FROM azf_file
-             WHERE azf01 = tm.ima09 AND azf02='D'
-            IF cl_null(tm.ima09) THEN
-               CALL cl_err(tm.ima09,'aic-022',0)
-               NEXT FIELD ima09
+      AFTER FIELD i_ima09        #其他分群碼一
+         IF NOT cl_null(tm.i_ima09) THEN
+            SELECT azf01 INTO tm.i_ima09 FROM azf_file
+             WHERE azf01 = tm.i_ima09 AND azf02='D'
+            IF cl_null(tm.i_ima09) THEN
+               CALL cl_err(tm.i_ima09,'aic-022',0)
+               NEXT FIELD i_ima09
             ELSE
-               DISPLAY BY NAME tm.ima09
+               DISPLAY BY NAME tm.i_ima09
             END IF
          END IF  
 
-      AFTER FIELD ima10        #其他分群碼二
-         IF NOT cl_null(tm.ima10) THEN
-            SELECT azf01 INTO tm.ima10 FROM azf_file
-             WHERE azf01 = tm.ima10 AND azf02='E'
-            IF cl_null(tm.ima10) THEN
-               CALL cl_err(tm.ima10,'aic-022',0)
-               NEXT FIELD ima10
+      AFTER FIELD i_ima10        #其他分群碼二
+         IF NOT cl_null(tm.i_ima10) THEN
+            SELECT azf01 INTO tm.i_ima10 FROM azf_file
+             WHERE azf01 = tm.i_ima10 AND azf02='E'
+            IF cl_null(tm.i_ima10) THEN
+               CALL cl_err(tm.i_ima10,'aic-022',0)
+               NEXT FIELD i_ima10
             ELSE
-               DISPLAY BY NAME tm.ima10
+               DISPLAY BY NAME tm.i_ima10
             END IF
          END IF 
 
-      AFTER FIELD ima11        #其他分群碼三
-         IF NOT cl_null(tm.ima11) THEN
-            SELECT azf01 INTO tm.ima11 FROM azf_file
-             WHERE azf01 = tm.ima11 AND azf02='F'
-            IF cl_null(tm.ima11) THEN
-               CALL cl_err(tm.ima11,'aic-022',0)
-               NEXT FIELD ima11
+      AFTER FIELD i_ima11        #其他分群碼三
+         IF NOT cl_null(tm.i_ima11) THEN
+            SELECT azf01 INTO tm.i_ima11 FROM azf_file
+             WHERE azf01 = tm.i_ima11 AND azf02='F'
+            IF cl_null(tm.i_ima11) THEN
+               CALL cl_err(tm.i_ima11,'aic-022',0)
+               NEXT FIELD i_ima11
             ELSE
-               DISPLAY BY NAME tm.ima11
+               DISPLAY BY NAME tm.i_ima11
             END IF
          END IF
 
@@ -308,30 +331,30 @@ FUNCTION p115_tm()
  
       ON ACTION CONTROLP
          CASE
-           WHEN INFIELD(ima09)
+           WHEN INFIELD(i_ima09)
              CALL cl_init_qry_var()
              LET g_qryparam.form ="q_azf"
-             LET g_qryparam.default1 = tm.ima09
+             LET g_qryparam.default1 = tm.i_ima09
              LET g_qryparam.arg1     = "D"
-             CALL cl_create_qry() RETURNING tm.ima09
-             DISPLAY BY NAME tm.ima09
-             NEXT FIELD ima09
-           WHEN INFIELD(ima10)
+             CALL cl_create_qry() RETURNING tm.i_ima09
+             DISPLAY BY NAME tm.i_ima09
+             NEXT FIELD i_ima09
+           WHEN INFIELD(i_ima10)
              CALL cl_init_qry_var()
              LET g_qryparam.form ="q_azf"
-             LET g_qryparam.default1 = tm.ima10
+             LET g_qryparam.default1 = tm.i_ima10
              LET g_qryparam.arg1     = "E"
-             CALL cl_create_qry() RETURNING tm.ima10
-             DISPLAY BY NAME tm.ima10
-             NEXT FIELD ima10
-           WHEN INFIELD(ima11)
+             CALL cl_create_qry() RETURNING tm.i_ima10
+             DISPLAY BY NAME tm.i_ima10
+             NEXT FIELD i_ima10
+           WHEN INFIELD(i_ima11)
              CALL cl_init_qry_var()
              LET g_qryparam.form ="q_azf"
-             LET g_qryparam.default1 = tm.ima11
+             LET g_qryparam.default1 = tm.i_ima11
              LET g_qryparam.arg1     = "F"
-             CALL cl_create_qry() RETURNING tm.ima11
-             DISPLAY BY NAME tm.ima11
-             NEXT FIELD ima11
+             CALL cl_create_qry() RETURNING tm.i_ima11
+             DISPLAY BY NAME tm.i_ima11
+             NEXT FIELD i_ima11
           
            WHEN INFIELD(i_ta_ima06)
              CALL cl_init_qry_var()
@@ -428,19 +451,19 @@ FUNCTION p115_p1()
       
        
       LET g_ima[g_cnt].choice = 'Y'  
-      IF NOT cl_null(tm.ima09) THEN     
-         LET g_ima[g_cnt].ima09_a = tm.ima09
+      IF NOT cl_null(tm.i_ima09) THEN     
+         LET g_ima[g_cnt].ima09_a = tm.i_ima09
       ELSE
          LET g_ima[g_cnt].ima09_a = g_ima[g_cnt].ima09_b
       END IF
-      IF NOT cl_null(tm.ta_ima01) THEN
-         LET g_ima[g_cnt].ta_ima01_a = tm.ta_ima01
+      IF NOT cl_null(tm.i_ta_ima01) THEN
+         LET g_ima[g_cnt].ta_ima01_a = tm.i_ta_ima01
       END IF
-      IF NOT cl_null(tm.ta_ima08) THEN
-         LET g_ima[g_cnt].ta_ima08_a = tm.ta_ima08
+      IF NOT cl_null(tm.i_ta_ima08) THEN
+         LET g_ima[g_cnt].ta_ima08_a = tm.i_ta_ima08
       END IF
-      IF NOT cl_null(tm.ima1007) THEN
-         LET g_ima[g_cnt].ima1007_a = tm.ima1007
+      IF NOT cl_null(tm.i_ima1007) THEN
+         LET g_ima[g_cnt].ima1007_a = tm.i_ima1007
       END IF
       IF NOT cl_null(tm.i_ima02) THEN
          LET g_ima[g_cnt].ima02_a = tm.i_ima02
@@ -451,21 +474,27 @@ FUNCTION p115_p1()
       IF NOT cl_null(tm.i_ta_ima06) THEN
          LET g_ima[g_cnt].ta_ima06_a = tm.i_ta_ima06
       END IF
+      IF NOT cl_null(tm.i_ta_ima05) THEN
+         LET g_ima[g_cnt].ta_ima05_a = tm.i_ta_ima05
+      END IF
+      IF NOT cl_null(tm.i_ta_ima03) THEN
+         LET g_ima[g_cnt].ta_ima03_a = tm.i_ta_ima03
+      END IF
       ##---- 20200702 add (S)
-      IF NOT cl_null(tm.ima10) THEN     
-         LET g_ima[g_cnt].ima10_a = tm.ima10
+      IF NOT cl_null(tm.i_ima10) THEN     
+         LET g_ima[g_cnt].ima10_a = tm.i_ima10
       ELSE
          LET g_ima[g_cnt].ima10_a = g_ima[g_cnt].ima10_b
       END IF
 
-      IF NOT cl_null(tm.ima11) THEN     
-         LET g_ima[g_cnt].ima11_a = tm.ima11
+      IF NOT cl_null(tm.i_ima11) THEN     
+         LET g_ima[g_cnt].ima11_a = tm.i_ima11
       ELSE
          LET g_ima[g_cnt].ima11_a = g_ima[g_cnt].ima11_b
       END IF
 
-      IF NOT cl_null(tm.ta_ima07) THEN     
-         LET g_ima[g_cnt].ta_ima07_a = tm.ta_ima07
+      IF NOT cl_null(tm.i_ta_ima07) THEN     
+         LET g_ima[g_cnt].ta_ima07_a = tm.i_ta_ima07
       ELSE
          LET g_ima[g_cnt].ta_ima07_a = g_ima[g_cnt].ta_ima07_b
       END IF
@@ -706,19 +735,19 @@ FUNCTION p115_b()
       #   END IF 
       #END IF
 
-      IF NOT cl_null(tm.ima09) THEN
-         LET g_ima[g_cnt].ima09_a = tm.ima09
+      IF NOT cl_null(tm.i_ima09) THEN
+         LET g_ima[g_cnt].ima09_a = tm.i_ima09
       ELSE
          LET g_ima[g_cnt].ima09_a = g_ima[g_cnt].ima09_b
       END IF
-      IF NOT cl_null(tm.ta_ima01) THEN
-         LET g_ima[g_cnt].ta_ima01_a = tm.ta_ima01
+      IF NOT cl_null(tm.i_ta_ima01) THEN
+         LET g_ima[g_cnt].ta_ima01_a = tm.i_ta_ima01
       END IF
-      IF NOT cl_null(tm.ta_ima08) THEN
-         LET g_ima[g_cnt].ta_ima08_a = tm.ta_ima01
+      IF NOT cl_null(tm.i_ta_ima08) THEN
+         LET g_ima[g_cnt].ta_ima08_a = tm.i_ta_ima01
       END IF
-      IF NOT cl_null(tm.ima1007) THEN
-         LET g_ima[g_cnt].ima1007_a = tm.ima1007
+      IF NOT cl_null(tm.i_ima1007) THEN
+         LET g_ima[g_cnt].ima1007_a = tm.i_ima1007
       END IF
       IF NOT cl_null(tm.i_ima02) THEN
          LET g_ima[g_cnt].ima02_a = tm.i_ima02
@@ -730,20 +759,20 @@ FUNCTION p115_b()
          LET g_ima[g_cnt].ta_ima06_a = tm.i_ta_ima06
       END IF
       ##---- 20200702 
-      IF NOT cl_null(tm.ima10) THEN
-         LET g_ima[g_cnt].ima10_a = tm.ima10
+      IF NOT cl_null(tm.i_ima10) THEN
+         LET g_ima[g_cnt].ima10_a = tm.i_ima10
       ELSE
          LET g_ima[g_cnt].ima10_a = g_ima[g_cnt].ima10_b
       END IF
 
-      IF NOT cl_null(tm.ima11) THEN
-         LET g_ima[g_cnt].ima11_a = tm.ima11
+      IF NOT cl_null(tm.i_ima11) THEN
+         LET g_ima[g_cnt].ima11_a = tm.i_ima11
       ELSE
          LET g_ima[g_cnt].ima11_a = g_ima[g_cnt].ima11_b
       END IF
 
-      IF NOT cl_null(tm.ta_ima07) THEN
-         LET g_ima[g_cnt].ta_ima07_a = tm.ta_ima07
+      IF NOT cl_null(tm.i_ta_ima07) THEN
+         LET g_ima[g_cnt].ta_ima07_a = tm.i_ta_ima07
       ELSE
          LET g_ima[g_cnt].ta_ima07_a = g_ima[g_cnt].ta_ima07_b
       END IF
