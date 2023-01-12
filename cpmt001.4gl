@@ -5,6 +5,7 @@
 # Date & Author..: NO.22080034  20220817 By momo 固定資產評估維護作業
 # Modify.........: No.22090004  20220907 By momo 固資「修理或改良」，需加入"原固資財產編號"
 # Modify.........: No.22100057  20221103 By momo 如尚未有財產編號，需於原財編欄位改填"請購單號"
+# Modify.........: No.22120059  20230105 By momo 卡控只能輸入「列管固資」
 
 DATABASE ds
  
@@ -1370,6 +1371,7 @@ FUNCTION t001_show()
                    g_tc_evaa.tc_evaa12,g_tc_evaa.tc_evaa13,g_tc_evaa.tc_evaa06,g_tc_evaa.tc_evaa14,
                    g_tc_evaa.tc_evaauser,g_tc_evaa.tc_evaagrup,g_tc_evaa.tc_evaamodu,
                    g_tc_evaa.tc_evaadate,g_tc_evaa.tc_evaaacti
+
                    
    CALL t001_tc_evaa01('d')
    CALL t001_tc_evaa03('d')
@@ -1722,8 +1724,9 @@ DEFINE l_tc_evaa06   LIKE tc_evaa_file.tc_evaa06
               LET l_n1 = 0
               SELECT COUNT(*) INTO l_n1 FROM ima_file
                WHERE ima01 = g_tc_evab[l_ac].tc_evab03
+                 AND ima131 = 'FA01'                     #20230105 add 
               IF l_n1 = 0 THEN
-                 CALL cl_err('','mfg0002',0)
+                 CALL cl_err('','cpm-031',0)
                  NEXT FIELD tc_evab03
               END IF
               CALL t001_tc_evab03('d') 
@@ -1951,6 +1954,8 @@ DEFINE p_wc2   STRING
 DEFINE  l_s      LIKE type_file.chr1000 
 DEFINE  l_m      LIKE type_file.chr1000 
 DEFINE  i        LIKE type_file.num5
+DEFINE  l_ima1007  LIKE ima_file.ima1007     #20230105
+DEFINE  l_ima67    LIKE ima_file.ima67       #20230105
  
    LET g_sql = "SELECT tc_evab02,tc_evab03,tc_evab04,tc_evab05,",
                " tc_evab06 FROM tc_evab_file",
@@ -1973,7 +1978,18 @@ DEFINE  i        LIKE type_file.num5
           CALL cl_err('foreach:',SQLCA.sqlcode,1)
           EXIT FOREACH
        END IF
-       
+     
+       ##--- 20230105 add (S)
+       LET l_ima1007=''
+       LET l_ima67='' 
+       SELECT ima1007,ima67 INTO l_ima1007,l_ima67
+         FROM ima_file
+        WHERE ima01 = g_tc_evab[g_cnt].tc_evab03
+
+       DISPLAY l_ima1007 TO ima1007
+       DISPLAY l_ima67 TO ima67
+       ##--- 20230105 add (E) 
+
        LET g_cnt = g_cnt + 1
        IF g_cnt > g_max_rec THEN
           CALL cl_err( '', 9035, 0 )
@@ -2272,7 +2288,8 @@ FUNCTION t001_unconfirm()
     
 END FUNCTION
  
-FUNCTION t001_ef()                                                                                                                  
+FUNCTION t001_ef()     
+     CALL t001_show()   #20230105                                                                                                              
      CALL t001_y_chk()  #CALL 原確認段的check段後在執行送簽
      IF g_success = 'N' THEN                                                                                                        
         RETURN                                                                                                                     
@@ -2336,6 +2353,7 @@ DEFINE  p_cmd   LIKE type_file.chr1
      SELECT ima02 INTO g_tc_evab[l_ac].tc_evab04
        FROM ima_file
       WHERE ima01 = g_tc_evab[l_ac].tc_evab03
+        AND ima131 = 'FA01'                      #20230105 add
    END IF
    CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = '100'
                            LET g_tc_evab[l_ac].tc_evab04 = NULL
