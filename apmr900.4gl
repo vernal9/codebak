@@ -1094,7 +1094,8 @@ FUNCTION apmr900()
       SELECT ecm45 INTO l_ecm45
         FROM ecm_file,pmn_file
        WHERE ecm01 = pmn41
-         AND pmn01 = sr.pmm01 
+         AND pmn01 = sr.pmm01
+         AND pmn43 = ecm03 
       #20230112 作業說明 (E)
 
       #add by ruby 2017/12/19                
