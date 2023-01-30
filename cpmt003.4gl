@@ -7,6 +7,8 @@
 # Modify.........: No.22100031  20221024 By momo 查詢QC單調整
 # Modify.........: NO:22100050  20221028 By momo 卡控同廠商+同料號不可新增第二筆模具資料
 # Modify.........: No:22120006  20221207 By momo 財產編號」及「客供料號」 "已核准"後可更改
+# Modify.........: No:22120017  20221213 By momo 增加 料件相關文件 ACTION
+# Modify.........: No:23010021  20230130 By momo 增加 「固資驗收單號[tc_evac01]」及「入庫單號/退貨單號[rvu01]」
 
 DATABASE ds
  
@@ -16,8 +18,8 @@ DEFINE g_tc_evad         RECORD LIKE tc_evad_file.*,
        g_tc_evad_t       RECORD LIKE tc_evad_file.*,       
        g_tc_evad_o       RECORD LIKE tc_evad_file.*,       
        g_tc_evad01_t     LIKE tc_evad_file.tc_evad01,          
-       g_t1          LIKE smy_file.smyslip,              
-       g_ydate       LIKE type_file.dat,          
+       g_t1              LIKE smy_file.smyslip,              
+       g_ydate           LIKE type_file.dat,          
        g_tc_evae         DYNAMIC ARRAY OF RECORD       
            tc_evae02     LIKE tc_evae_file.tc_evae02,          
            tc_evae03     LIKE tc_evae_file.tc_evae03,
@@ -27,7 +29,9 @@ DEFINE g_tc_evad         RECORD LIKE tc_evad_file.*,
            tc_evae05     LIKE tc_evae_file.tc_evae05,                                                                        
            tc_evae06     LIKE tc_evae_file.tc_evae06,                    
            tc_evae07     LIKE tc_evae_file.tc_evae07,
-           rvb01         LIKE rvb_file.rvb01                   
+           rvb01         LIKE rvb_file.rvb01,
+           tc_evac01     LIKE tc_evac_file.tc_evac01,  #20230130 驗收單號
+           rvu01         LIKE rvu_file.rvu01           #20230130 入庫單號                 
                      END RECORD,
        g_tc_evae_t       RECORD                    
            tc_evae02     LIKE tc_evae_file.tc_evae02,          
@@ -38,7 +42,9 @@ DEFINE g_tc_evad         RECORD LIKE tc_evad_file.*,
            tc_evae05     LIKE tc_evae_file.tc_evae05,                                                                         
            tc_evae06     LIKE tc_evae_file.tc_evae06,          
            tc_evae07     LIKE tc_evae_file.tc_evae07,         
-           rvb01         LIKE rvb_file.rvb01                   
+           rvb01         LIKE rvb_file.rvb01,                   
+           tc_evac01     LIKE tc_evac_file.tc_evac01,  #20230130 驗收單號
+           rvu01         LIKE rvu_file.rvu01           #20230130 入庫單號                 
                      END RECORD,
        g_tc_evae_o       RECORD                      
            tc_evae02     LIKE tc_evae_file.tc_evae02,          
@@ -49,7 +55,9 @@ DEFINE g_tc_evad         RECORD LIKE tc_evad_file.*,
            tc_evae05     LIKE tc_evae_file.tc_evae05,                                                                        
            tc_evae06     LIKE tc_evae_file.tc_evae06,          
            tc_evae07     LIKE tc_evae_file.tc_evae07,         
-           rvb01         LIKE rvb_file.rvb01                   
+           rvb01         LIKE rvb_file.rvb01,                   
+           tc_evac01     LIKE tc_evac_file.tc_evac01,  #20230130 驗收單號
+           rvu01         LIKE rvu_file.rvu01           #20230130 入庫單號                 
                      END RECORD,
        g_tc_evaf         DYNAMIC ARRAY OF RECORD       
            tc_evaf02     LIKE tc_evaf_file.tc_evaf02,          
@@ -649,11 +657,23 @@ DEFINE  l_node         om.DomNode,
          WHEN "related_document"  #相關文件
               IF cl_chk_act_auth() THEN
                  IF g_tc_evad.tc_evad01 IS NOT NULL THEN
-                 LET g_doc.column1 = "tc_evad01"
-                 LET g_doc.value1 = g_tc_evad.tc_evad01
-                 CALL cl_doc()
-               END IF
-         END IF
+                    LET g_doc.column1 = "tc_evad01"
+                    LET g_doc.value1 = g_tc_evad.tc_evad01
+                    CALL cl_doc()
+                 END IF
+              END IF
+
+         ##---- 20221213 add 料件相關文件
+         WHEN "related_document2"
+             IF cl_chk_act_auth() THEN
+                IF NOT cl_null(g_tc_evae[l_ac].tc_evae03) THEN
+                   LET g_doc.column1 = "ima01"
+                   LET g_doc.value1 = g_tc_evae[l_ac].tc_evae03
+                   CALL cl_doc()
+                END IF
+             END IF
+         ##---- 20221213 add 料件相關文件
+
          WHEN "fin"
             IF cl_chk_act_auth() THEN
                CALL t003_v(1)  
@@ -854,6 +874,11 @@ FUNCTION t003_bp(p_ud)
          LET g_action_choice="related_document"          
          EXIT DISPLAY
  
+      ##-- 20221213 add by momo 
+      ON ACTION related_document2                #料件相關文件
+         LET g_action_choice="related_document2"          
+         EXIT DISPLAY
+
       ON ACTION agree
          LET g_action_choice = 'agree'
          EXIT DISPLAY
@@ -2430,13 +2455,33 @@ DEFINE  i        LIKE type_file.num5
           EXIT FOREACH
        END IF
 
+       #收貨單號
        SELECT MAX(rvb01) INTO g_tc_evae[g_cnt].rvb01
          FROM rvb_file,rva_file
         WHERE rva01 = rvb01 
           AND rvaconf = 'Y'
           AND rvb04 = g_tc_evae[g_cnt].tc_evae05
           AND rvb03 = g_tc_evae[g_cnt].tc_evae06
+          AND rva06 = (SELECT MAX(rva06) FROM rva_file,rvb_file
+                         WHERE rva01=rvb01 AND rvaconf='Y'
+                           AND rvb04 = g_tc_evae[g_cnt].tc_evae05
+                           AND rvb03 = g_tc_evae[g_cnt].tc_evae06
+                       )
        LET g_tc_evae_t.rvb01 = g_tc_evae[g_cnt].rvb01
+
+       #---20230130 by momo (S)
+       #驗收單號
+       SELECT tc_evac01 INTO g_tc_evae[g_cnt].tc_evac01
+         FROM tc_evac_file
+        WHERE tc_evac03 = g_tc_evae[g_cnt].rvb01
+          AND tc_evacconf = 'Y'
+
+       #入庫單號
+       SELECT rvu01 INTO g_tc_evae[g_cnt].rvu01
+         FROM rvu_file
+        WHERE rvu02 = g_tc_evae[g_cnt].rvb01
+          AND rvuconf = 'Y' 
+       #---20230130 by momo (E) 
           
        LET g_cnt = g_cnt + 1
        IF g_cnt > g_max_rec THEN
