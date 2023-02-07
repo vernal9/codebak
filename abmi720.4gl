@@ -308,7 +308,7 @@
 # Modify.........: No:2012235638 20201223 By momo 停產卡控由強制更改為提示
 # Modify.........: NO:22100036   20221024 By momo 調整 COUNT 判斷
 # Modify.........: No:22110033   20221124 By momo 單身追加【作業編號[bmy09]】欄位
-
+# Modify.........: NO:23010028   20230207 By momo 單頭增加 ta_bmx03 ECN原因輸入
 
 DATABASE ds
  
@@ -759,6 +759,7 @@ DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
    INITIALIZE g_bmx.* TO NULL    #No.FUN-750051
        CONSTRUCT BY NAME g_wc ON
                 bmx01,bmx02,bmx07,bmx10,bmx13 ,bmx11,bmx05,#FUN-630044  #FUN-820027 add bmx11  #CHI-9C0054  add bmx13
+                ta_bmx03,                                  #20230207 add by momo
                 bmx04,bmxmksg,bmx09,bmxuser,bmxgrup,bmxmodu,
                 bmxdate,bmxacti  #FUN-540045
  
@@ -811,7 +812,18 @@ DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
                   LET g_qryparam.state = "c"                                                                                        
                   CALL cl_create_qry() RETURNING g_qryparam.multiret                                                                
                   DISPLAY g_qryparam.multiret TO bmx11                                                                              
-                  NEXT FIELD bmx11                                                                                                  
+                  NEXT FIELD bmx11   
+
+               ##--- 20230207 --- (S) ---
+               WHEN INFIELD(ta_bmx03)
+                  CALL cl_init_qry_var()
+                  LET g_qryparam.form  = "q_azf01a"
+                  LET g_qryparam.state = "c"
+                  LET g_qryparam.arg1  = "G"
+                  CALL cl_create_qry() RETURNING g_qryparam.multiret
+                  DISPLAY g_qryparam.multiret TO ta_bmx03
+                  NEXT FIELD ta_bmx03                                                                                              
+               ##--- 20230207 --- (E) ---                                                                                               
  
           END CASE
  
@@ -1464,6 +1476,7 @@ FUNCTION i720_i(p_cmd)
     LET l_gem02 = NULL                    #No.CHI-9C0054  
     INPUT BY NAME g_bmx.bmxoriu,g_bmx.bmxorig,
         g_bmx.bmx01,g_bmx.bmx02,g_bmx.bmx07, g_bmx.bmx10,g_bmx.bmx13,#FUN-630044   #CHI-9C0054 add bmx13
+        g_bmx.ta_bmx03,                                              #20230207 add by momo
         g_bmx.bmx05,g_bmx.bmx04,g_bmx.bmxmksg,g_bmx.bmx09,g_bmx.bmx11,  #--FUN-540045   #FUN-820027 add g_bmx.bmx11
         g_bmx.bmxuser,g_bmx.bmxgrup,g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
            WITHOUT DEFAULTS
@@ -1588,6 +1601,20 @@ FUNCTION i720_i(p_cmd)
             END IF
         #No.CHI-9C0054 ---end---
 
+        ##--- 20230207 add by momo (S) ---
+        AFTER FIELD ta_bmx03
+            IF NOT cl_null(g_bmx.ta_bmx03) THEN
+               CALL i720_ta_bmx03('a')
+               IF NOT cl_null(g_errno) THEN
+                  CALL cl_err(g_bmx.ta_bmx03,g_errno,0)
+                  NEXT FIELD ta_bmx03
+               END IF
+            ELSE
+               DISPLAY '' TO FORMONLY.azf03
+            END IF
+            CALL i720_ta_bmx03('d')
+        ##--- 20230207 add by momo (E) ---
+
         ON ACTION CONTROLP
           CASE WHEN INFIELD(bmx01) #查詢單据
 
@@ -1629,6 +1656,17 @@ FUNCTION i720_i(p_cmd)
                     DISPLAY BY NAME g_bmx.bmx13
                     NEXT FIELD bmx13
                #No.CHI-9C0054 ---end---
+
+               ##--- 20230207 ---(S)---
+               WHEN INFIELD(ta_bmx03)
+                    CALL cl_init_qry_var()
+                    LET g_qryparam.form = "q_azf01a"
+                    LET g_qryparam.arg1 = "G"
+                    LET g_qryparam.default1 = g_bmx.ta_bmx03
+                    CALL cl_create_qry() RETURNING g_bmx.ta_bmx03
+                    DISPLAY BY NAME g_bmx.ta_bmx03
+                    NEXT FIELD ta_bmx03
+               ##--- 20230207 ---(E)---
 
           END CASE
  
@@ -1808,6 +1846,7 @@ FUNCTION i720_show()
     LET g_data_keyvalue = g_bmx.bmx01      #FUN-F50016
     DISPLAY BY NAME g_bmx.bmxoriu,g_bmx.bmxorig,
         g_bmx.bmx01,g_bmx.bmx02,g_bmx.bmx07,g_bmx.bmx10,g_bmx.bmx13, #FUN-630044  #CHI-9C0054  add bmx13
+        g_bmx.ta_bmx03,                                              #20230207 add by momo
         g_bmx.bmx05,g_bmx.bmx04,g_bmx.bmxmksg,g_bmx.bmx09,g_bmx.bmx11, #FUN-540045  #FUN-820027 add g_bmx.bmx11
         g_bmx.bmxuser,g_bmx.bmxgrup,g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
     DECLARE i720_show_c CURSOR FOR
@@ -1821,6 +1860,7 @@ FUNCTION i720_show()
     CALL i720_field_pic()   #FUN-540045
     CALL i720_bmx10('d')                      #FUN-630044  
     CALL i720_bmx13('d')                      #CHI-9C0054
+    CALL i720_ta_bmx03('d')                   #20230207 add
     CALL i720_b_fill(g_wc3) #No:8245
     CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
 END FUNCTION
@@ -10649,6 +10689,14 @@ FUNCTION i720_set_no_entry(p_cmd)
    IF p_cmd = 'u' AND ( NOT g_before_input_done ) AND g_chkey='N' THEN
      CALL cl_set_comp_entry("bmx01",FALSE)
    END IF
+
+   ##--- 20230207 add by momo (S) ta_bmx03 卡必填
+   IF g_plant[1,2] = 'NM' THEN
+      CALL cl_set_comp_required("ta_bmx03",TRUE)
+   ELSE
+      CALL cl_set_comp_required("ta_bmx03",FALSE)
+   END IF
+   ##--- 20230207 add by momo (E)
  
 END FUNCTION
 FUNCTION i720_bmx10(p_cmd)
@@ -10703,6 +10751,34 @@ FUNCTION i720_bmx13(p_cmd)
 
 END FUNCTION
 #No.CHI-9C0054 ---end---
+
+##--- 20230207 add by momo (S)---
+FUNCTION i720_ta_bmx03(p_cmd)
+   DEFINE p_cmd       LIKE type_file.chr1
+   DEFINE l_azf03     LIKE azf_file.azf03
+   DEFINE l_azfacti   LIKE azf_file.azfacti
+
+   LET g_errno = ' '
+   SELECT azf03,azfacti INTO l_azf03,l_azfacti
+     FROM azf_file
+    WHERE azf01 = g_bmx.ta_bmx03
+      AND azf09 = 'G'
+
+   CASE
+      WHEN SQLCA.SQLCODE = 100 LET g_errno = 'aoo-018'
+                               LET l_azf03 = NULL
+                               LET l_azfacti = NULL
+      WHEN l_azfacti = 'N' LET g_errno = '9028'
+      OTHERWISE            LET g_errno = SQLCA.SQLCODE USING '------'
+   END CASE
+   IF cl_null(g_errno) OR p_cmd = 'd' THEN
+      DISPLAY l_azf03 TO FORMONLY.azf03
+   ELSE
+      DISPLAY '' TO FORMONLY.azf03
+   END IF
+
+END FUNCTION
+##--- 20230207 add by momo (E)---
 
 FUNCTION i720_set_bmy30()
   DEFINE lcbo_target ui.ComboBox
