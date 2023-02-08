@@ -299,6 +299,7 @@
 # Modify.........: No:2012235638 20201223 By momo 確認時生效日不可小於當日
 #                                                 停產卡控由強制更改為提示
 # Modify.........: No:22110032   20221123 By momo 單身增加 bmy09作業編號，可直接維護
+# Modify.........: No:23020008   20230208 By momo 增加 ECN變更原因欄位
 
 DATABASE ds
  
@@ -860,6 +861,7 @@ DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
        CONSTRUCT BY NAME g_wc ON
                 bmx01,bmx02,bmx07,bmx10,bmx13,bmx11,bmx05,#FUN-630044    #FUN-820027 add bmx11  #CHI-9C0054 add bmx13 
                 #bmx04,bmxmksg,bmx09,bmxuser,bmxgrup,bmxmodu,   #M014 180205 By TSD.Andy mark
+                ta_bmx03,                                                         #20230208
                 bmx04,bmx09,bmxmksg,ta_bmx01,ta_bmx02,bmxuser,bmxgrup,bmxmodu,    #M014 180205 By TSD.Andy
                 bmxdate,bmxacti  #FUN-540045
                BEFORE CONSTRUCT
@@ -924,6 +926,17 @@ DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
                     CALL cl_create_qry() RETURNING g_qryparam.multiret
                     DISPLAY g_qryparam.multiret TO bmx05
                     NEXT FIELD bmx05
+
+                 ##--- 20230208 --- (S) ---
+               WHEN INFIELD(ta_bmx03)
+                  CALL cl_init_qry_var()
+                  LET g_qryparam.form  = "q_azf01a"
+                  LET g_qryparam.state = "c"
+                  LET g_qryparam.arg1  = "G"
+                  CALL cl_create_qry() RETURNING g_qryparam.multiret
+                  DISPLAY g_qryparam.multiret TO ta_bmx03
+                  NEXT FIELD ta_bmx03
+               ##--- 20230208 --- (E) ---
           END CASE
           ON IDLE g_idle_seconds
              CALL cl_on_idle()
@@ -1704,6 +1717,7 @@ FUNCTION i710_i(p_cmd)
     INPUT BY NAME g_bmx.bmxoriu,g_bmx.bmxorig,
         g_bmx.bmx01,g_bmx.bmx02,g_bmx.bmx07,g_bmx.bmx10,g_bmx.bmx13,#FUN-630044    #FUN-CHI9C0054 add bmx13
         g_bmx.bmx05,g_bmx.bmx04,g_bmx.bmxmksg,g_bmx.ta_bmx01,g_bmx.ta_bmx02,g_bmx.bmx09,g_bmx.bmx11,   #--FUN-540045    #FUN-820027 add g_bmx.bmx11  #M014 180202 By TSD.Andy add ta_bmx01,ta_bmx02
+        g_bmx.ta_bmx03,                                             #20230208 add by momo
         g_bmx.bmxuser,g_bmx.bmxgrup,g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
         WITHOUT DEFAULTS
  
@@ -1812,6 +1826,20 @@ FUNCTION i710_i(p_cmd)
             END IF
         #No.CHI-9C0054 ---end---
 
+        ##--- 20230208 add by momo (S) ---
+        AFTER FIELD ta_bmx03
+            IF NOT cl_null(g_bmx.ta_bmx03) THEN
+               CALL i710_ta_bmx03('a')
+               IF NOT cl_null(g_errno) THEN
+                  CALL cl_err(g_bmx.ta_bmx03,g_errno,0)
+                  NEXT FIELD ta_bmx03
+               END IF
+            ELSE
+               DISPLAY '' TO FORMONLY.azf03
+            END IF
+            CALL i710_ta_bmx03('d')
+        ##--- 20230208 add by momo (E) ---
+
         #M014 180202 By TSD.Andy -----(S)
         ON CHANGE ta_bmx01
            IF g_bmx.ta_bmx01 = 'N' THEN
@@ -1873,7 +1901,19 @@ FUNCTION i710_i(p_cmd)
                     CALL cl_create_qry() RETURNING g_bmx.bmx13
                     DISPLAY BY NAME g_bmx.bmx13
                     NEXT FIELD bmx13
-               #No.CHI-9C0054 ---end---    
+               #No.CHI-9C0054 ---end---   
+
+               ##--- 20230208 ---(S)---
+               WHEN INFIELD(ta_bmx03)
+                    CALL cl_init_qry_var()
+                    LET g_qryparam.form = "q_azf01a"
+                    LET g_qryparam.arg1 = "G"
+                    LET g_qryparam.default1 = g_bmx.ta_bmx03
+                    CALL cl_create_qry() RETURNING g_bmx.ta_bmx03
+                    DISPLAY BY NAME g_bmx.ta_bmx03
+                    NEXT FIELD ta_bmx03
+               ##--- 20230208 ---(E)---
+ 
           END CASE
  
         ON ACTION CONTROLF                  #欄位說明
@@ -2050,12 +2090,14 @@ FUNCTION i710_show()
     DISPLAY BY NAME g_bmx.bmxoriu,g_bmx.bmxorig,
         g_bmx.bmx01,g_bmx.bmx02,g_bmx.bmx07,g_bmx.bmx10,g_bmx.bmx13,#FUN-630044   #CHI-9C0054
         g_bmx.bmx05,g_bmx.bmx04,g_bmx.bmxmksg,g_bmx.ta_bmx01,g_bmx.ta_bmx02,g_bmx.bmx09,g_bmx.bmx11,   #FUN-540045   #FUN-820027 add g_bmx.bmx11   #M014 180202 By TSD.Andy add ta_bmx01,ta_bmx02
+        g_bmx.ta_bmx03,                                             #20230208 add
         g_bmx.bmxuser,g_bmx.bmxgrup,g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
  
     CALL i710_bmg03() #01/08/13 mandy
     CALL i710_field_pic()   #FUN-540045
     CALL i710_bmx10('d')                      #FUN-630044  
     CALL i710_bmx13('d')                      #CHI-9C0054
+    CALL i710_ta_bmx03('d')                   #20230208 
     CALL i710_d_fill(g_wc2)
     CALL i710_b_fill(g_wc3)                   #TQC-7A0027
  
@@ -9787,6 +9829,34 @@ FUNCTION i710_bmx13(p_cmd)
    END IF
 END FUNCTION
 #No.CHI-9C0054 ---end---
+
+##--- 20230208 add by momo (S)---
+FUNCTION i710_ta_bmx03(p_cmd)
+   DEFINE p_cmd       LIKE type_file.chr1
+   DEFINE l_azf03     LIKE azf_file.azf03
+   DEFINE l_azfacti   LIKE azf_file.azfacti
+
+   LET g_errno = ' '
+   SELECT azf03,azfacti INTO l_azf03,l_azfacti
+     FROM azf_file
+    WHERE azf01 = g_bmx.ta_bmx03
+      AND azf09 = 'G'
+
+   CASE
+      WHEN SQLCA.SQLCODE = 100 LET g_errno = 'aoo-018'
+                               LET l_azf03 = NULL
+                               LET l_azfacti = NULL
+      WHEN l_azfacti = 'N' LET g_errno = '9028'
+      OTHERWISE            LET g_errno = SQLCA.SQLCODE USING '------'
+   END CASE
+   IF cl_null(g_errno) OR p_cmd = 'd' THEN
+      DISPLAY l_azf03 TO FORMONLY.azf03
+   ELSE
+      DISPLAY '' TO FORMONLY.azf03
+   END IF
+
+END FUNCTION
+##--- 20230208 add by momo (E)---
  
 FUNCTION i710_carry()                                                                                                               
    DEFINE l_i       LIKE type_file.num10                                                                                            
@@ -12291,5 +12361,14 @@ DEFINE   p_cmd  LIKE type_file.chr1
     ELSE
         CALL cl_set_comp_entry("ta_bmx02",FALSE)
     END IF
+
+   ##--- 20230208 add by momo (S) ta_bmx03 卡必填
+   IF g_plant[1,2] = 'NM' THEN
+      CALL cl_set_comp_required("ta_bmx03",TRUE)
+   ELSE
+      CALL cl_set_comp_required("ta_bmx03",FALSE)
+   END IF
+   ##--- 20230208 add by momo (E)
+
 END FUNCTION
 #M014 180202 By TSD.Andy -----(E)
