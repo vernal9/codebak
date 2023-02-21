@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"> 
+    <xs:element name="NewDataSet" msdata:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="asfr102_sub7">
+            <xs:complexType>
+              <xs:sequence>
+                  <xs:element name="sfb01" type="xs:string" minOccurs="0" />
+				  <xs:element name="ocf01" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf02" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf101" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf102" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf103" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf104" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf105" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf106" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf107" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf108" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf109" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf110" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf111" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf112" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf201" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf202" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf203" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf204" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf205" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf206" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf207" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf208" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf209" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf210" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf211" type="xs:string" minOccurs="0" />
+                  <xs:element name="ocf212" type="xs:string" minOccurs="0" />
+                  <xs:element name="occ02" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:choice>
+     </xs:complexType>
+   </xs:element>
+ </xs:schema>
+</NewDataSet>

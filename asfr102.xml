@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="BIG5" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"> 
+    <xs:element name="NewDataSet" msdata:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="asfr102">
+            <xs:complexType>
+              <xs:sequence>
+                  <xs:element name="sfb01" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb04" type="xs:string" minOccurs="0" />
+                  <xs:element name="ta_sfb01" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb39" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb22" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb221" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb82" type="xs:string" minOccurs="0" />
+                  <xs:element name="gem02" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb919" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb05" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima02" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima021" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb071" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="sfb08" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="oea032" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb09" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb11" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb40" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb34" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb28" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb41" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb06" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb27" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb07" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb38" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="sfb42" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sfb87" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb13" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="sfb15" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="sfb251" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="sfb88" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima08" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima55" type="xs:string" minOccurs="0" />
+			   <xs:element name="ima27" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb02doc" type="xs:string" minOccurs="0" />
+                  <xs:element name="sign_type" type="xs:string" minOccurs="0" />
+                  <xs:element name="sign_img" type="xs:base64Binary" minOccurs="0" />
+                  <xs:element name="sign_show" type="xs:string" minOccurs="0" />
+                  <xs:element name="sign_str" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:choice>
+     </xs:complexType>
+   </xs:element>
+ </xs:schema>
+ <asfr102>
+   <sfb01>502-06120001</sfb01>
+   <sfb02>7</sfb02>
+   <sfb04>8</sfb04>
+   <sfb39>1</sfb39>
+   <sfb82>12375447</sfb82>
+   <gem02>鼎新</gem02>
+   <sfb05>K001</sfb05>
+   <ima02>Proforma</ima02>
+   <ima021>InvoiceT/T</ima021>
+   <sfb071>2006-12-07</sfb071>
+   <sfb08>1000.000</sfb08>
+   <sfb09>0</sfb09>
+   <sfb11>10</sfb11>
+   <sfb28>1</sfb28>
+   <sfb41>N</sfb41>
+   <sfb42>0</sfb42>
+   <sfb13>2006-12-07</sfb13>
+   <sfb15>2006-12-07</sfb15>
+   <sfb251>2006-12-07</sfb251>
+   <ima08>S</ima08>
+   <ima55>PCS</ima55>
+   <sfa03>K001-1-1</sfa03>
+   <sfa05>1020</sfa05>
+   <sfa06>508.980</sfa06>
+   <sfa062>0</sfa062>
+   <sfa063>0</sfa063>
+   <sfa07>0</sfa07>
+   <sfa11>N</sfa11>
+   <sfa12>PCS</sfa12>
+   <sfa26>0</sfa26>
+   <ecb03>1</ecb03>
+   <ecb06>3A01</ecb06>
+   <ecb08>31962A</ecb08>
+   <srtdt>2007-04-04</srtdt>
+   <duedt>2007-04-04</duedt>
+   <esrtdt>2007-04-04</esrtdt>
+   <lsrtdt>2007-04-04</lsrtdt>
+   <eduedt>2007-04-04</eduedt>
+   <lduedt>2007-04-04</lduedt>
+  </asfr102>
+</NewDataSet>

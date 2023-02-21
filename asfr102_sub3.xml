@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"> 
+    <xs:element name="NewDataSet" msdata:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="asfr102_sub3">
+            <xs:complexType>
+              <xs:sequence>
+                  <xs:element name="sfb01" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfb02" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="sfa03" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfa05" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="sfa06" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="sfa08" type="xs:string" minOccurs="0" />
+				  <xs:element name="sfa11" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfa12" type="xs:string" minOccurs="0" />
+				  <xs:element name="sfa26" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfa27" type="xs:string" minOccurs="0" />
+				  <xs:element name="sfa012" type="xs:string" minOccurs="0" />
+                  <xs:element name="sfa013" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="ima02_1" type="xs:string" minOccurs="0" />
+				  <xs:element name="gfe03" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="sizes" type="xs:string" minOccurs="0" />
+				  <xs:element name="sfa16" type="xs:decimal" minOccurs="0" />
+              </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:choice>
+     </xs:complexType>
+   </xs:element>
+ </xs:schema>
+</NewDataSet>
