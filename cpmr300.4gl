@@ -3,7 +3,8 @@
 # Pattern name...: cpmr300.4gl
 # Descriptions...: 模具資料列印
 # Date & Author..: 20221011 By momo
-
+# Modify.........: NO.22120036 20221222 By momo 修正模具金額，取最早採購單金額
+# Modify.........: NO.23020031 20230302 By momo 增加 廠商料號
 
 DATABASE ds
  
@@ -59,6 +60,7 @@ MAIN
              "tc_evae04.tc_evae_file.tc_evae04,",
              "tc_evae05.tc_evae_file.tc_evae05,",
              "tc_evae06.tc_evae_file.tc_evae06,",            
+             "tc_evae07.tc_evae_file.tc_evae07,",   #廠商料號 20230302         
              "tc_evaf05.tc_evaf_file.tc_evaf05,",            
              "tc_evaf06.tc_evaf_file.tc_evaf06,",            
              "tc_evaf07.tc_evaf_file.tc_evaf07,",            
@@ -89,7 +91,7 @@ MAIN
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",
-               "        ?,?,?,?,?, ? )"                     
+               "        ?,?,?,?,?, ?,? )"                     
    PREPARE insert_prep FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM
@@ -358,11 +360,17 @@ FUNCTION cpmr300()
         FROM pmc_file
        WHERE pmc01 =sr.tc_evad.tc_evad16            #供應商編號
 
-       SELECT sum(distinct pmn88) INTO l_azi03
-         FROM tc_evae_file,pmn_file
-        WHERE tc_evae05=pmn01 AND tc_evae06=pmn02
+       ##-20221222 by momo 取最早採購單 --(S)
+
+       SELECT distinct pmn88 INTO l_azi03
+         FROM tc_evae_file,pmn_file,pmm_file
+        WHERE pmm01=pmn01
+          AND tc_evae05=pmn01 AND tc_evae06=pmn02
           AND tc_evae01 = sr.tc_evad.tc_evad01
-        GROUP BY tc_evae05,tc_evae06
+          AND pmm04 = (SELECT MIN(pmm04) FROM pmm_file 
+                        WHERE EXISTS (SELECT 1 FROM tc_evae_file
+                                       WHERE tc_evae05=pmm01 and tc_evae01=sr.tc_evad.tc_evad01))
+       ##-20221222 by momo 取最早採購單 --(E)
 
        #進度說明
        SELECT * INTO sr.tc_evaf.* FROM tc_evaf_file
@@ -382,7 +390,8 @@ FUNCTION cpmr300()
                                  sr.tc_evad.tc_evad13,sr.tc_evad.tc_evad14,sr.tc_evad.tc_evad15,
                                  sr.tc_evad.tc_evad16,
                                  sr.tc_evae.tc_evae01,sr.tc_evae.tc_evae02,sr.tc_evae.tc_evae03,
-                                 sr.tc_evae.tc_evae04,sr.tc_evae.tc_evae05,sr.tc_evae.tc_evae06,                                
+                                 sr.tc_evae.tc_evae04,sr.tc_evae.tc_evae05,sr.tc_evae.tc_evae06,       
+                                 sr.tc_evae.tc_evae07,                                              #20230302                         
                                  sr.tc_evaf.tc_evaf05,sr.tc_evaf.tc_evaf06,sr.tc_evaf.tc_evaf07,
                                  sr.tc_evaf.tc_evaf09,
                                  l_pmc03,l_pmc03_2,

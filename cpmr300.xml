@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="BIG5" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"> 
+    <xs:element name="NewDataSet" msdata:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="cpmr300">
+            <xs:complexType>
+              <xs:sequence>
+                  <xs:element name="tc_evad01" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evad02" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="tc_evad03" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evad04" type="xs:string" minOccurs="0" />                 
+                  <xs:element name="tc_evad05" type="xs:string" minOccurs="0" />
+				  <xs:element name="tc_evad06" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evad07" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="tc_evad08" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="tc_evad09" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="tc_evad10" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="tc_evad11" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evad12" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evad13" type="xs:string" minOccurs="0" />   
+				  <xs:element name="tc_evad14" type="xs:string" minOccurs="0" />
+				  <xs:element name="tc_evad15" type="xs:string" minOccurs="0" />
+				  <xs:element name="tc_evad16" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evae01" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evae02" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="tc_evae03" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evae04" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evae05" type="xs:string" minOccurs="0" />
+                  <xs:element name="tc_evae06" type="xs:decimal" minOccurs="0" />   
+				  <xs:element name="tc_evae07" type="xs:string" minOccurs="0" />				  
+				  <xs:element name="tc_evaf05" type="xs:string" minOccurs="0" /> 	
+                  <xs:element name="tc_evaf06" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="tc_evaf07" type="xs:dateTime" minOccurs="0" />
+                  <xs:element name="tc_evaf09" type="xs:string" minOccurs="0" />				  
+                  <xs:element name="pmc03" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc03_2" type="xs:string" minOccurs="0" />
+                  <xs:element name="gen02" type="xs:string" minOccurs="0" />
+                  <xs:element name="gem02" type="xs:string" minOccurs="0" />
+				  <xs:element name="ima02" type="xs:string" minOccurs="0" />
+				  <xs:element name="ima021" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc081" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc091" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc10" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc11" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc24" type="xs:string" minOccurs="0" />
+				  <xs:element name="pmc1916" type="xs:string" minOccurs="0" />
+                  <xs:element name="azi03" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="azi04" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="azi05" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="azi07" type="xs:decimal" minOccurs="0" />
+                  <xs:element name="sign_type" type="xs:string" minOccurs="0" />  
+                  <xs:element name="sign_img" type="xs:base64Binary" minOccurs="0" /> 
+                  <xs:element name="sign_show" type="xs:string" minOccurs="0" />
+                  <xs:element name="sign_str" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:choice>
+     </xs:complexType>
+   </xs:element>
+ </xs:schema>
+</NewDataSet>
