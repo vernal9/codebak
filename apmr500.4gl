@@ -55,6 +55,7 @@
 # Modify.........: No:2003314455 20200406 By momo 報表增加列印工單號碼與製程編號
 # Modify.........: No:           21/02/22 By Ruby 增加[運送方式]
 # Modify.........: No:22090057   20221005 By momo 查詢條件增加 pmn56、pmn41
+# Modify.........: NO:23020025   20230222 By momo 排序增加 pmn33 交貨日
 
 DATABASE ds
  
