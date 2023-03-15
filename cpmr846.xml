@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="BIG5" standalone="yes"?>
+<NewDataSet>
+  <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"> 
+    <xs:element name="NewDataSet" msdata:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="cpmr846">
+            <xs:complexType>
+              <xs:sequence>
+                  <xs:element name="ima01" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima02" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima021" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima25" type="xs:string" minOccurs="0" />
+                  <xs:element name="ima41" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="ima44_fac" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="bmb06" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="bmb10" type="xs:string" minOccurs="0" />
+                  <xs:element name="imgplant" type="xs:string" minOccurs="0" />  
+				  <xs:element name="pmc03" type="xs:string" minOccurs="0" />  
+				  <xs:element name="pmh04" type="xs:string" minOccurs="0" /> 
+				  <xs:element name="pmh12" type="xs:decimal" minOccurs="0" /> 
+				  <xs:element name="pmh22" type="xs:string" minOccurs="0" /> 
+				  <xs:element name="pmn20" type="xs:decimal" minOccurs="0" />
+				  <xs:element name="azk01" type="xs:string" minOccurs="0" /> 
+                  <xs:element name="atp_qty" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="oeb_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sfa_q1" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sfa_q2" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="misc_q1" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sfs_q2" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sie_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="pml_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="pmn_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="rvb_q2" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="rvb_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sfb_q1" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="sfb_q2" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="qcf_q" type="xs:decimal" minOccurs="0" />	
+				  <xs:element name="price" type="xs:string" minOccurs="0" />
+				  <xs:element name="bom" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+           </xs:complexType>
+         </xs:element>
+       </xs:choice>
+     </xs:complexType>
+   </xs:element>
+ </xs:schema>
+ 
+</NewDataSet>
