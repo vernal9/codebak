@@ -158,6 +158,7 @@
 # Modify.........: No:           20210705 By momo 複製時檢核轉出單位需等於生產單位
 # Modify.........: No:22080024   20220810 By momo 增加顯示 imaacti ; 追加卡控,料號資料有效碼為『 N 』的資料不可複製
 # Modify.........: No:22120013   20221209 By momo 增加資料串聯功能
+# Modify.........: NO:23030034   20230317 By momo 增加資料建立日
 
 DATABASE ds
 
@@ -1577,6 +1578,7 @@ FUNCTION i100_a()
         IF cl_null(g_ecu.ecu012) THEN LET g_ecu.ecu012 = ' ' END IF    #FUN-A50081
         LET g_ecu.ecuoriu = g_user      #No.FUN-980030 10/01/04
         LET g_ecu.ecuorig = g_grup      #No.FUN-980030 10/01/04
+        LET g_ecu.ecuud13 = g_today     #20230317 add
         INSERT INTO ecu_file VALUES(g_ecu.*)     # DISK WRITE
         IF SQLCA.sqlcode THEN
            CALL cl_err3("ins","ecu_file",g_ecu.ecu01,g_ecu.ecu02,SQLCA.sqlcode,"","",1) #FUN-660091
@@ -2122,7 +2124,8 @@ FUNCTION i100_copy()
            ecuoriu=g_user,     #TQC-B50106 add
            ecuorig=g_grup,     #TQC-B50106 add
            ecumodu=NULL,       #資料修改者
-           ecudate=g_today     #資料修改日期
+           ecudate=g_today,    #資料修改日期
+           ecuud13=g_today     #資料建立日期 20230317
    INSERT INTO ecu_file SELECT * FROM ecu_tmp
    IF STATUS THEN
    CALL cl_err3("ins","ecu_file",new_no,necu02,STATUS,"","ins ecu",1) #FUN-660091
