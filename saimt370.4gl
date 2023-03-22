@@ -447,6 +447,7 @@
 # Modify.........:               20210809 By momo 190416程式段調整檢核處，避免部門調整後誤判
 # Modify.........: No:2203037686 20220310 By momo 拋轉請購單無產生單據押上N，用以判別當下不需生成請購
 # Modify.........: No:2203037685 20220316 By momo 雜發單 需求日期 調整
+# Modify.........: No:23020002   20230217 By momo 未扣帳，可調整「理由碼」
 
 DATABASE ds
  
@@ -604,9 +605,9 @@ FUNCTION t370(p_argv1)
     CALL cl_set_comp_visible('Page2',g_sma.sma95 = 'Y')
     #FUN-C80030--add--end--- 
     IF g_argv1 = '1' THEN
-       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13',TRUE)    #20200317 #20220316
+       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_reason',TRUE)    #20200317 #20220316 #20230220
     ELSE
-       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13',FALSE)   #20200317 #20220316
+       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_reasno',FALSE)   #20200317 #20220316 #20230220
        CALL cl_set_comp_visible("inaud13,socnt",FALSE)      #20210507
     END IF
 #FUN-C20101--add--begin--
@@ -1993,6 +1994,13 @@ DEFINE l_flag1           LIKE type_file.chr1  #CHI-CC0028
             IF cl_chk_act_auth() THEN
                CALL t370sub_exp()
             END IF
+
+         ##----- 20230220 add (S)
+         WHEN "modify_reason" #修改原因
+            IF cl_chk_act_auth() THEN
+               CALL t370_modify_reason()
+            END IF
+         ##----- 20230220 add (E)
  
          WHEN "related_document"  #相關文件
             IF cl_chk_act_auth() THEN
@@ -2210,6 +2218,7 @@ END FUNCTION
  
 FUNCTION t370_i(p_cmd)
    DEFINE p_cmd           LIKE type_file.chr1    #a:輸入 u:更改  #No.FUN-690026 VARCHAR(1)
+   DEFINE l_cnt           LIKE type_file.num5
  
     DISPLAY BY NAME g_ina.inaoriu,g_ina.inaorig,g_ina.ina00
 
@@ -2271,13 +2280,18 @@ FUNCTION t370_i(p_cmd)
             ##---- 20210809 modify start
             #研發單位領用，專案代碼不可為空
             IF g_ina.ina04 matches 'T17*' THEN
-               CALL cl_set_comp_required("inb41",TRUE)
+              LET l_cnt=0 
+              SELECT count(*) INTO l_cnt FROM smy_file WHERE smyslip=substr(g_ina.ina01,1,5) AND smydmy1='Y'
+              IF l_cnt=1 THEN
+                CALL cl_set_comp_required("inb41",TRUE)
+              ELSE
+                CALL cl_set_comp_required("inb41",FALSE)
+              END IF  
             ELSE 
                CALL cl_set_comp_required("inb41",FALSE)
             END IF
             ##--- 20210809 modify end
 
-          #190416 add by ruby --e--
             #FUN-CB0087---add---str---
             #MOD-D60002--mark begin-----
 #            IF NOT t370_inb15_chk2() THEN

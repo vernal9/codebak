@@ -13,6 +13,7 @@
 # Modify.........: No:2106256554 20210706 By momo 批次更新作業追加欄位
 # Modify.........: No:22080007   20220812 By momo 追加 ima130 銷售特性
 # Modify.........: No:22120051   20230103 By momo 追加QBE與INPUT欄位
+# Modify.........: No:23030037   20230322 By momo 增加是否存在PO
  
 DATABASE ds
  
@@ -49,6 +50,7 @@ DEFINE
                   END RECORD, 
     g_ima         DYNAMIC ARRAY OF RECORD
                   choice       LIKE type_file.chr1,       #選擇
+                  checkpo      LIKE type_file.chr1,       #是否存在PO 20230322
                   ima01_b      LIKE ima_file.ima01,       #變更料號編號
                   ima02_01     LIKE ima_file.ima02,       #品名
                   ima02_a      LIKE ima_file.ima02,       #新品名
@@ -422,7 +424,7 @@ END FUNCTION
 FUNCTION p115_p1()
    DEFINE l_exit LIKE type_file.chr1
  
-   LET g_sql = "SELECT 'N',ima01,ima02,ima02,ima021,ima021,ima09,",
+   LET g_sql = "SELECT 'N','Y',ima01,ima02,ima02,ima021,ima021,ima09,",                      #20230322
                "       ' ',ta_ima01,ta_ima08,ima1007,ta_ima06, ",
                "       ima10,' ',ima11,' ',ta_ima07,' ',ta_ima02, ",                         #20200702
                "       ta_ima03,ta_ima04,ta_ima05,NVL(imaud07,0),NVL(imaud08,0), ",          #20200702 #20201130
@@ -448,7 +450,14 @@ FUNCTION p115_p1()
       IF SQLCA.sqlcode THEN                                  #有問題
          CALL cl_err('FOREACH:',SQLCA.sqlcode,1) EXIT FOREACH
       END IF
-      
+     
+      ##---- 檢核是否存在PO (S) 20230322
+      SELECT 'N' INTO g_ima[g_cnt].checkpo
+        FROM pmm_file,pmn_file
+       WHERE pmm01=pmn01 AND pmm18='Y'
+         AND pmn04 = g_ima[g_cnt].ima01_b
+         AND rownum = 1
+      ##---- 檢核是否存在PO (S) 20230322
        
       LET g_ima[g_cnt].choice = 'Y'  
       IF NOT cl_null(tm.i_ima09) THEN     
