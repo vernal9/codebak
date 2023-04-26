@@ -775,6 +775,8 @@
 # Modify.........: No:2110067060 20211008 By momo 工單確認時寄送客供標籤(不存在訂單選配)
 # Modify.........: NO.2203037676 20220303 By momo 工單取替代功能執行時，排除客戶不可用取替代料號
 # Modify.........: No.22120013   20221209 By momo 由asfi301串聯aeci700，aeci700執行工單確認，asfi301需一併更新畫面
+# Modify.........: No.22120054   20230103 By momo 最少生產量與批量卡控調整為提醒
+# Modify.........: No.23040017   20230420 By momo 資料清單增加 訂單單號序號 ta_sfb01
 
 DATABASE ds   #MOD-640505
 
@@ -992,7 +994,8 @@ DEFINE g_sfb_l DYNAMIC ARRAY OF RECORD
             sfb08   LIKE sfb_file.sfb08,
             ima55   LIKE ima_file.ima55,
             sfb93   LIKE sfb_file.sfb93,
-            sfb06   LIKE sfb_file.sfb06
+            sfb06   LIKE sfb_file.sfb06,
+          ta_sfb01  LIKE sfb_file.ta_sfb01   #訂單單號序號 20230420
                END RECORD
 DEFINE l_ac3    LIKE type_file.num5
 DEFINE g_rec_b3 LIKE type_file.num5  
@@ -4099,8 +4102,8 @@ FUNCTION i301_i(p_cmd)
                IF g_sfb.sfb02 NOT MATCHES '[58]' THEN   #MOD-F10084 add
                   IF g_ima.ima561 > 0 THEN #生產單位批量&最少生產數量
                      IF g_sfb.sfb08<g_ima.ima561 THEN
-                        CALL cl_err(g_ima.ima561,'asf-307',0)
-                        NEXT FIELD sfb08
+                        CALL cl_err(g_ima.ima561,'asf-307',1)
+                        #NEXT FIELD sfb08             #20230103
                      END IF
                   END IF
                   IF NOT cl_null(g_ima.ima56) AND g_ima.ima56>0  THEN #生產單位批量
@@ -4116,8 +4119,8 @@ FUNCTION i301_i(p_cmd)
                      END IF
                     #MOD-E10124-End-Modify  
                      IF (l_qty1 MOD l_qty2) > 0 THEN
-                        CALL cl_err(g_ima.ima56,'asf-308',0)
-                        NEXT FIELD sfb08
+                        CALL cl_err(g_ima.ima56,'asf-308',1)
+                        #NEXT FIELD sfb08           #20230103
                      END IF
                   END IF
                END IF   #MOD-F10084 add
@@ -13163,7 +13166,8 @@ FUNCTION i301_list_fill()
           CONTINUE FOREACH
        END IF
        SELECT sfb01,'',sfb44,gen02,sfb81,sfb02,sfb39,sfb87,sfb04,sfb43,
-              sfbmksg,sfb82,'',sfb05,ima02,ima021,sfb08,ima55,sfb93,sfb06
+              sfbmksg,sfb82,'',sfb05,ima02,ima021,sfb08,ima55,sfb93,sfb06,
+              ta_sfb01                                                         #20230420
          INTO g_sfb_l[l_i].*
          FROM sfb_file
               LEFT OUTER JOIN gen_file ON sfb44 = gen01
