@@ -1293,7 +1293,7 @@ DEFINE
     p_wc            LIKE type_file.chr1000       #No.FUN-680137   VARCHAR(200)
  
     LET g_sql =
-               "SELECT obk01,'','',obk03,ta_obk01,ta_obk02,",  #180913 add ta_obk01,ta_obk02 by ruby
+               "SELECT distinct obk01,'','',obk03,ta_obk01,ta_obk02,",  #180913 add ta_obk01,ta_obk02 by ruby
                "       ta_obk03,",                             #20190326
                "       obk04,obk05,obk07,obk08,obk09,obk15,",  #CHI-C60013 add ,  #FUN-G90009 add obk15
                "       obkuser,obkgrup,obkmodu,obkdate,obkacti ",          #CHI-C60013
