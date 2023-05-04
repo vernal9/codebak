@@ -30,6 +30,7 @@
 # Modify.........: No.2011265492 20201130 By momo BOM追蹤外徑+導程［ta_ima03］卡控
 # Modify.........: No.2109066879 20210911 By momo 確認時檢核是否料件已被停產
 # Modify.........: No.2109066878 20210915 By momo BOM 外徑+導程［ta_ima03］>0, 但作業編號不為BA01跳提醒
+# Modify.........: No:2023050005 20230504 By momo 增加檢核 元件料號+作業編號重覆出現之情況
 
 DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
@@ -719,6 +720,22 @@ FUNCTION i600sub_chk_bmb03(p_bma01,p_bma06)
          CONTINUE FOREACH
       END IF
       ##---- 20201130 add by momo (E)
+
+      ##---- 20230504 By momo 元件編號+作業編號重覆出現之卡控(S)
+      LET l_cnt = 0
+      SELECT COUNT(bmb03) INTO l_cnt
+        FROM bmb_file
+       WHERE bmb01 = p_bma01
+         AND bmb05 IS NULL
+         AND bmb03 = l_bmb03
+      GROUP BY bmb03,bmb09
+      HAVING count(bmb03)>2
+      IF l_cnt > 0 THEN
+         CALL s_errmsg('bmb03',l_bmb03,'i600:','cbm-017',1)
+         LET g_success = 'N'
+         CONTINUE FOREACH
+      END IF
+      ##---- 20230504 By momo 元件編號+作業編號重覆出現之卡控(E)
 
       IF l_imaacti MATCHES '[PH]' THEN
          CALL s_errmsg('bmb03',l_bmb03,'i600:','abm-084',1)

@@ -356,6 +356,8 @@
 # Modify.........: No:2109066880 20210915 By momo 增加cbmi604 群組取替提示
 # Modify.........: NO:2112247379 20211224 By momo 增加顯示停產日期 ima1401
 # Modify.........: No:22090031   20220926 By momo 列印增加顯示欄位 ima021規格、ima24檢驗否、imz02分群碼說明、bmb14元件使用特性、bmb19工單開立選項
+# Modify.........: No:22110029   20221121 By momo 增加檢核 bmb06 與 imaud08 長度檢核
+# Modify.........: No:2023050005 20230504 By momo 增加檢核 元件料號+作業編號重覆出現之情況   
 
 DATABASE ds
 
@@ -7728,6 +7730,36 @@ DEFINE
             LET ga_color[g_cnt].ima021_b = ""
         END IF
       ##---- 20201130 add by momo (E)
+
+      ##---- 20221121 By momo (S) 組成用量大於素材長度
+      LET l_cnt = 0
+      SELECT COUNT(*) INTO l_cnt 
+        FROM ima_file
+      WHERE ima01 = g_bmb[g_cnt].bmb03
+        AND imaud08 > 0
+        AND imaud08 < g_bmb[g_cnt].bmb06
+      IF l_cnt > 0 THEN
+         LET ga_color[g_cnt].bmb06 = "red reverse"
+      ELSE
+         LET ga_color[g_cnt].bmb06 = ""
+      END IF
+      ##---- 20221121 By momo (E) 組成用量大於素材長度
+
+      ##--- 20230504 By momo (S) 元件料號+作業編號重覆
+      LET l_cnt = 0
+      SELECT COUNT(bmb03) INTO l_cnt
+        FROM bmb_file
+       WHERE bmb05 IS NULL
+         AND bmb01 = g_bma.bma01
+         AND bmb03 = g_bmb[g_cnt].bmb03
+      GROUP BY bmb03,bmb09
+      HAVING COUNT(bmb03)>2
+      IF l_cnt > 0 THEN
+         LET ga_color[g_cnt].bmb09 = "red reverse"
+      ELSE
+         LET ga_color[g_cnt].bmb09 = ""
+      END IF
+      ##--- 20230504 By momo (E) 元件料號+作業編號重覆
 
       #取替代建立，提示
       LET l_cnt = 0
