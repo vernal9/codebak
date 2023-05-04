@@ -305,6 +305,7 @@
 # Modify.........: NO:2204127881 20220412 By momo     工單已無生產量時，不可變更
 # Modify.........: No:2206028201 20220602 By momo     asf-283 卡控調整，需排除作廢單據
 # Modify.........: No:23030021   20230316 By momo     變更作業編號時需一併變更製程序 sna013a/ana013b
+# Modify.........: No:23040041   20230504 By momo     增加顯示 ta_sfb01 訂單單號序號
 
 DATABASE ds
 
@@ -485,7 +486,7 @@ MAIN
    CALL  cl_used(g_prog,g_time,1) RETURNING g_time #No.MOD-580088  HCN 20050818  #No.FUN-6A0090
 
    IF g_bgjob = "N" OR cl_null(g_bgjob) THEN       #FUN-A10013 add
-     OPEN WINDOW t803_w WITH FORM "asf/42f/asft803"
+     OPEN WINDOW t803_w WITH FORM "csf/42f/asft803"
         ATTRIBUTE (STYLE = g_win_style CLIPPED)
 
      CALL cl_ui_init()
@@ -4924,6 +4925,7 @@ DEFINE l_t1         LIKE snb_file.snb01 #MOD-E70162 add
         DISPLAY BY NAME g_snb.snbmksg          #FUN-920208 add
         DISPLAY g_sfb.sfb09  TO FORMONLY.sfb09
         DISPLAY l_sfb02_d    TO FORMONLY.sfb02_d
+        DISPLAY g_sfb.ta_sfb01  TO FORMONLY.ta_sfb01  #20230504
     END IF
     IF p_cmd = 'a' OR p_cmd = 'u' THEN
        LET g_snb.snb08b = g_sfb.sfb08
