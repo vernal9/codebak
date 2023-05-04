@@ -56,6 +56,7 @@
 # Modify.........: No:           21/02/22 By Ruby 增加[運送方式]
 # Modify.........: No:22090057   20221005 By momo 查詢條件增加 pmn56、pmn41
 # Modify.........: NO:23020025   20230222 By momo 排序增加 pmn33 交貨日
+# Modify.........: No:23040027   20230503 By momo QBE增加交貨日 pmn33
 
 DATABASE ds
  
@@ -258,7 +259,8 @@ FUNCTION r500_tm(p_row,p_col)
  
 WHILE TRUE
    CONSTRUCT BY NAME tm.wc ON pmm01,pmm04,pmm09,pmm12,pmn04,pmn24,ima43, #20191216
-                              pmn41,pmn56                                #20221005
+                              pmn41,pmn56,                               #20221005
+                              pmn33                                      #20230503 
      #CHI-AA0017 add --start--
      ON ACTION CONTROLP
         CASE WHEN INFIELD(pmn04) #料件編號
