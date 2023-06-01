@@ -5,6 +5,7 @@
 # Date & Author..: 2019/10/25 By Momo
 # Modify.........: No.2206228331 20220627 add by momo 增加研發訂單狀態 tc_oga07
 # Modify.........: No.22110030   20221122 add by momo 訂單變更訂單狀態功能調整
+# Modify.........: NO.23050027   20230523 add by momo 增加跨庫功能 cl_get_target_table
 
 DATABASE ds
  
@@ -12,7 +13,8 @@ GLOBALS "../../../tiptop/config/top.global"
  
 DEFINE 
     tm  RECORD
-       	wc2  	STRING		
+       	wc2  	STRING,
+        azp01   LIKE azp_file.azp01		
         END RECORD,
     g_oeb DYNAMIC ARRAY OF RECORD
             choice     LIKE type_file.chr1, 
@@ -66,6 +68,7 @@ DEFINE   g_jump         LIKE type_file.num10
 DEFINE   g_no_ask      LIKE type_file.num5          
 DEFINE   seconds       SMALLINT
 DEFINE   l_cmd         LIKE type_file.chr1000
+DEFINE   plant_visible   LIKE type_file.chr1
  
 MAIN
    OPTIONS                                #改變一些系統預設值
@@ -88,8 +91,10 @@ MAIN
     CALL  cl_used(g_prog,g_time,1) RETURNING g_time  
 
     LET g_query_flag=1
+    LET plant_visible = 'N'
+       DISPLAY g_plant TO FORMONLY.azp01
  
-    OPEN WINDOW p411_w WITH FORM "cxm/42f/cxmp410" 
+    OPEN WINDOW p411_w WITH FORM "cxm/42f/cxmp411" 
         ATTRIBUTE (STYLE = g_win_style CLIPPED) 
     
     CALL cl_ui_init()
@@ -111,11 +116,46 @@ END MAIN
  
  
 FUNCTION p411_b_askkey()
+   DEFINE l_cnt       LIKE type_file.num5
 
+   CALL cl_set_comp_entry("azp01",TRUE)
    #清除畫面
    CLEAR FORM
    CALL g_oeb.clear()
    CALL cl_opmsg('q')
+
+   INPUT BY NAME tm.azp01 WITHOUT DEFAULTS
+
+   BEFORE FIELD azp01                                #20230531
+      IF plant_visible = 'N' THEN
+         CALL cl_set_comp_entry("azp01",FALSE)
+      END IF
+   
+    AFTER FIELD azp01
+      LET l_cnt = 0
+      SELECT 1 INTO l_cnt FROM zxy_file
+       WHERE zxy01 = g_user
+         AND zxy03 = tm.azp01
+      IF l_cnt = 0 THEN
+         CALL cl_err(tm.azp01,'sub-188',1)
+         NEXT FIELD azp01
+      END IF
+
+    ON ACTION controlp
+       CASE
+         WHEN INFIELD(azp01)
+              CALL cl_init_qry_var()
+              LET g_qryparam.form = "q_zxy"
+              LET g_qryparam.arg1 = g_user
+              CALL cl_create_qry() RETURNING g_qryparam.multiret
+              LET tm.azp01 = g_qryparam.multiret
+              DISPLAY BY NAME tm.azp01
+              NEXT FIELD azp01
+         OTHERWISE
+         EXIT CASE
+       END CASE
+   END INPUT
+ 
 
    CONSTRUCT g_wc2 ON oea02,oea49,oeb70d,oep04,oeb01,oeb03,oeb04,oeb06,oeb12,oeb24,
                        ima021,
@@ -161,14 +201,13 @@ FUNCTION p411_b_askkey()
       ON ACTION controlg      
          CALL cl_cmdask()     
        
-         ON ACTION qbe_select
-            CALL cl_qbe_select()
+      ON ACTION qbe_select
+         CALL cl_qbe_select()
         
-         ON ACTION qbe_save
-            CALL cl_qbe_save()
+      ON ACTION qbe_save
+         CALL cl_qbe_save()
  
    END CONSTRUCT
-
 END FUNCTION
  
 #中文的MENU
@@ -183,8 +222,15 @@ FUNCTION p411_menu()
 
            WHEN "query" 
             IF cl_chk_act_auth() THEN
-                CALL p411_q()
+               CALL p411_q()
             END IF
+
+           WHEN "plant"                 #20230531
+            IF cl_chk_act_auth() THEN   #20230531
+               LET plant_visible = 'Y'  #20230531
+               CALL p411_q()            #20230531
+            END IF
+
            WHEN "exporttoexcel" #FUN-4B0003
             IF cl_chk_act_auth() THEN
               CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_oeb),'','')
@@ -220,6 +266,10 @@ FUNCTION p411_q()
     CALL cl_navigator_setting( g_curs_index, g_row_count )
  
     CALL cl_opmsg('q')
+    IF cl_null(tm.azp01) THEN 
+       LET tm.azp01 = g_plant 
+       DISPLAY tm.azp01 TO azp01
+    END IF
     CALL p411_b_askkey()
     IF INT_FLAG THEN LET INT_FLAG = 0 RETURN END IF
 	MESSAGE ''
@@ -237,8 +287,9 @@ FUNCTION p411_b_fill(p_wc2)
    DEFINE l_sql     STRING
    DEFINE l_ta_sfb01 LIKE sfb_file.ta_sfb01
    DEFINE p_wc2     STRING
- 
-   #IF cl_null(tm.wc2) THEN LET tm.wc2="1=1" END IF
+
+   LET g_plant_new= tm.azp01                           #20230523 add by momo 
+   LET p_wc2 = cl_replace_str(p_wc2,"1=1","1=2")
    LET l_sql =
        
         "SELECT 'N',oea02,oea08,oea49,oeb70d,oep04,",
@@ -250,19 +301,24 @@ FUNCTION p411_b_fill(p_wc2)
         "       oeb12,oeb24,oeb16,'N',bma05, ",
         "       sfb01, ",
         "       '',",
-        "       tc_ogauser,tc_oga05,tc_oga06,tc_oga07 ",                                   #20220627 
-        "  FROM oea_file ",
-        "  LEFT JOIN occ_file ON oea04=occ01 , ",
-        "       oeb_file ",
-        "  LEFT JOIN sfb_file ON sfb22=oeb01 AND sfb221=oeb03 AND sfb87<>'X' ",            
-        "  LEFT JOIN tc_oga_file ON tc_oga01=oeb01 AND tc_oga02=oeb03 AND tc_oga00='R' ",    
-        "  LEFT JOIN (SELECT MAX(oep04) oep04,oeq01,oeq03 FROM oeq_file,oep_file ",
-        "               WHERE oeq01=oep01 AND oeq04a LIKE '0%' GROUP BY oeq01,oeq03) ON oeq01=oeb01 AND oeq03=oeb03 ,",
-        "       ima_file  ",
-        "  LEFT JOIN bma_file ON bma01=ima01 ", 
-        "  LEFT JOIN imz_file ON ima06=imz01 ",  
-        "  LEFT JOIN azf_file ON ima09=azf01 ",
-        "  LEFT JOIN oba_file ON ima131=oba01",
+        "       tc_ogauser,tc_oga05,tc_oga06,tc_oga07 ",                                   #20220627 mark
+       #"  FROM oea_file ",                                                                #20230523 mark by momo 
+       #"  LEFT JOIN occ_file ON oea04=occ01 , ",                                          #20230523 mark by momo                                   
+       #"       oeb_file ",                                                                #20230523 mark by momo 
+        "  FROM ",cl_get_target_table(g_plant_new,'oea_file'),                             #20230523 modify by momo 
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'occ_file'), " ON oea04=occ01 ,"     #20230523 modify by momo 
+                      ,cl_get_target_table(g_plant_new,'oeb_file'),
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'sfb_file'), " ON sfb22=oeb01 AND sfb221=oeb03 AND sfb87<>'X' ",            
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'tc_oga_file'), " ON tc_oga01=oeb01 AND tc_oga02=oeb03 AND tc_oga00='R' ",    
+        "  LEFT JOIN (SELECT MAX(oep04) oep04,oeq01,oeq03 ",
+        "               FROM ",cl_get_target_table(g_plant_new,'oeq_file'),
+        " ,"                  ,cl_get_target_table(g_plant_new,'oep_file'), 
+        "               WHERE oeq01=oep01 AND oeq04a LIKE '0%' GROUP BY oeq01,oeq03) ON oeq01=oeb01 AND oeq03=oeb03 ",
+        " ,"          ,cl_get_target_table(g_plant_new,'ima_file'),
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'bma_file'), " ON bma01=ima01 ", 
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'imz_file'), " ON ima06=imz01 ",  
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'azf_file'), " ON ima09=azf01 ",
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'oba_file'), " ON ima131=oba01",
         " WHERE oea01=oeb01 AND oeaconf != 'X' ",
         "   AND ima01= oeb04 ", 
         "   AND ima08 = 'M' ", 
@@ -290,39 +346,57 @@ FUNCTION p411_b_fill(p_wc2)
         #IF cl_null(g_oeb[g_cnt].so) THEN LET g_oeb[g_cnt].so='N' END IF
 
         ##訂單結案
-        SELECT '2' INTO g_oeb[g_cnt].oea49
-           FROM oeb_file 
-          WHERE oeb01 = g_oeb[g_cnt].oeb01 AND oeb03=g_oeb[g_cnt].oeb03
-            AND oeb70 = 'Y'
+        LET l_sql = " SELECT '2' ", 
+                    "   FROM " ,cl_get_target_table(g_plant_new,'oeb_file'), 
+                    "   WHERE oeb01 = '",g_oeb[g_cnt].oeb01,"' AND oeb03='",g_oeb[g_cnt].oeb03,"' ",
+                    "     AND oeb70 = 'Y' "
+        CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+        CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+        PREPARE sel_oea49_pre FROM l_sql
+        EXECUTE sel_oea49_pre INTO g_oeb[g_cnt].oea49
+        
 
         #留置  
         SELECT 'H' INTO g_oeb[g_cnt].oea49
-          FROM  oea_file
+          FROM  g_plant_new.oea_file
           WHERE oea01 = g_oeb[g_cnt].oeb01
             AND oeahold IS NOT NULL
 
         ##潛在客戶
         IF cl_null(g_oeb[g_cnt].occ02) THEN
-           SELECT ofd01||ofd02 INTO g_oeb[g_cnt].occ02
-             FROM ofd_file,oea_file
-            WHERE oea04=ofd01 AND oea01 =  g_oeb[g_cnt].oeb01
+           LET l_sql = "SELECT ofd01||ofd02 ",
+                       "  FROM ",cl_get_target_table(g_plant_new,'ofd_file'),
+                       "      ,",cl_get_target_table(g_plant_new,'oea_file'),
+                       " WHERE oea04=ofd01 AND oea01 =  '",g_oeb[g_cnt].oeb01,"' "
+            CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+            CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+            PREPARE sel_occ02_pre FROM l_sql
+            EXECUTE sel_occ02_pre INTO g_oeb[g_cnt].occ02
         END IF
 
         ##選配件
-        SELECT 'Y' INTO g_oeb[g_cnt].oeo07
-          FROM oeo_file
-         WHERE oeo01 = g_oeb[g_cnt].oeb01 AND oeo03=g_oeb[g_cnt].oeb03
-           AND rownum=1
+        LET l_sql = "SELECT 'Y' ", 
+                    "  FROM ",cl_get_target_table(g_plant_new,'oeo_file'),
+                    " WHERE oeo01 = '",g_oeb[g_cnt].oeb01,"' AND oeo03='",g_oeb[g_cnt].oeb03,"' ",
+                    "   AND rownum=1 "
+         CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+         CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+         PREPARE sel_oeo07_pre FROM l_sql
+         EXECUTE sel_oeo07_pre INTO g_oeb[g_cnt].oeo07
 
         ##變更料號-訂單變更日
-        SELECT MAX(oep04) INTO g_oeb[g_cnt].oep04
-          FROM oep_file ,oeq_file
-         WHERE oep01=oeq01
-           AND oep02=oeq02
-           AND oepconf='Y'
-           AND oeq01 = g_oeb[g_cnt].oeb01 AND oeq03 = g_oeb[g_cnt].oeb03
-           AND oeq04a LIKE '0%'
-        GROUP BY oeq01,oeq03
+        LET l_sql = "SELECT MAX(oep04) ",
+                    "  FROM ",cl_get_target_table(g_plant_new,'oep_file'),
+                    "     , ",cl_get_target_table(g_plant_new,'oeq_file'),
+                    " WHERE oep01=oeq01 AND oep02=oeq02 ",
+                    "   AND oepconf='Y' ",
+                    "   AND oeq01 = '",g_oeb[g_cnt].oeb01,"' AND oeq03 = '",g_oeb[g_cnt].oeb03,"' ",
+                    "   AND oeq04a LIKE '0%' ",
+                    " GROUP BY oeq01,oeq03 "
+        CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+        CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+        PREPARE sel_oep04_pre FROM l_sql
+        EXECUTE sel_oep04_pre INTO g_oeb[g_cnt].oep04
 
         #--判斷使用包材 (S)
         
@@ -425,14 +499,17 @@ FUNCTION p411_b_fill(p_wc2)
            LET g_oeb[g_cnt].tc_oga05=g_today
            LET g_oeb[g_cnt].tc_oga06=TIME
 
-           INSERT INTO tc_oga_file(tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07)
-                          VALUES('R',g_oeb[g_cnt].oeb01,
-                                     g_oeb[g_cnt].oeb03,
-                                     1,
-                                     0,
-                                     g_oeb[g_cnt].tc_oga05,
-                                     g_oeb[g_cnt].tc_oga06,
-                                     ' ','1')
+           LET l_sql = "INSERT INTO  ",cl_get_target_table(g_plant_new,'tc_oga_file'),
+                       "  (tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07) ",
+                       "   VALUES('R','",g_oeb[g_cnt].oeb01,"', ",
+                       "              '",g_oeb[g_cnt].oeb03,"',1,0, ",
+                       "              '",g_oeb[g_cnt].tc_oga05,"',",
+                       "              '",g_oeb[g_cnt].tc_oga06,"',",
+                       "              ' ','1') "
+           CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+           CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+           PREPARE ins_tc_oga FROM l_sql
+           EXECUTE ins_tc_oga
            IF SQLCA.sqlcode THEN
               CALL cl_err3("ins","tc_oga_file",g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03,SQLCA.sqlcode,"","",1)
            END IF
@@ -441,10 +518,14 @@ FUNCTION p411_b_fill(p_wc2)
         ##-- 20220627 add by momo (E) 更新狀態 
         ##-- 20221122 add by momo (S) 訂單變更更新狀態
         IF g_action_choice="exportstatus" AND g_oeb[g_cnt].tc_oga07='3' THEN
-           UPDATE tc_oga_file SET tc_oga07='1',tc_ogauser=' '
-            WHERE tc_oga00 ='R'
-              AND tc_oga01 = g_oeb[g_cnt].oeb01
-              AND tc_oga02 = g_oeb[g_cnt].oeb03
+           LET l_sql = "UPDATE ",cl_get_target_table(g_plant_new,'tc_oga_file'), 
+                       "   SET tc_oga07='1',tc_ogauser=' ' ",
+                       " WHERE tc_oga00 ='R' ",
+                       "   AND tc_oga01 = ? AND tc_oga02 = ? "
+           CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+           CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+           PREPARE upd_tc_oga FROM l_sql
+           EXECUTE upd_tc_oga USING g_oeb[g_cnt].oeb01,g_oeb[g_cnt].oeb03
         END IF
         ##-- 20221122 add by momo (E)
 
@@ -476,7 +557,8 @@ FUNCTION p411_bp(p_ud)
  
         BEFORE ROW
             LET l_ac = ARR_CURR()
-      CALL cl_show_fld_cont()    
+      CALL cl_show_fld_cont()   
+       
 
         ON ACTION BOM #BOM查詢
            LET g_msg = " abmi600 '", g_oeb[l_ac].oeb04,"'"
@@ -495,8 +577,14 @@ FUNCTION p411_bp(p_ud)
            LET g_action_choice="detail"
            LET l_ac = 1 
            EXIT DISPLAY
+        
+        ON ACTION plant                  #20230531
+           LET plant_visible = 'Y'       #20230531 
+           LET g_action_choice="query"   #20230531
+           EXIT DISPLAY                  #20230531
  
         ON ACTION query       
+           LET plant_visible = 'N' #20230531
            LET g_action_choice="query" 
            EXIT DISPLAY
 
@@ -593,9 +681,9 @@ FUNCTION p411_b()
         AFTER FIELD tc_ogauser
            IF NOT cl_null(g_oeb[l_ac].tc_ogauser) THEN
               SELECT COUNT(*) INTO l_cnt
-                FROM gen_file
-               WHERE gen01 = g_oeb[l_ac].tc_ogauser
-                 AND genacti = 'Y'
+                FROM zx_file
+               WHERE zx01 = g_oeb[l_ac].tc_ogauser
+                 AND zxacti = 'Y'
               IF cl_null(l_cnt) THEN LET l_cnt = 0 END IF
               IF l_cnt = 0 THEN
                  NEXT FIELD tc_ogauser
@@ -616,22 +704,27 @@ FUNCTION p411_b()
             EXIT INPUT
          END IF
          IF NOT cl_null(g_oeb[l_ac].tc_ogauser) THEN
-            INSERT INTO tc_oga_file(tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07)
-                          VALUES('R',g_oeb[l_ac].oeb01,
-                                     g_oeb[l_ac].oeb03,
-                                     1,
-                                     0,
-                                     g_oeb[l_ac].tc_oga05,
-                                     g_oeb[l_ac].tc_oga06,
-                                     g_oeb[l_ac].tc_ogauser,'2')
+            LET g_sql = "INSERT INTO ",cl_get_target_table(g_plant_new,'tc_oga_file'),
+                        "           (tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07) ",
+                        "  VALUES('R','",g_oeb[l_ac].oeb01,"', '",g_oeb[l_ac].oeb03,"',1,0, ",
+                        "         '",g_oeb[l_ac].tc_oga05,"','",g_oeb[l_ac].tc_oga06,"', ",
+                        "         '",g_oeb[l_ac].tc_ogauser,"','2') "
+            CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+            CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+            PREPARE ins_tc_oga2 FROM g_sql
+            EXECUTE ins_tc_oga2 
             IF SQLCA.sqlcode THEN
-               UPDATE tc_oga_file SET tc_ogauser = g_oeb[l_ac].tc_ogauser,
-                                      tc_oga05   = g_oeb[l_ac].tc_oga05,
-                                      tc_oga06   = g_oeb[l_ac].tc_oga06,
-                                      tc_oga07   = '2'
-                      WHERE tc_oga01 = g_oeb[l_ac].oeb01 
-                        AND tc_oga02 = g_oeb[l_ac].oeb03
-                        AND tc_oga00='R'
+               LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'tc_oga_file'), 
+                           "   SET tc_ogauser = '",g_oeb[l_ac].tc_ogauser,"', ",
+                           "       tc_oga05   = '",g_oeb[l_ac].tc_oga05,"', ",
+                           "       tc_oga06   = '",g_oeb[l_ac].tc_oga06,"', ",
+                           "       tc_oga07   = '2' ",
+                           " WHERE tc_oga01 = ? ",
+                           " AND tc_oga02 = ? AND tc_oga00='R' "
+               CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+               CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+               PREPARE upd_tc_oga2 FROM g_sql
+               EXECUTE upd_tc_oga2 USING g_oeb[g_cnt].oeb01,g_oeb[g_cnt].oeb03
                IF SQLCA.sqlcode THEN
                   CALL cl_err3("upd","tc_oga_file",g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03,SQLCA.sqlcode,"","",1)
                END IF
@@ -722,15 +815,18 @@ FUNCTION p411_batch_update()
             CONTINUE FOR
          END IF
          LET g_oeb[l_i].tc_oga06=TIME
-         UPDATE tc_oga_file SET tc_ogauser = g_user,
-                                tc_oga05 = g_today,
-                                tc_oga06 = g_oeb[l_i].tc_oga06,
-                                tc_oga07 ='2'
-         WHERE tc_oga01 = g_oeb[l_i].oeb01
-           AND tc_oga02 = g_oeb[l_i].oeb03
-           AND tc_oga00='R'
+         LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'tc_oga_file'),
+                     "   SET tc_ogauser = '",g_user,"', ",
+                     "       tc_oga05 = '",g_today,"' , ",
+                     "       tc_oga06 = '",g_oeb[l_i].tc_oga06,"', ",
+                     "       tc_oga07 ='2' ",
+                     " WHERE tc_oga01 = ? AND tc_oga02 = ? AND tc_oga00='R' "
+         CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+         CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+         PREPARE upd_tc_oga3 FROM g_sql
+         EXECUTE upd_tc_oga3 USING g_oeb[l_i].oeb01,g_oeb[l_i].oeb03
          IF SQLCA.SQLCODE OR SQLCA.SQLERRD[3] = 0 THEN
-            CALL cl_err('upd tc_oga_file',SQLCA.SQLCODE,1)
+            CALL cl_err('upd3 tc_oga_file',SQLCA.SQLCODE,1)
             EXIT FOR
             ROLLBACK WORK
          ELSE
