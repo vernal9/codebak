@@ -54,6 +54,7 @@
 # Modify.........:               20180709 By momo 增加資料清單
 # Modify.........:               20180712 By momo 資料清單增加處理部門筆數
 # Modify.........: 20190107 By momo 資料清單增加顯示 shhud08,shh022
+# Modify.........: NO.23050007   20230512 By momo 增加第二層異常原因 ta_shh01初判; ta_shh02複判 
 
 DATABASE ds
  
@@ -355,6 +356,27 @@ FUNCTION t720_curs()
                 DISPLAY g_qryparam.multiret TO shh151
                 NEXT FIELD shh151
            ##----- 20180604 add 異常原因開窗 (E)
+
+           ##----- 20230512 add 第二層異常原因開窗(S)
+              WHEN INFIELD(ta_shh01)
+                CALL cl_init_qry_var()
+                LET g_qryparam.state = "c"
+                LET g_qryparam.form = "cq_tc_qce01"
+                LET g_qryparam.default1 = g_shh.ta_shh01
+                LET g_qryparam.arg1 = g_shh.shh131
+                CALL cl_create_qry() RETURNING g_qryparam.multiret
+                DISPLAY g_qryparam.multiret TO ta_shh01
+                NEXT FIELD ta_shh01
+              WHEN INFIELD(ta_shh02)
+                CALL cl_init_qry_var()
+                LET g_qryparam.state = "c"
+                LET g_qryparam.form = "cq_tc_qce01"
+                LET g_qryparam.default1 = g_shh.ta_shh02
+                LET g_qryparam.arg1 = g_shh.shh151
+                CALL cl_create_qry() RETURNING g_qryparam.multiret
+                DISPLAY g_qryparam.multiret TO ta_shh02
+                NEXT FIELD ta_shh02
+           ##----- 20230512 add 第二層異常原因開窗(E)
               WHEN INFIELD(shh101)
                  #CALL q_gen(10,3,g_shh.shh101) RETURNING g_shh.shh101
                  CALL cl_init_qry_var()
@@ -881,6 +903,7 @@ FUNCTION t720_a()
         SELECT qczud07 INTO g_shh.shhud10 FROM qcz_file   #20180608 抓開單時間放入
         LET g_shh.shh131 = g_shh.shh111
         LET g_shh.shh151 = g_shh.shh111
+        LET g_shh.ta_shh02 = g_shh.ta_shh01        #20230512
         INSERT INTO shh_file VALUES(g_shh.*)       # DISK WRITE
         IF SQLCA.sqlcode THEN
 #          CALL cl_err(g_shh.shh01,SQLCA.sqlcode,0)   #No.FUN-660128
@@ -923,10 +946,14 @@ FUNCTION t720_i(p_cmd)
         g_shh.shhud07,                                                      #20180525
         g_shh.shh06,g_shh.shh14,                                            #TQC-AC0289 add  ,g_shh.shh061,g_shh.shh14,
         g_shh.shh111,g_shh.shh112,g_shh.shh113,g_shh.shh10,
-        g_shh.shh131,g_shh.shh132,g_shh.shh121,
+        g_shh.shh131,
+        g_shh.ta_shh01,                                                     #20230512 add
+        g_shh.shh132,g_shh.shh121,
         g_shh.shh08,                                                        #20180525 modify
         g_shh.shh12,g_shh.shh061,
-        g_shh.shh151,g_shh.shh152,g_shh.shh141,
+        g_shh.shh151,
+        g_shh.ta_shh02,                                                     #20230512
+        g_shh.shh152,g_shh.shh141,
         g_shh.shh022,g_shh.shh07,
         g_shh.shhud08,                                                      #20180525 modify
         g_shh.shh142,g_shh.shh143,
@@ -1390,6 +1417,24 @@ FUNCTION t720_i(p_cmd)
                  DISPLAY BY NAME g_shh.shh151
                  NEXT FIELD shh151
               ##---- 20180604 add by momo (E) 異常原因說明
+              ##---- 20230512 add by momo (S)
+              WHEN INFIELD(ta_shh01)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form     = "cq_tc_qce01"
+                 LET g_qryparam.default1 = g_shh.ta_shh01
+                 LET g_qryparam.arg1     = g_shh.shh131
+                 CALL cl_create_qry() RETURNING g_shh.ta_shh01
+                 DISPLAY BY NAME g_shh.ta_shh01
+                 NEXT FIELD ta_shh01
+              WHEN INFIELD(ta_shh02)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form     = "cq_tc_qce01"
+                 LET g_qryparam.default1 = g_shh.ta_shh02
+                 LET g_qryparam.arg1     = g_shh.shh151
+                 CALL cl_create_qry() RETURNING g_shh.ta_shh02
+                 DISPLAY BY NAME g_shh.ta_shh02
+                 NEXT FIELD ta_shh02
+              ##---- 20230512 add by momo (E)
               WHEN INFIELD(shh101)
                  #CALL q_gen(10,3,g_shh.shh101) RETURNING g_shh.shh101
                  #CALL FGL_DIALOG_SETBUFFER( g_shh.shh101 )
@@ -1795,8 +1840,9 @@ FUNCTION t720_show()
             g_shh.shhud01,g_shh.shhud02,g_shh.shhud03,g_shh.shhud04,
             g_shh.shhud05,g_shh.shhud06,g_shh.shhud07,g_shh.shhud08,
             g_shh.shhud09,g_shh.shhud10,g_shh.shhud11,g_shh.shhud12,
-            g_shh.shhud13,g_shh.shhud14,g_shh.shhud15 
+            g_shh.shhud13,g_shh.shhud14,g_shh.shhud15
             #FUN-840068     ----end----
+           ,g_shh.ta_shh01,g_shh.ta_shh02                                            #20230512
     CALL t720_shh03('d')
     #CALL t720_shh04('d')
     CALL t720_shh06('d')
