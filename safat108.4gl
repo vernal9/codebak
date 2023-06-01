@@ -169,6 +169,7 @@
 # Modify.........: No:MOD-G40077 16/04/19 By doris 稅簽過帳還原時,預留殘值也要還原
 # Modify.........: No:MOD-G60116 16/07/06 By doris 重新計算帳值及確認段,成本及累折應先取位再計算
 # Modify.........: No:22120039   20221226 By momo 資產報廢單卡控 不同原保管人需拆單
+# Modify.........: NO:23050016   20230524 By momo 增加「簽核人員」欄位，存在afai200時,自動帶入加簽人員資訊
 
 DATABASE ds
  
@@ -450,6 +451,15 @@ DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
                     CALL cl_create_qry() RETURNING g_qryparam.multiret
                     DISPLAY g_qryparam.multiret TO fbg04
                     NEXT FIELD fbg04
+               ##---- 20230524 add by momo (S) 加簽人員
+               WHEN INFIELD(fbgud03)
+                    CALL cl_init_qry_var()
+                    LET g_qryparam.form = "q_gen"
+                    LET g_qryparam.state = "c"
+                    CALL cl_create_qry() RETURNING g_qryparam.multiret
+                    DISPLAY g_qryparam.multiret TO fbgud03
+                    NEXT FIELD fbgud03
+               ##---- 20230524 add by momo (E)
               END CASE
           ON IDLE g_idle_seconds
              CALL cl_on_idle()
@@ -915,6 +925,7 @@ FUNCTION t108_a()
     LET g_fbg.fbg03=g_user
     LET g_fbg_t.fbg03 = g_user   #MOD-F40048 add 
     CALL t108_fbg03('d')
+    CALL t108_fbgud03('d')       #20230524 add
  
     WHILE TRUE
         LET g_fbg.fbg00  =g_argv1
@@ -1230,8 +1241,17 @@ FUNCTION t108_i(p_cmd)
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD fbgud02
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+        ##---- 20230524 modify (S)
         AFTER FIELD fbgud03
-           IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           IF NOT cl_null(g_fbg.fbgud03) THEN   
+               CALL t108_fbgud03('a')
+               IF NOT cl_null(g_errno) THEN
+                  CALL cl_err(g_fbg.fbgud03,g_errno,0)
+                  DISPLAY BY NAME g_fbg.fbgud03 #
+                  NEXT FIELD fbgud03
+               END IF
+            END IF
+        ##---- 20230524 modify (S)
         AFTER FIELD fbgud04
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD fbgud05
@@ -1284,6 +1304,15 @@ FUNCTION t108_i(p_cmd)
                  CALL cl_create_qry() RETURNING g_fbg.fbg04
                  DISPLAY BY NAME g_fbg.fbg04
                  NEXT FIELD fbg04
+             ##---- 20230524 add by momo (S) 加簽人員
+             WHEN INFIELD(fbgud03)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form = "q_gen"
+                 LET g_qryparam.default1 = g_fbg.fbgud03
+                 CALL cl_create_qry() RETURNING g_fbg.fbgud03
+                 DISPLAY BY NAME g_fbg.fbgud03
+                 NEXT FIELD fbgud03
+             ##---- 20230524 add by momo (E) 加簽人員
            END CASE
  
         ON ACTION CONTROLF                  #欄位說明
@@ -1341,11 +1370,11 @@ DEFINE p_cmd      LIKE type_file.chr1,         #No.FUN-680070 VARCHAR(1)
        WHEN SQLCA.SQLCODE = 100 LET g_errno = 'afa-110'
                                 LET l_gen02 = NULL
                                 LET l_genacti = NULL
-       WHEN l_genacti = 'N'  LET g_errno = '9028'
+       WHEN l_genacti = 'N'  LET g_errno = '9028'                
        OTHERWISE             LET g_errno = SQLCA.SQLCODE USING '-------'
     END CASE
-    IF cl_null(g_errno) OR p_cmd = 'd'
-    THEN DISPLAY l_gen02 TO FORMONLY.gen02
+    IF cl_null(g_errno) OR p_cmd = 'd'THEN 
+       DISPLAY l_gen02 TO FORMONLY.gen02
     END IF
    #IF cl_null(g_errno) AND p_cmd = 'a' AND cl_null(g_fbg.fbg04) THEN   #MOD-F40048 mark
     IF cl_null(g_errno) AND p_cmd = 'a' THEN                            #MOD-F40048 add
@@ -1353,6 +1382,30 @@ DEFINE p_cmd      LIKE type_file.chr1,         #No.FUN-680070 VARCHAR(1)
        DISPLAY BY NAME g_fbg.fbg04   #No:9373
     END IF
 END FUNCTION
+
+##---- 20230524 add by momo (S)
+FUNCTION t108_fbgud03(p_cmd)
+DEFINE p_cmd      LIKE type_file.chr1,         
+       l_gen02    LIKE gen_file.gen02,
+       l_genacti  LIKE gen_file.genacti
+
+    LET g_errno = ' '
+    SELECT gen02,genacti INTO l_gen02,l_genacti  
+      FROM gen_file
+     WHERE gen01 = g_fbg.fbgud03
+    CASE
+       WHEN SQLCA.SQLCODE = 100 LET g_errno = 'afa-110'
+                                LET l_gen02 = NULL
+                                LET l_genacti = NULL
+       WHEN l_genacti = 'N'  LET g_errno = '9028'             
+       OTHERWISE             LET g_errno = SQLCA.SQLCODE USING '-------'
+    END CASE
+    IF cl_null(g_errno) OR p_cmd = 'd'THEN 
+       DISPLAY l_gen02 TO FORMONLY.gen02_2
+       DISPLAY BY NAME g_fbg.fbgud03
+    END IF
+END FUNCTION
+##---- 20230524 add by momo (E)
  
 FUNCTION t108_fbg04(p_cmd)
 DEFINE p_cmd      LIKE type_file.chr1,         #No.FUN-680070 VARCHAR(1)
@@ -1485,6 +1538,7 @@ FUNCTION t108_show()
     IF cl_null(acc) THEN LET acc = 'N' END IF
     DISPLAY acc To acc
 
+
     #需折舊 - 未折減總額
     IF acc='Y' THEN
        SELECT SUM(fbh08) INTO sum_total
@@ -1514,6 +1568,7 @@ FUNCTION t108_show()
     LET g_t1 = s_get_doc_no(g_fbg.fbg01)       #No.FUN-550034
     SELECT * INTO g_fah.* FROM fah_file WHERE fahslip=g_t1
     CALL t108_fbg03('d')
+    CALL t108_fbgud03('d') #20230524
     CALL t108_fbg04('d')
     CALL t108_b_fill(g_wc2)
     CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
@@ -1761,6 +1816,7 @@ DEFINE l_sql         STRING                   #MOD-DB0032 add
               ROLLBACK WORK
               EXIT INPUT
             END IF
+         ##--- 20230524
          IF cl_null(g_fbh[l_ac].fbh031) THEN
             LET g_fbh[l_ac].fbh031 = ' '
          END IF
@@ -4042,6 +4098,7 @@ END FUNCTION
  
 FUNCTION t108_ef()
  
+  CALL t108_add_fbgud03() #20230524 add
   CALL t108_y_chk()      #CALL 原確認的 check 段
   IF g_success = "N" THEN
      RETURN
@@ -7395,3 +7452,24 @@ FUNCTION t108_chk_frozen()
    END IF    
 END FUNCTION
 #No.CHI-E60034  --End
+
+##---- 20230524 自動加簽判斷(S)
+FUNCTION t108_add_fbgud03()
+  DEFINE l_gen02    LIKE type_file.chr100
+
+     #--存在afai200儀器資料自動取
+     SELECT DISTINCT ima67 INTO l_gen02 
+       FROM ima_file
+      WHERE ima1007='BPM_QC'
+        AND ima67 <> g_fbg.fbg03
+        AND EXISTS (SELECT 1 FROM fga_file,fbh_file WHERE fbh01=g_fbg.fbg01 AND fga03=fbh03)
+
+     IF NOT cl_null(l_gen02)  THEN
+        LET g_fbg.fbgud03 = l_gen02,';',g_fbg.fbgud03
+        UPDATE fbg_file SET fbgud03 = g_fbg.fbgud03 WHERE fbg01 = g_fbg.fbg01
+        CALL t108_fbgud03('d')
+     END IF
+
+     
+
+END FUNCTION

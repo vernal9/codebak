@@ -81,6 +81,8 @@
 # Modify.........: No:MOD-G60006 16/06/04 By edison 修正單身欄位開窗回傳值後按下確定,不會走到on row chang的問題 
 # Modify.........: No:           19/12/17 By Ruby 增加人員/部門/位置等中文名稱，選擇人員後部門預設帶入人員所屬部門
 # Modify.........: NO:22120036   20221223 By momo 卡控 原保管人與新保管不可多人
+# Modify.........: No:23020012   23/02/08 By Ruby  人員/部門/位置中文改為left join(有空值狀況)
+# Modify.........: No:23050015   20230529 By momo 增加「簽核人員」欄位，存在afai200時,自動帶入加簽人員資訊
 
 DATABASE ds
  
@@ -351,6 +353,15 @@ DEFINE lc_qbe_sn       LIKE gbm_file.gbm01    #No.FUN-580031  HCN
                     CALL cl_create_qry() RETURNING g_qryparam.multiret
                     DISPLAY g_qryparam.multiret TO fbl06
                     NEXT FIELD fbl06
+               ##--- 20230529 add 加簽人員 (S)
+               WHEN INFIELD(fblud02)   
+                    CALL cl_init_qry_var()
+                    LET g_qryparam.form = "q_gen"
+                    LET g_qryparam.state = "c"
+                    CALL cl_create_qry() RETURNING g_qryparam.multiret
+                    DISPLAY g_qryparam.multiret TO fblud02
+                    NEXT FIELD fblud02
+               ##--- 20230529 add 加簽人員 (E)
                OTHERWISE EXIT CASE
             END CASE
  
@@ -610,6 +621,9 @@ FUNCTION t111_menu()
         ##EasyFlow送簽
         WHEN "easyflow_approval"
              IF cl_chk_act_auth() THEN
+                IF g_fbl.fbl07='0' THEN     #20230529 add
+                   CALL t111_add_fblud02()  #20230529 add
+                END IF                      #20230529 add
                #FUN-C20012 add str---
                 SELECT * INTO g_fbl.* FROM fbl_file
                  WHERE fbl01 = g_fbl.fbl01
@@ -727,13 +741,14 @@ FUNCTION t111_a()
     LET g_fbl_t.* = g_fbl.*
  
     call cl_opmsg('a')
-    while true
+    WHILE TRUE
         LET g_fbl.fbl02  =g_today
         LET g_fbl.fbl05  =g_today
         LET g_fbl.fblconf='N'
         LET g_fbl.fblpost='N'
         LET g_fbl.fblprsw=0
         LET g_fbl.fbluser=g_user
+        LET g_fbl.fblmodu=g_user   #20230529 add
         LET g_fbl.fbloriu = g_user #FUN-980030
         LET g_fbl.fblorig = g_grup #FUN-980030
         LET g_fbl.fblgrup=g_grup
@@ -1060,8 +1075,18 @@ FUNCTION t111_i(p_cmd)
         #FUN-850068     ---start---
         AFTER FIELD fblud01
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+        ##---- 20230529 modify (S)
         AFTER FIELD fblud02
-           IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           IF NOT cl_null(g_fbl.fblud02) THEN
+               CALL t111_fblud02('a')
+               IF NOT cl_null(g_errno) THEN
+                  CALL cl_err(g_fbl.fblud02,g_errno,0)
+                  LET g_fbl_t.fblud02 = g_fbl.fblud02
+                  DISPLAY BY NAME g_fbl.fblud02
+                  NEXT FIELD fblud02
+               END IF 
+            END IF
+        ##---- 20230529 modify (E)
         AFTER FIELD fblud03
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD fblud04
@@ -1129,8 +1154,18 @@ FUNCTION t111_i(p_cmd)
 #                 CALL FGL_DIALOG_SETBUFFER( g_fbl.fbl06 )
                  DISPLAY BY NAME g_fbl.fbl06
                  NEXT FIELD fbl06
-              oTHERWISE EXIT CASE
-           end CASE
+            ##---- 20230529 add by momo 加簽人員(S)
+            WHEN INFIELD(fblud02)    
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form = "q_gen"
+                 LET g_qryparam.default1 = g_fbl.fblud02
+                 CALL cl_create_qry() RETURNING g_fbl.fblud02
+                 DISPLAY BY NAME g_fbl.fblud02
+                 NEXT FIELD fblud02
+            ##---- 20230529 add by momo (E)
+
+              OTHERWISE EXIT CASE
+           END CASE
  
         ON ACTION CONTROLF                  #欄位說明
          call cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name #Add on 040913
@@ -1183,7 +1218,7 @@ FUNCTION t111_set_no_entry(p_cmd)
 END FUNCTION
  
 FUNCTION t111_fbl03(p_cmd)
- DEFine   p_cmd      LIKE type_file.chr1,         #No.FUN-680070 VARCHAR(1)
+ DEFINE   p_cmd      LIKE type_file.chr1,         #No.FUN-680070 VARCHAR(1)
           l_gen02    LIKE gen_file.gen02,
           l_genacti  LIKE gen_file.genacti
  
@@ -1191,16 +1226,21 @@ FUNCTION t111_fbl03(p_cmd)
     select gen02,genacti INTO l_gen02,l_genacti
       from gen_file
      where gen01 = g_fbl.fbl03
-    case
-        WHEN sqLCA.SQLCODE = 100 LET g_errno ='afa-034'
+    CASE
+        WHEN SQLCA.SQLCODE = 100 LET g_errno ='afa-034'
                                  LET l_gen02 = NULL
                                  LET l_genacti = NULL
-        WHEN l_genacti = 'N' LET g_errno = '9028'
-        otherwiSE            LET g_errno = SQLCA.SQLCODE USING '-------'
-   End case
-   IF cl_null(g_errno) OR p_cmd = 'd'
-   Then display l_gen02 TO FORMONLY.gen02
-   End IF
+        #WHEN l_genacti = 'N' LET g_errno = '9028'              #20230529 mark
+        OTHERWISE            LET g_errno = SQLCA.SQLCODE USING '-------'
+   END CASE
+   ##---人員離職需選擇 D1 原因 (S)
+   IF g_fbl.fbl06 <> 'D1' AND l_genacti='N' THEN
+      LET g_errno='ain-110'
+   END IF
+   ##---人員離職需選擇 D1 原因 (E)
+   IF cl_null(g_errno) OR p_cmd = 'd' THEN
+      display l_gen02 TO FORMONLY.gen02
+   END IF
 END FUNCTION
  
 FUNCTION t111_fbl04(p_cmd)
@@ -1373,6 +1413,7 @@ FUNCTION t111_show()
     CALL cl_set_field_pic(g_fbl.fblconf,g_chr2,g_fbl.fblpost,"",g_chr,"")
    #end FUN-580109
     CALL t111_fbl03('d')
+    CALL t111_fblud02('d') #20230529
     CALL t111_fbl04('d')
     CALL t111_fbl06('d')
     CALL t111_b_fill(g_wc2)
@@ -1502,6 +1543,7 @@ DEFINE l_fbl07         LIKE fbl_file.fbl07    #FUN-580109
  
     LET g_action_choice = ""
     LET l_fbl07 = g_fbl.fbl07   #FUN-580109
+    LET g_fbm04 = ''            #230208 add by ruby
  
     IF g_fbl.fbl01 IS NULL THEN RETURN END IF
     IF g_fbl.fblconf = 'X' THEN CALL cl_err('','9024',0) RETURN END IF
@@ -2315,14 +2357,16 @@ DEFIne p_wc2           LIKE type_file.chr1000      #No.FUN-680070 VARCHAR(200)
         "        fbmud06,fbmud07,fbmud08,fbmud09,fbmud10,",
         "        fbmud11,fbmud12,fbmud13,fbmud14,fbmud15 ", 
         #No.FUN-850068 ---end---
-        "   froM fbm_file, faj_file ",
-        "   , gen_file, gem_file, faf_file ",                     #191217 add by ruby
+        #"   froM fbm_file, faj_file ",                                                                                      #230208 mark by ruby
+        #"   , gen_file, gem_file, faf_file ",                     #191217 add by ruby                                       #230208 mark by ruby
+        "    from fbm_file left join faj_file on fbm03  = faj02 and fbm031 = faj022 ",
+        "    left join gen_file on fbm04 = gen01 left join gem_file on fbm05 = gem01 left join faf_file on fbm06 = faf01 ",  #230208 add by ruby
         "  wherE fbm01  ='",g_fbl.fbl01,"'",  #單頭
-        "    anD fbm03  = faj02",
-        "    anD fbm031 = faj022",
-        "    AND fbm04 = gen01 ",                                 #191217 add by ruby
-        "    AND fbm05 = gem01 ",                                 #191217 add by ruby
-        "    AND fbm06 = faf01 ",                                 #191217 add by ruby
+        #"    anD fbm03  = faj02",                                                      #230208 mark by ruby
+        #"    anD fbm031 = faj022",                                                     #230208 makr by ruby
+        #"    AND fbm04 = gen01 ",                                 #191217 add by ruby  #230208 mark by ruby
+        #"    AND fbm05 = gem01 ",                                 #191217 add by ruby  #230208 mark by ruby
+        #"    AND fbm06 = faf01 ",                                 #191217 add by ruby  #230208 mark by ruby
         "    anD ",p_wc2 CLIPPED,                     #單身
         "  ordeR BY 1"
  
@@ -3946,3 +3990,43 @@ FUNCTION t111_chk_frozen()
    END IF    
 END FUNCTION
 #No.CHI-E60034  --End
+
+##---- 20230524 自動加簽判斷(S)
+FUNCTION t111_fblud02(p_cmd)
+ DEFINE   p_cmd      LIKE type_file.chr1,         
+          l_gen02    LIKE gen_file.gen02,
+          l_genacti  LIKE gen_file.genacti
+
+    LET g_errno = ' '
+    SELECT gen02,genacti INTO l_gen02,l_genacti
+      FROM gen_file
+     WHERE gen01 = g_fbl.fblud02
+    CASE
+        WHEN sqLCA.SQLCODE = 100 LET g_errno ='afa-034'
+                                 LET l_gen02 = NULL
+                                 LET l_genacti = NULL
+        WHEN l_genacti = 'N' LET g_errno = '9028'
+        OTHERWISE            LET g_errno = SQLCA.SQLCODE USING '-------'
+   END CASE
+   IF cl_null(g_errno) OR p_cmd = 'd' THEN
+      DISPLAY l_gen02 TO FORMONLY.gen02_2
+   END IF
+END FUNCTION
+
+FUNCTION t111_add_fblud02()
+  DEFINE l_gen02    LIKE type_file.chr100
+
+     #--存在afai200儀器資料自動取
+     SELECT DISTINCT ima67 INTO l_gen02
+       FROM ima_file
+      WHERE ima1007='BPM_QC'
+        AND ima67 <> g_fbl.fbl03
+        AND EXISTS (SELECT 1 FROM fga_file,fbm_file WHERE fbm01=g_fbl.fbl01 AND fga03=fbm03)
+
+     IF NOT cl_null(l_gen02)  THEN
+        LET g_fbl.fblud02 = l_gen02,';',g_fbl.fblud02
+        UPDATE fbl_file SET fblud02 = g_fbl.fblud02 WHERE fbl01 = g_fbl.fbl01
+        CALL t111_fblud02('d')
+     END IF
+
+END FUNCTION
