@@ -515,6 +515,7 @@
 # Modify.........: No:2110287174 20211028 By momo 複製 時 增加 檢核是否有相同 品名、規格
 # Modify.........:               20220114 By momo ta_ima05、ta_ima07 使用動態下拉選單cooi001設定
 # Modify.........: No:22090046   20220930 By momo 分群碼提醒
+# Modify.........: No:23020020   20230223 By momo 存在PO狀況下，不可修改品名ima02、規格ima021
 
 IMPORT os # No.FUN-B10061
 
@@ -1657,7 +1658,7 @@ FUNCTION i100_a_file()
 　　　　　　　　　　　END IF
                ##---新增 dwg
                SELECT smaud03 INTO l_smaud03 FROM sma_file
-               　　IF NOT cl_null(l_smaud02) THEN
+               　　IF NOT cl_null(l_smaud03) THEN
                　　　LET l_gca.gca01 = "ima01" || "=" || g_ima.ima01 CLIPPED
                　　　LET l_gca.gca02 = ' '
                　　　LET l_gca.gca03 = ' '
@@ -4870,6 +4871,21 @@ FUNCTION i100_set_no_entry(p_cmd)
    END IF
       
 #TQC-B90236--add--end
+
+##--- 20230223 (S)存在PO，不可修改品名、規格
+   IF g_ima.ima01[1,4] != 'MISC' THEN
+      SELECT 1 INTO l_n FROM pmn_file,pmm_file
+       WHERE pmn01=pmm01 
+         AND pmm18 <> 'X'
+         AND pmn04 = g_ima.ima01
+         AND ROWNUM = 1
+       IF l_n =1 THEN
+          CALL cl_set_comp_entry("ima02,ima021",FALSE)
+       ELSE
+          CALL cl_set_comp_entry("ima02,ima021",TRUE)
+       END IF
+   END IF
+##--- 20230223 (E)
 
 #MOD-C30270--add--begin--
 #MOD-C30270--add--end--
