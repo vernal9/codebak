@@ -1027,6 +1027,10 @@
 # Modify.........: No.2206228329 20220624 By momo 選配件調整，未轉工單可執行
 #                                                 TY，不可使用「取消確認」 權限，走訂單變更流程
 # Modify.........: No.22100023   20221021 By momo 選配件調整，轉工單可 修改/新增
+# Modify.........: No:FUN-L70002 23/01/12 By Ruby 統一編號欄位使用 s_chkban 函式檢查 
+# Modify.........: No.23030035   20230324 By momo Check 料號需存在主檔，0開頭成品料號數量檢核不可超過oazud10
+# Modify.........: No.23040018   23/04/18 By Ruby 更改折數可修改單身客戶設備編號oebud05
+# Modify.........: No.23050050   20230606 By momo oeaud02 記錄「终端客戶」oeaud02
 
 DATABASE ds
 
@@ -2405,6 +2409,7 @@ DEFINE  l_msg           STRING                 #TQC-A30155
                         CALL cl_create_qry() RETURNING g_qryparam.multiret
                         DISPLAY g_qryparam.multiret TO oea45
                    ##---- 20201228 add by momo (E)
+                   
                    WHEN INFIELD(oea41)
                         CALL cl_init_qry_var()
                         LET g_qryparam.state = "c"
@@ -3081,6 +3086,16 @@ DEFINE  l_msg           STRING                 #TQC-A30155
                         LET g_qryparam.form ="q_ocd"
                         CALL cl_create_qry() RETURNING g_qryparam.multiret
                         DISPLAY g_qryparam.multiret TO oea044
+
+                   ##--- 20230606 add by momo (S) 終端客戶
+                   WHEN INFIELD(oeaud02)
+                        CALL cl_init_qry_var()
+                        LET g_qryparam.state = "c"
+                        LET g_qryparam.form ="q_ocd"
+                        CALL cl_create_qry() RETURNING g_qryparam.multiret
+                        DISPLAY g_qryparam.multiret TO oeaud02
+                   ##--- 20230606 add by momo (E)
+
                    ##--- 20201228 add by momo (S) 客戶聯絡人
                    WHEN INFIELD(oea45)
                         CALL cl_init_qry_var()
@@ -6507,6 +6522,15 @@ FUNCTION t400_i(p_cmd)
                 #LET g_qryparam.construct= 'N'           #20220623 mark 開放查詢
                  CALL cl_create_qry() RETURNING g_oea.oea044
                  DISPLAY BY NAME g_oea.oea044 NEXT FIELD oea044
+            ##---- 20230606 add by momo (S)終端客戶
+            WHEN INFIELD(oeaud02)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form ="q_ocd"
+                 LET g_qryparam.default1 = g_oea.oea04
+                 LET g_qryparam.arg1     = g_oea.oea04  
+                 CALL cl_create_qry() RETURNING g_oea.oeaud02
+                 DISPLAY BY NAME g_oea.oeaud02 NEXT FIELD oeaud02 
+            ##---- 20230606 add by momo (E) 
             ##---- 20201228 add by momo (S) 客戶聯絡人
             WHEN INFIELD(oea45)
                  CALL cl_init_qry_var()
@@ -8400,6 +8424,16 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
 
         AFTER FIELD oeb04
           IF NOT cl_null(g_oeb[l_ac].oeb04) THEN         #FUN-AA0047
+
+             ##---- 20230324 add by momo (S)料號檢核
+             SELECT 1 INTO l_count FROM ima_file
+               WHERE ima01 = g_oeb[l_ac].oeb04
+                 AND rownum = 1
+             IF l_count != 1 THEN
+                CALL cl_err('','abm-202',1)
+                NEXT FIELD oeb04
+             END IF
+             ##---- 20230324 add by momo (E)
             
              #MOD-F70049 add---start---
              IF p_cmd = 'a' OR (p_cmd = 'u' AND g_oeb[l_ac].oeb04 <> g_oeb_t.oeb04) THEN
@@ -13541,12 +13575,13 @@ FUNCTION t400_init()
 #   END IF
 #TQC-AC0034 --end--
 
-   IF g_aza.aza50 = 'N'THEN
+   IF g_aza.aza50 = 'N' THEN
        CALL cl_set_comp_visible("oea1010,oea1011,oea1002,oea1009,oea1003,                                 oea1005,oea1012,oea1013,oea1014,ima1002,                                 ima135,oeb1012,oeb1004,oeb1002,                                 oeb1006,oeb09,oeb091,tqa02_a,tqa02_b,tqb02_b,                                 oea1011,occ02_d,oea1010,tqb02_a,ttl2,ttl1,                                 ttl3,oea1006,cn3,dummy01,dummy02,page07,",FALSE)
        CALL cl_set_act_visible("pref,discount_allowed",FALSE)
        CALL cl_set_comp_visible("ttl2",TRUE)               #TQC-C90021 add
        CALL cl_getmsg('axm1168',g_lang) RETURNING g_msg    #TQC-C90021 add
        CALL cl_set_comp_att_text("ttl2",g_msg CLIPPED)     #TQC-C90021 add
+       CALL cl_set_comp_visible("oea1015,oea1015_occ02",FALSE) #20230606
    END IF
 
    IF g_aza.aza50 = 'Y' THEN              #NO.MOD-780155
@@ -21514,7 +21549,7 @@ DEFINE l_rte07                LIKE rte_file.rte07    #No.FUN-870007
 DEFINE l_rtdconf              LIKE rtd_file.rtdconf  #No.FUN-870007
 #DEFINE l_oeb04                LIKE oeb_file.oeb04    #FUN-A50054   #FUN-A60035 ---MARK
 #FUN-BC0130 add begin ---
-DEFINE l_rtz06      LIKE rtz_file.rtz06
+DEFINE l_rtz06      LIKE rtz_file.rtz06         
 DEFINE l_check    LIKE type_file.chr1  #MOD-CB0247 add
 DEFINE l_ima54    LIKE ima_file.ima54  #220215 add by ruby
 DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
@@ -21881,13 +21916,13 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
         END IF
      END IF
 
-     SELECT ima02,ima021,ima31,ima130,ima131,ima15,ima25,imaacti,ima54              #220215 add ima54 by ruby
-       INTO g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54    #220215 add ima54 by ruby
+     SELECT ima02,ima021,ima31,ima130,ima131,ima15,ima25,imaacti
+       INTO g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
        FROM ima_file
       WHERE ima01=g_oeb[l_ac].oeb04
      IF SQLCA.SQLCODE  AND g_oeb[l_ac].oeb04[1,4] != 'MISC' THEN
         CALL cl_err('sel ima',SQLCA.SQLCODE,0)
-        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54  #220215 add ima54 by ruby
+        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
              ,l_qty   #TQC-690041 add
      END IF
      IF g_oeb[l_ac].oeb04 != g_oeb_t.oeb04 OR g_oeb_t.oeb04 IS NULL THEN
@@ -21898,13 +21933,13 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
             WHERE gfe01 = g_oeb[l_ac].oeb05
            IF g_cnt = 0 THEN
               CALL cl_err(g_oeb[l_ac].oeb05,'mfg3377',0)
-              RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54,l_qty   #220215 add ima54 by ruby
+              RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_qty   
            END IF
            CALL s_umfchk(g_oeb[l_ac].oeb04,g_oeb[l_ac].oeb05,l_ima25)
                RETURNING l_check,b_oeb.oeb05_fac
            IF l_check = '1'  THEN
               CALL cl_err(g_oeb[l_ac].oeb05,'abm-731',1)
-              RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54,l_qty   #220215 add ima54 by ruby
+              RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_qty   
            END IF
         END IF
         #MOD-CB0247 add end   -----
@@ -21931,13 +21966,13 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
 
      IF g_oea.oea00 MATCHES '[123467]' AND l_imaacti='N' THEN     #FUN-690044
         CALL cl_err(g_oeb[l_ac].oeb04,'9028',0)
-        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54   #220215 add ima54 by ruby
+        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
               ,l_qty   #TQC-690041 add
      END IF
 
      IF g_oea.oea00 MATCHES '[123467]' AND l_ima130 = '0' THEN    #FUN-690044
         CALL cl_err('ima130=0:','axm-188',0)
-        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti,l_ima54   #220215 add ima54 by ruby
+        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
               ,l_qty   #TQC-690041 add
      END IF
 
@@ -23945,6 +23980,14 @@ FUNCTION t400_ioccm()
 
       AFTER FIELD occm02
          IF NOT cl_null(g_occm.occm02) THEN
+        #-FUN-L70002-add-    
+            IF g_aza.aza21 = 'Y' THEN
+               IF NOT s_chkban(g_occm.occm02) THEN               
+                  CALL cl_err('','aoo-080',0) 
+                  NEXT FIELD occm02 
+               END IF                                     
+            END IF
+        #-FUN-L70002-end-         
             DECLARE occm_cur CURSOR FOR SELECT * FROM occm_file
                                          WHERE occm02=g_occm.occm02
             OPEN occm_cur
@@ -35568,8 +35611,8 @@ FUNCTION t400_b2()
         BEFORE INPUT
             LET g_before_input_done = FALSE
             LET g_before_input_done = TRUE
-            CALL cl_set_comp_entry("oeb03,oeb71,oeb04,oeb06,oeb11,oeb1001,oeb906,oeb092,oeb15,oeb51,oeb72,oeb05,oeb12,oeb13,oeb41,oeb42,oeb43,oeb908,oeb22,oeb16,oeb916,oeb917,oebud01,oebud03,oebud04,oebud05" ,FALSE)   #modify 181001 oebud01~04 by ruby #移除oebud02
-        BEFORE ROW
+            CALL cl_set_comp_entry("oeb03,oeb71,oeb04,oeb06,oeb11,oeb1001,oeb906,oeb092,oeb15,oeb51,oeb72,oeb05,oeb12,oeb13,oeb41,oeb42,oeb43,oeb908,oeb22,oeb16,oeb916,oeb917,oebud01,oebud03,oebud04" ,FALSE)   #modify 181001 oebud01~04 by ruby #移除oebud02 #230418 mark oebud05 by ruby
+        BEFORE ROW                                                                                                                                                                                                                                                        
             LET l_ac = ARR_CURR()
             DISPLAY l_ac TO FORMONLY.cn3
             LET l_sl = SCR_LINE()
@@ -35604,6 +35647,7 @@ FUNCTION t400_b2()
                 oeb50   = g_oeb[l_ac].oeb50,
                 oebud06 = g_oeb[l_ac].oebud06,
                 oebud02 = g_oeb[l_ac].oebud02,  #20201105 add
+                oebud05 = g_oeb[l_ac].oebud05,  #230418 add by ruby
                 oeb20   = g_oeb[l_ac].oeb20     #20190828
                 WHERE oeb01=g_oea.oea01 AND oeb03=g_oeb[l_ac].oeb03
             IF STATUS OR SQLCA.SQLCODE THEN

@@ -183,6 +183,8 @@
 # Modify.........: NO:1903202854 20190326 By momo 客戶設備編號對應 ta_obk03 = oebud05
 # Modify.........: NO.1903152835 20190419 By momo 修正拋轉採購單為多角貿，但有設定簽核且自動確認時判斷錯誤問題，增加smyapr判斷欄位
 # Modify.........:                19/09/11 By Ruby 調整axmi151最近單價更新邏輯
+# Modify.........: No.23030035   20230324 By momo 檢核料號與數量
+# Modify.........: NO.23070003   20230706 By momo  axmt410 銷售特性卡控，單別5397時不卡控 
 
 DATABASE ds
  
@@ -310,7 +312,8 @@ FUNCTION t400sub_y_chk(p_flag,p_oea01)
    END IF
    #FUN-D80022 -------------- add ---------------- end ----------------------
    IF g_action_choice CLIPPED = "confirm" OR   #按「確認」時
-      g_action_choice CLIPPED = "insert"  OR      
+      g_action_choice CLIPPED = "insert"  OR    
+      g_action_choice CLIPPED = "easyflow_approval" OR  #20230324 送簽也得檢核 
       g_action_choice CLIPPED = "discount_allowed" THEN
       LET g_action_choice = "confirm"   #MOD-FA0080 add
       IF cl_chk_act_auth() THEN         #MOD-FA0080 add
@@ -491,6 +494,47 @@ FUNCTION t400sub_y_chk(p_flag,p_oea01)
       LET g_success = 'N'   #FUN-580155
       RETURN
    END IF
+
+   ##--- 20230324 add by momo (S) 料號與成品數量檢核
+   DECLARE check_item CURSOR FOR
+     SELECT oeb03,oeb04,oeb12 FROM oeb_file WHERE oeb01 = l_oea.oea01
+     CALL s_showmsg_init()
+     FOREACH check_item INTO l_oeb.oeb03,l_oeb.oeb04,l_oeb.oeb12
+       LET l_cnt = ''
+       #成品數量檢核
+       IF l_oeb.oeb04[1,1] = '0' AND (NOT cl_null(g_oaz.oazud10) AND g_oaz.oazud10>0)THEN
+          IF l_oeb.oeb12 > g_oaz.oazud10 THEN
+             LET g_showmsg= l_oeb.oeb04,"/",l_oeb.oeb12
+             CALL s_errmsg("oeb04,oeb12",g_showmsg,g_oaz.oazud10,'cxm-036',1)
+             LET g_success = 'N'
+          END IF
+       END IF
+       #料號檢核
+       SELECT 1 INTO l_cnt FROM ima_file
+        WHERE ima01 = l_oeb.oeb04
+          AND imaacti='Y'
+          AND rownum = 1
+       IF cl_null(l_cnt) THEN
+          CALL s_errmsg('',l_oeb.oeb03,'','auto-12',1)
+          LET g_success = 'N'
+       END IF
+       #非產品不可銷售檢核 20230706
+       IF l_oea.oea01[2,5] <> '5397' THEN
+          SELECT 1 INTO l_cnt FROM ima_file
+           WHERE ima01 = l_oeb.oeb04
+             AND ima130 = '0'
+             AND rownum = 1 
+          IF l_cnt = 1 THEN
+             CALL s_errmsg('',l_oeb.oeb04,'','axm-188',1)
+             LET g_success = 'N'
+          END IF
+       END IF
+     END FOREACH
+     CALL s_showmsg()
+     IF g_success = 'N' THEN
+        RETURN
+     END IF
+   ##--- 20230324 add by momo (E)
 
    #FUN-C70098----add----begin--------------
    IF s_industry("slk") AND g_azw.azw04 = '2' THEN
@@ -5595,8 +5639,8 @@ FUNCTION t400sub_mail_QR(l_oea)
            END IF
          END FOREACH
          
-            LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED 
-          # LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
+           LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED 
+           LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
            LET g_xml.recipient = l_recipient
            CALL FGL_SETENV("MAIL_TO",l_recipient)  
   
