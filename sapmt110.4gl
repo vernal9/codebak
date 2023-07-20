@@ -835,6 +835,7 @@ DEFINE g_rvb07     LIKE rvb_file.rvb07         #FUN-C30248 add
 DEFINE g_rvb04     LIKE rvb_file.rvb04         #FUN-C30248 add
 DEFINE g_b_flag    LIKE type_file.chr1         #TQC-D40025
 DEFINE t_wc         STRING
+DEFINE g_tc_evac01 LIKE tc_evac_file.tc_evac01 #20221025 驗收收貨
 
 FUNCTION t110(p_argv1,p_argv2,p_argv3,p_argv4,p_argv5,p_argv6) #No.FUN-630010 #FUN-840012 #No.FUN-940083
    DEFINE p_argv1    LIKE rva_file.rva01,     #收貨單號
@@ -1890,7 +1891,11 @@ FUNCTION t110_menu()
                    IF g_rva.rvaconf <> 'Y' THEN              #MOD-C30133 add
                       CALL cl_err('','apm1072',1)            #MOD-C30133 add
                    ELSE                                      #MOD-C30133 add
+                    IF g_rva.rva10 = 'CAP' THEN                   #20221025 add
+                      LET l_msg = "cqcp002  '",g_rva.rva01,"' "   #20221025
+                    ELSE                                          #20221025
                       LET l_msg = "aqcp001  '",g_rva.rva01,"' "
+                    END IF                                        #20221025
                       IF cl_chk_act_auth() THEN
                          CALL cl_cmdrun_wait(l_msg)
                       END IF                                 #MOD-C30133 add
@@ -1898,6 +1903,18 @@ FUNCTION t110_menu()
                 END IF
               END IF                                         #FUN-A50030 add
 #FUN-A80112 --end
+         ##---- 20221025 add by momo (S)
+         WHEN "cpmt002" #驗收單
+              LET g_tc_evac01 = ''
+              SELECT tc_evac01 INTO g_tc_evac01 FROM tc_evac_file
+               WHERE tc_evac03 = g_rva.rva01
+              IF cl_null(g_tc_evac01) THEN
+                 LET l_msg = "cpmt002 ' ' ' ' '",g_rva.rva01,"'"
+              ELSE
+                 LET l_msg = "cpmt002  '",g_tc_evac01,"' "
+              END IF
+              CALL cl_cmdrun(l_msg)
+         ##---- 20221025 add by momo (E)
          WHEN "add_invoice"
             IF cl_chk_act_auth() THEN   #MOD-A80109
                CALL t110_k()
@@ -12982,6 +12999,12 @@ FUNCTION t110_bp(p_ud)
          EXIT DIALOG
 #FUN-C30063---add---END
 
+      ##---- 20221025 add by momo (S)
+      ON ACTION cpmt002 #驗收單
+         LET g_action_choice="cpmt002"
+         EXIT DIALOG
+      ##---- 20221025 add by momo (E)
+
       
       ON ACTION locale
          CALL cl_dynamic_locale()
@@ -18542,6 +18565,11 @@ FUNCTION t110_bp2(p_ud)
          LET g_action_choice="qry_qc"
          EXIT DISPLAY
 
+      ##---- 20221025 (S)
+      ON ACTION cpmt002 #驗收單 
+         LET g_action_choice="cpmt002"
+         EXIT DISPLAY
+      ##---- 20221025 (E)
 
       ON ACTION locale
          CALL cl_dynamic_locale()

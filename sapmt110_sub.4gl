@@ -181,6 +181,7 @@
 # Modify.........: No:22080059   20220825 By momo 供應商留置時可收貨、入庫pmc05='2'
 # Modify.........: No:22100028   20221025 By momo CAP 性質不可直接入庫
 # Modify.........: No:22110051   20221202 By momo 固資料號已驗收才可產生入庫單
+# Modify.........: No:23020032   20230217 By momo 調整驗退量不可大於實收量rvb07
 
 DATABASE ds
 #FUN-850022
@@ -4288,6 +4289,7 @@ FUNCTION t110sub_ins_rvu(p_chr,p_qc,p_qcl05,p_flag,p_rva,p_rvb,p_rvbi,p_qco,p_sm
     WHERE ima01 = rvb05
       AND ima131 LIKE 'FA%'
       AND rvb01 = p_rva.rva01
+      AND rvb39 <> 'Y'        #20221206
       AND NOT EXISTS (SELECT 1 FROM tc_evac_file
                        WHERE tc_evac03 = rvb01
                          AND tc_evacconf='Y')
@@ -4648,6 +4650,7 @@ FUNCTION t110sub_ins_rvv(p_chr,p_qc,p_rvu00,p_rvv01,p_rvu03,p_qcl05,p_rva,p_rvb,
             LET l_rvv.rvv87 = p_out
          END IF
       ELSE
+         IF p_out > p_rvb.rvb07 THEN LET p_out = p_rvb.rvb07 END IF #20230217 驗退量不可大於實收量
          LET l_rvv.rvv17 = p_out
          LET l_rvv.rvv87 = p_rvb.rvb87 
       END IF
