@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{6bbcaa8f-0000-4000-9f93-0560d0d83637}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_tc_qce" order="" uid="{1f13b021-0000-4000-a643-51c37793e54a}" where="">
+    <RecordField colName="tc_qce01" fieldIdRef="1" fieldType="TABLE_COLUMN" name="tc_qce_file.tc_qce01" sqlTabName="tc_qce_file" sqlType="VARCHAR" table_alias_name="" uid="{61c3a8b2-0000-4000-91a5-27fa3ae4a367}"/>
+    <RecordField colName="tc_qce03" fieldIdRef="2" fieldType="TABLE_COLUMN" name="tc_qce_file.tc_qce03" sqlTabName="tc_qce_file" sqlType="VARCHAR" table_alias_name="" uid="{8706e182-0000-4000-bfbf-eba0a7dd20d0}"/>
+    <RecordField colName="tc_qce04" fieldIdRef="5" fieldType="TABLE_COLUMN" name="tc_qce_file.tc_qce04" sqlTabName="tc_qce_file" sqlType="VARCHAR" table_alias_name="" uid="{f8791c0d-1128-477b-9d86-6f1834192546}"/>
+    <RecordField colName="qce03" fieldIdRef="6" fieldType="TABLE_COLUMN" name="qce_file.qce03" sqlTabName="qce_file" sqlType="VARCHAR" table_alias_name="" uid="{7ec40fc9-4019-4ad2-98ff-cca36452c730}"/>
+    <RecordField colName="tc_qceacti" defaultValue="N" fieldIdRef="3" fieldType="TABLE_COLUMN" name="tc_qce_file.tc_qceacti" sqlTabName="tc_qce_file" sqlType="VARCHAR" table_alias_name="" uid="{8dffe2eb-0000-4000-adb0-cf0b082af0ac}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{497b5ee4-0000-4000-b4e3-e66ee1296cf4}" where="">
+    <RecordField colName="" fieldIdRef="4" fieldType="NON_DATABASE" name="cn2" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{8822377e-0000-4000-89db-d78575ea87d2}"/>
+  </Record>
+  <Form gridHeight="18" gridWidth="83" name="cqci102" spacing="normal" text="cqci102">
+    <Folder gridHeight="18" gridWidth="83" lstrcomment="false" name="pc1" posX="0" posY="0">
+      <Page lstrtext="false" name="page01" text="Main">
+        <VBox gridHeight="17" gridWidth="81" name="VBox1" posX="0" posY="0">
+          <Table gridHeight="13" gridWidth="81" lstrcomment="false" name="s_tc_qce" posX="0" posY="1" totalRows="11">
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_qce01" columnCount="" comment="Key Field, No Blank" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="13" lstrcomment="false" lstrtitle="false" name="tc_qce_file.tc_qce01" notNull="true" posX="0" posY="0" required="true" rowCount="" sqlTabName="tc_qce_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" title="No-Good Code" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_qce03" columnCount="" fieldId="2" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="30" lstrcomment="false" lstrtitle="false" name="tc_qce_file.tc_qce03" noEntry="false" notNull="true" posX="13" posY="0" required="true" rowCount="" sqlTabName="tc_qce_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="Description" widget="Edit"/>
+            <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_qce04" columnCount="" comment="&lt;^P&gt;Query" fieldId="5" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="13" image="zoom" name="tc_qce_file.tc_qce04" notNull="true" posX="43" posY="0" required="true" rowCount="" sqlTabName="tc_qce_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" title="tc_qce04" widget="ButtonEdit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="qce03" columnCount="" fieldId="6" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="14" name="qce_file.qce03" noEntry="true" posX="56" posY="0" rowCount="" sqlTabName="qce_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="6" table_alias_name="" title="qce03" widget="Edit"/>
+            <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_qceacti" columnCount="" defaultValue="N" fieldId="3" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="5" lstrcomment="false" lstrtext="false" lstrtitle="false" name="tc_qce_file.tc_qceacti" notNull="true" posX="70" posY="0" required="true" rowCount="" sqlTabName="tc_qce_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="3" table_alias_name="" title="Valid" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+          </Table>
+          <Grid gridHeight="2" gridWidth="81" lstrcomment="false" name="gr3" posX="0" posY="14">
+            <HLine gridWidth="9" name="hl1" posX="1" posY="0"/>
+            <Label posX="11" posY="0" text="Rows"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="4" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" noEntry="true" posX="17" posY="0" rowCount="" sqlTabName="" sqlType="SMALLINT" stepX="" stepY="" tabIndex="4" table_alias_name="" widget="Edit"/>
+            <HLine gridWidth="10" name="hl2" posX="25" posY="0"/>
+          </Grid>
+        </VBox>
+      </Page>
+    </Folder>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewA3AGUAYwA0ADAAZgBjADkALQA0ADAAMQA5AC0ANABhAGQAMgAtADkAOABmAGYALQBjAGMAYQAzADYANAA1ADIAYwA3ADMAMAB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewA4AGQAZgBmAGUAMgBlAGIALQAwADAAMAAwAC0ANAAwADAAMAAtAGEAZABiADAALQBjAGYAMABiADAAOAAyAGEAZgAwAGEAYwB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQAAAEwAewBmADgANwA5ADEAYwAwAGQALQAxADEAMgA4AC0ANAA3ADcAYgAtADkAZAA4ADYALQA2AGYAMQA4ADMANAAxADkAMgA1ADQANgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewA4ADcAMAA2AGUAMQA4ADIALQAwADAAMAAwAC0ANAAwADAAMAAtAGIAZgBiAGYALQBlAGIAYQAwAGEANwBkAGQAMgAwAGQAMAB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewA0ADkANwBiADUAZQBlADQALQAwADAAMAAwAC0ANAAwADAAMAAtAGIANABlADMALQBlADYANgBlAGUAMQAyADkANgBjAGYANAB9QG2gAAAAAABAJAAAAAAAAD9QYk3S8an8AQAAAEwAewA2ADEAYwAzAGEAOABiADIALQAwADAAMAAwAC0ANAAwADAAMAAtADkAMQBhADUALQAyADcAZgBhADMAYQBlADQAYQAzADYANwB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewAxAGYAMQAzAGIAMAAyADEALQAwADAAMAAwAC0ANAAwADAAMAAtAGEANgA0ADMALQA1ADEAYwAzADcANwA5ADMAZQA1ADQAYQB9AAAAAAAAAAAAAAAAAAAAAD9ok3S8an76AQAAAEwAewA4ADgAMgAyADMANwA3AGUALQAwADAAMAAwAC0ANAAwADAAMAAtADgAOQBkAGIALQBkADcAOAA1ADcANQBlAGEAOAA3AGQAMgB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>

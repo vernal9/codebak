@@ -447,8 +447,7 @@
 # Modify.........:               20210809 By momo 190416程式段調整檢核處，避免部門調整後誤判
 # Modify.........: No:2203037686 20220310 By momo 拋轉請購單無產生單據押上N，用以判別當下不需生成請購
 # Modify.........: No:2203037685 20220316 By momo 雜發單 需求日期 調整
-# Modify.........: No:23020002   20230217 By momo 未扣帳，可調整「理由碼」
-
+# Modify.........: NO.23020002   20230220 By momo 雜發單-未扣帳 inb15理由碼 調整
 DATABASE ds
  
 GLOBALS "../../../tiptop/config/top.global"
@@ -605,9 +604,9 @@ FUNCTION t370(p_argv1)
     CALL cl_set_comp_visible('Page2',g_sma.sma95 = 'Y')
     #FUN-C80030--add--end--- 
     IF g_argv1 = '1' THEN
-       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_reason',TRUE)    #20200317 #20220316 #20230220
+       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_inb15',TRUE)    #20200317 #20220316 #20230220
     ELSE
-       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_reasno',FALSE)   #20200317 #20220316 #20230220
+       CALL cl_set_act_visible('carry_pr,over_qty,modify_inaud13,modify_inb15',FALSE)   #20200317 #20220316 #20230220
        CALL cl_set_comp_visible("inaud13,socnt",FALSE)      #20210507
     END IF
 #FUN-C20101--add--begin--
@@ -1547,6 +1546,15 @@ DEFINE l_flag1           LIKE type_file.chr1  #CHI-CC0028
               END IF
             END IF
          ##----- 20220316 add by momo (E)
+
+         ##--- 20230220 add by momo (S) 修改理由碼
+         WHEN "modify_inb15"
+            IF cl_chk_act_auth() THEN
+              IF g_ina.inapost = 'N' THEN
+                 CALL t370_modify_inb15()
+              END IF
+            END IF
+         ##--- 20230220 add by momo (E)
         
          WHEN "confirm"
             IF cl_chk_act_auth() THEN
@@ -1994,13 +2002,6 @@ DEFINE l_flag1           LIKE type_file.chr1  #CHI-CC0028
             IF cl_chk_act_auth() THEN
                CALL t370sub_exp()
             END IF
-
-         ##----- 20230220 add (S)
-         WHEN "modify_reason" #修改原因
-            IF cl_chk_act_auth() THEN
-               CALL t370_modify_reason()
-            END IF
-         ##----- 20230220 add (E)
  
          WHEN "related_document"  #相關文件
             IF cl_chk_act_auth() THEN
@@ -2612,12 +2613,12 @@ DEFINE l_where    STRING               #FUN-CB0087
 
   IF NOT t370_chk_ina01() THEN  LET g_action_choice = '' RETURN END IF #MOD-E30039 add
    
-  IF g_action_choice = "warahouse_modify" OR g_action_choice = "over_qty" THEN  #20200317
+  IF g_action_choice = "warahouse_modify" OR g_action_choice = "over_qty" OR g_action_choice = "modify_inb15" THEN  #20200317 #20230220
      LET g_wm = 'Y'
   ELSE
      LET g_wm = 'N'
   END IF
-  IF g_action_choice != "over_qty" THEN  #20200317
+  IF g_action_choice != "over_qty" AND g_action_choice != "modify_inb15" THEN  #20200317 #20230220
      LET g_action_choice = ""
   END IF
   LET g_success = 'Y'   #TQC-E30007
@@ -2681,6 +2682,7 @@ DEFINE l_where    STRING               #FUN-CB0087
               IF g_action_choice = 'over_qty' THEN          #20200317
                  CALL cl_set_comp_entry("inbud07",TRUE)     #20200317
               END IF                                        #20200317
+
            CALL cl_set_comp_entry("inb03,inb911,inb912,inb04,inb08,inb08_fac,
                                    inb16,inb925,inb926,inb927,inb922,inb923,inb924,inb09,
                                    inb905,inb906,inb907,inb902,inb903,inb904,inb15,     
@@ -2702,6 +2704,7 @@ DEFINE l_where    STRING               #FUN-CB0087
            # -------MOD-BB0341 end----------- 
            END IF
            CALL cl_set_comp_entry("inb09,inb904,inb907",FALSE)   #CHI-960092
+
  
         BEFORE ROW
             LET p_cmd=''
@@ -2782,6 +2785,10 @@ DEFINE l_where    STRING               #FUN-CB0087
                   CALL cl_set_comp_entry('inb03,inb10',FALSE)    #MOD-C30541 add inb10
                END IF
                #FUN-BC0104-add-end--
+               IF g_action_choice = 'modify_inb15' THEN      #20230220
+                 CALL cl_set_comp_entry("inb15",TRUE)        #20230220
+                 CALL cl_set_comp_entry("inb05,inb06,inb07,inbud07",FALSE) #20230220
+               END IF                                        #20230220
           
           ##----- 20210809 mark by momo start 程式段搬移 
           #190416 add by ruby --s-- 研發單位領用，專案代碼不可為空
@@ -2802,7 +2809,7 @@ DEFINE l_where    STRING               #FUN-CB0087
                   IF g_action_choice = 'over_qty' THEN   #20200317
                      NEXT FIELD inbud07
                   ELSE
-                     NEXT FIELD inb05
+                        NEXT FIELD inb05
                   END IF
                END IF                 #FUN-8C0024
                CALL cl_show_fld_cont()     #FUN-550037(smin)
@@ -5055,6 +5062,13 @@ ELSE
          LET g_action_choice="modify_inaud13"
          EXIT DIALOG
    ##---- 20220316 add ------- (E)
+
+   ##---- 20230220 add (S)
+   #@ ON ACTION 修改理由碼
+      ON ACTION modify_inb15
+         LET g_action_choice="modify_inb15"
+         EXIT DIALOG
+   ##---- 20230220 add (E)
  
    #@ ON ACTION 確認
       ON ACTION confirm
@@ -8725,6 +8739,7 @@ FUNCTION t370_b_move_back()
    IF g_action_choice = 'over_qty' THEN                             #20200317
       LET b_inb.inb09 = g_inb[l_ac].inb16 + g_inb[l_ac].inbud07     #20200317
    END IF
+      
    LET b_inb.inb902= g_inb[l_ac].inb902
    LET b_inb.inb903= g_inb[l_ac].inb903
    LET b_inb.inb904= g_inb[l_ac].inb904
@@ -13668,3 +13683,20 @@ END IF
 
 END FUNCTION
 ##----- 20220316 add by momo (E)
+
+FUNCTION t370_modify_inb15()
+
+DEFINE l_n   LIKE type_file.num5
+
+   IF cl_null(g_ina.ina01) THEN RETURN END IF
+   SELECT COUNT(*) INTO l_n FROM inb_file WHERE inb01 = g_ina.ina01
+   IF l_n <= 0 THEN RETURN END IF
+   IF g_action_choice = "modify_inb15" THEN
+      CALL t370_b()
+      CALL cl_set_comp_entry("inb03,inb911,inb912,inb04,inb08,inb08_fac,inb16,inb925,inb926,
+                              inb927,inb922,inb923,inb924, 
+                              inb905,inb906,inb902,inb903,inb41,inb42,inb43,inb11,inb12,inb901,inb10,inb930,
+                             inb44,inb45,inb46,inb47,inb48,inbud07",TRUE)
+
+   END IF
+END FUNCTION

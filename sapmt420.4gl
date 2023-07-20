@@ -512,6 +512,9 @@
 # Modify.........: No:2207258547 20220802 By momo 資料清單增加顯示 pmkud01
 # Modify.........: NO:22100004   20221006 By momo 訂單單號序號調整鈕，調整為可清為空
 # Modify.........: NO:22120041   20221219 By momo 送簽時請購類別判斷 增加CAP也需一併判斷
+# Modify.........: NO:23060017   20230616 By momo 單位換算率不一致處理
+# Modify.........: NO:23060021   20230626 By momo 增加合併數量刪除重覆功能（pml04,ta_pml01）
+# Modify.........: No:23070017   20230710 By momo 請購單複製時，pmkud13採購接受日期應為空
 
 DATABASE ds
  
@@ -1939,6 +1942,24 @@ FUNCTION t420_menu()
                CALL t420_copy2()
             END IF
          ##--- 20190225 add by momo (E)
+
+         ##--- 20230626 add by momo (S) 合併與刪除
+         WHEN "merge"
+           IF cl_chk_act_auth() THEN
+              #訂單單號項次為空時不執行該功能20230629
+              LET l_cnt = ''
+              SELECT 1 INTO l_cnt FROM pml_file
+               WHERE pml01 = g_pmk.pmk01
+                 AND ta_pml01 IS NULL
+                 AND rownum = 1
+              IF l_cnt = 1 THEN
+                 CALL cl_err('','cpm-033',1)
+                 CALL t420_show()
+              ELSE
+                 CALL t420_merge()
+              END IF
+           END IF
+         ##--- 20230626 add by momo (E)
          
          ##--- 20200430 add by momo 檢核是否有分量計價較低單價(S)
          WHEN "updatepmr"
@@ -4836,6 +4857,11 @@ FUNCTION t420_bp(p_ud)
          LET g_action_choice="reproduce2"
          EXIT DIALOG
 
+      ##--- 合併與刪除 20230626
+      ON ACTION merge
+         LET g_action_choice="merge"
+         EXIT DIALOG
+
       ##--- 抓取較低分量計價廠商 20200430
       ON ACTION updatepmr
          LET g_action_choice="updatepmr"
@@ -5766,7 +5792,9 @@ DEFINE l_n          LIKE type_file.num5     #MOD-F80064 add
             pmkplant=g_plant, #機構別       #No.FUN-870007
             pmk48=l_pmk48,    #請購時間     #No.FUN-870007
             pmkcont='',       #審核時間     #No.FUN-870007
-            pmkacti='Y'       #有效資料
+            pmkacti='Y',      #有效資料
+            pmkud13='',       #採購接受日期 20230710 
+            pmkud01=''        #備註 20230710    
     INSERT INTO pmk_file
         SELECT * FROM y
     IF SQLCA.sqlcode THEN
@@ -5822,6 +5850,8 @@ DEFINE l_n          LIKE type_file.num5     #MOD-F80064 add
             pml93=NULL, #FUN-A10034
             pml192='N', #MOD-FC0107 add
             pml54=l_pml54, #MOD-F30063 add
+            pmlud01='',    #20230710
+            pmlud03='',    #20230710
             ta_pml01='',   #20180620
             ta_pml02=''    #20180620
     INSERT INTO pml_file
@@ -8316,6 +8346,7 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
              UPDATE pml_file SET ta_pml04 = g_pml[l_ac].ta_pml04,ta_pml05 = g_pml[l_ac].ta_pml05  #20181029 add
               WHERE pml02 = g_pml[l_ac].pml02 AND pml01 =  g_pmk.pmk01                            #20181029 add
              #180516 add by ruby  --e-- 
+             DISPLAY BY NAME g_pml[l_ac].* #20230616
              
           #20180331 add by momo (S)
           #專案核價單
@@ -8378,6 +8409,7 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                 LET g_pml[l_ac].gen02_b = ''
              END IF
              LET g_pml_o.ta_pml06 = g_pml[l_ac].ta_pml06
+             DISPLAY BY NAME g_pml[l_ac].ta_pml06
           #M003 171120 By TSD.Nic -----(E)
 
           ##---- 20201027 add by momo (S)
@@ -8393,6 +8425,7 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                NEXT FIELD ta_pml05
             END IF
            END IF
+           DISPLAY BY NAME g_pml[l_ac].ta_pml05
           ##---- 20201027 add by momo (E)
 
           AFTER FIELD pml07    #請購單位
@@ -15893,6 +15926,11 @@ FUNCTION t420_bp3(p_ud)
          LET g_action_choice="reproduce2"
          EXIT DISPLAY
 
+      ##---- 20230626
+      ON ACTION merge
+         LET g_action_choice="merge"
+         EXIT DISPLAY
+
       ##---- 分量計價較低價廠商 20200430
       ON ACTION updatepmr
          LET g_action_choice="updatepmr"
@@ -16881,10 +16919,16 @@ FUNCTION t420_changeso()
 
     AFTER FIELD ta_pml01
       IF NOT cl_null(tm.ta_pml01) THEN
+         #訂單
          SELECT oeb01,oeb03 INTO l_oeb01,l_oeb03
            FROM oeb_file  
           WHERE oeb01||LPAD(oeb03,3,'0') = tm.ta_pml01
             AND oeb70 = 'N'
+         UNION
+         #雜發
+         SELECT inb01,inb03 INTO l_oeb01,l_oeb03
+           FROM inb_file
+          WHERE inb01||LPAD(inb03,3,'0') = tm.ta_pml01 
          IF cl_null(l_oeb01) THEN
             NEXT FIELD ta_pml01
          END IF
@@ -17318,3 +17362,40 @@ FUNCTION t420_set_no_entry_d(p_a,p_pml33a,p_pml34a,p_pml35a)
 
 END FUNCTION
 #----- 20220103 add by momo 單身批次日期調整(E)
+
+##---- 20230626 add by momo 合併相同 料號+訂單單號序數量(S)
+FUNCTION t420_merge()
+  IF g_pmk.pmk25 MATCHES'[0RW]' THEN
+  #數量加總
+     UPDATE pml_file SET pml20 = (SELECT SUM(pml20) FROM pml_file b
+                                   WHERE b.pml01 = g_pmk.pmk01
+                                     AND pml_file.pml04 = b.pml04
+                                     AND pml_file.ta_pml01 = b.ta_pml01
+                                   GROUP BY b.pml04,b.ta_pml01),
+                          pml87 = (SELECT SUM(pml87) FROM pml_file c
+                                   WHERE c.pml01 = g_pmk.pmk01
+                                     AND pml_file.pml04 = c.pml04
+                                     AND pml_file.ta_pml01 = c.ta_pml01
+                                   GROUP BY c.pml04,c.ta_pml01
+                                   ),
+                          ta_pml02=''
+      WHERE pml_file.pml01 = g_pmk.pmk01
+        AND ta_pml01 IS NOT NULL
+
+     #刪除重覆列
+     DELETE FROM pml_file
+       WHERE rowid NOT IN (SELECT MAX(rowid) FROM pml_file b
+                            WHERE b.pml01=g_pmk.pmk01 GROUP BY b.pml04,b.ta_pml01)
+         AND pml01 = g_pmk.pmk01
+         AND pml16 IN ('0','R','W')
+         AND ta_pml01 IS NOT NULL
+  
+     CALL t420_update_pml31()         #單價重抓
+     CALL cl_err('','lib-022',1)      #異動完成提示
+     CALL t420_b_fill(g_wc2,' 1=1')   #單身重新顯示
+ELSE
+  CALL cl_err('','atm-046',1)
+  RETURN
+END IF
+END FUNCTION
+##---- 20230626 add by momo 合併相同 料號+訂單單號序號 (E)

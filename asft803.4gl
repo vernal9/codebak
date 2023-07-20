@@ -5821,11 +5821,13 @@ DEFINE
                         AND (bmb04<=g_sfb.sfb071 OR bmb04 IS NULL)
                         AND (g_sfb.sfb071<bmb05 OR bmb05 IS NULL)
                      LET g_sna[l_ac].sna26a = l_bmb16
-                     ##----- 20180524 mark start
-                     #IF cl_null(g_sna[l_ac].sna29a) THEN                #CHI-E40015 add
-                     #   CALL t803_sna29a() RETURNING g_sna[l_ac].sna29a #CHI-E40015 add #預帶出上階料號(sna29a)
-                     #END IF                                             #CHI-E40015 add
-                     ##----- 20180524 mark end
+                     ##----- 20180524 mark start 
+                     ##----- 20230605 remark
+                     IF cl_null(g_sna[l_ac].sna29a) THEN                #CHI-E40015 add
+                        CALL t803_sna29a() RETURNING g_sna[l_ac].sna29a #CHI-E40015 add #預帶出上階料號(sna29a)
+                     END IF                                             #CHI-E40015 add
+                     ##----- 20180524 mark end 
+                     ##----- 20230605 remark
                   END IF
                  #MOD-AB0228---add---end---
              END IF
@@ -11424,11 +11426,13 @@ FUNCTION t803_set_no_entry_b(p_cmd)
     END IF
    #----------------No:MOD-A90168 end
 
+   ##---- 20230605 mark (S)
    #FUN-B20056 --START--
-    IF NOT cl_null(g_sna[l_ac].sna03b) THEN 
-       CALL cl_set_comp_entry("sna29a",FALSE)
-    END IF 
+   # IF NOT cl_null(g_sna[l_ac].sna03b) THEN 
+   #    CALL cl_set_comp_entry("sna29a",FALSE)
+   # END IF 
     #FUN-B20056 --END-- 
+   ##---- 20230605 mark (E) 
 
 END FUNCTION
 
@@ -12934,7 +12938,8 @@ DEFINE l_res          LIKE type_file.num5
          CALL cl_err(g_snb01_t,SQLCA.sqlcode,1)
          RETURN
       END IF 
-      IF g_sma.sma887[1]!='N' AND g_sna[l_ac].safter='2' THEN   #當有控卡備料需存在BOM裡
+      #IF g_sma.sma887[1]!='N' AND g_sna[l_ac].safter='2' THEN   #當有控卡備料需存在BOM裡 20230605 mark asms270
+      IF g_sma.sma887[1]='Y' AND g_sna[l_ac].safter='2' THEN     #當有控卡備料需存在BOM裡 20230605 modify
          LET g_flag = 1
          CALL t803_chk_bom(l_bmb01) RETURNING l_res
          IF l_res = 0 AND l_bmb01 != g_sfb.sfb05 THEN 
