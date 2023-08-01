@@ -515,6 +515,7 @@
 # Modify.........: NO:23060017   20230616 By momo 單位換算率不一致處理
 # Modify.........: NO:23060021   20230626 By momo 增加合併數量刪除重覆功能（pml04,ta_pml01）
 # Modify.........: No:23070017   20230710 By momo 請購單複製時，pmkud13採購接受日期應為空
+# Modify.........: NO:23070055   20230801 By momo 增加 料件PDF開啟功能
 
 DATABASE ds
  
@@ -2302,6 +2303,12 @@ FUNCTION t420_menu()
                  CALL cl_doc()
                END IF
          END IF
+
+         ## 20230801 add
+         WHEN "related_document2" #料號PDF
+　　　　　　　IF cl_chk_act_auth() THEN
+                 CALL ccl_open(g_pml[l_ac].pml04)
+              END IF
  
          #@WHEN GPM規範顯示   
          WHEN "gpm_show"
@@ -5034,6 +5041,12 @@ FUNCTION t420_bp(p_ud)
          LET g_action_choice="purchase_quotation"
          EXIT DIALOG
       #M003 171127 By TSD.Jin--end----
+
+      ##20230801 add
+      ON ACTION related_document2                
+         LET g_action_choice="related_document2"          
+         EXIT DIALOG
+      
  
       ON ACTION related_document                #No.FUN-6A0162  相關文件
          LET g_action_choice="related_document"          
