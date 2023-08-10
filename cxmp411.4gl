@@ -48,6 +48,7 @@ DEFINE
             oeo07      LIKE oeo_file.oeo07,     #訂單存在選配件 
             bma05      LIKE bma_file.bma05,
             sfb01      LIKE sfb_file.sfb01,
+            pmn01      LIKE pmn_file.pmn01,     #多角採購單號20230724
             packing    LIKE type_file.chr1000, 
             tc_ogauser LIKE tc_oga_file.tc_ogauser,
             tc_oga05   LIKE tc_oga_file.tc_oga05,  #時間
@@ -94,7 +95,7 @@ MAIN
     LET plant_visible = 'N'
        DISPLAY g_plant TO FORMONLY.azp01
  
-    OPEN WINDOW p411_w WITH FORM "cxm/42f/cxmp411" 
+    OPEN WINDOW p411_w WITH FORM "cxm/42f/cxmp410" 
         ATTRIBUTE (STYLE = g_win_style CLIPPED) 
     
     CALL cl_ui_init()
@@ -162,6 +163,7 @@ FUNCTION p411_b_askkey()
                        ima06,ima09,ima131,ima1007,
                        ta_ima02,ta_ima04,ta_ima06,
                        bma05,sfb01,
+                       pmn01,                                  #20230724
                        tc_ogauser,tc_oga05,
                        tc_oga07                                #20220627
                   FROM s_oeb[1].oea02,
@@ -175,7 +177,8 @@ FUNCTION p411_b_askkey()
                        s_oeb[1].ima021,
                        s_oeb[1].ima06,s_oeb[1].ima09,s_oeb[1].ima131,s_oeb[1].ima1007,
                        s_oeb[1].ta_ima02,s_oeb[1].ta_ima04,s_oeb[1].ta_ima06,
-                       s_oeb[1].bma05,s_oeb[1].sfb01,                          
+                       s_oeb[1].bma05,s_oeb[1].sfb01,                   
+                       s_oeb[1].pmn01,                        #20230724       
                        s_oeb[1].tc_ogauser,s_oeb[1].tc_oga05,
                        s_oeb[1].tc_oga07                       #20220627
          
@@ -300,6 +303,7 @@ FUNCTION p411_b_fill(p_wc2)
         "       ta_ima06,",   
         "       oeb12,oeb24,oeb16,'N',bma05, ",
         "       sfb01, ",
+        "       pmn01, ",                             #20230724
         "       '',",
         "       tc_ogauser,tc_oga05,tc_oga06,tc_oga07 ",                                   #20220627 mark
        #"  FROM oea_file ",                                                                #20230523 mark by momo 
@@ -309,6 +313,7 @@ FUNCTION p411_b_fill(p_wc2)
         "  LEFT JOIN ",cl_get_target_table(g_plant_new,'occ_file'), " ON oea04=occ01 ,"     #20230523 modify by momo 
                       ,cl_get_target_table(g_plant_new,'oeb_file'),
         "  LEFT JOIN ",cl_get_target_table(g_plant_new,'sfb_file'), " ON sfb22=oeb01 AND sfb221=oeb03 AND sfb87<>'X' ",            
+        "  LEFT JOIN ",cl_get_target_table(g_plant_new,'pmn_file'), " ON pmn24=oeb01 AND pmn25=oeb03 AND pmn011='TAP' AND pmn16<>'9' ",  #20230724           
         "  LEFT JOIN ",cl_get_target_table(g_plant_new,'tc_oga_file'), " ON tc_oga01=oeb01 AND tc_oga02=oeb03 AND tc_oga00='R' ",    
         "  LEFT JOIN (SELECT MAX(oep04) oep04,oeq01,oeq03 ",
         "               FROM ",cl_get_target_table(g_plant_new,'oeq_file'),
@@ -580,7 +585,7 @@ FUNCTION p411_bp(p_ud)
         
         ON ACTION plant                  #20230531
            LET plant_visible = 'Y'       #20230531 
-           LET g_action_choice="query"   #20230531
+           LET g_action_choice="plant"   #20230531
            EXIT DISPLAY                  #20230531
  
         ON ACTION query       
@@ -724,7 +729,7 @@ FUNCTION p411_b()
                CALL cl_replace_sqldb(g_sql) RETURNING g_sql
                CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
                PREPARE upd_tc_oga2 FROM g_sql
-               EXECUTE upd_tc_oga2 USING g_oeb[g_cnt].oeb01,g_oeb[g_cnt].oeb03
+               EXECUTE upd_tc_oga2 USING g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03
                IF SQLCA.sqlcode THEN
                   CALL cl_err3("upd","tc_oga_file",g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03,SQLCA.sqlcode,"","",1)
                END IF
