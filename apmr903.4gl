@@ -82,6 +82,7 @@
 # Modify.........: NO:2111027209 20211102 By momo 增加 sma119料件編碼長度判斷，20碼才抓前後版本資訊
 # Modify.........: NO:2202107544 20220210 By momo 增加顯示請購員
 # Modify.........: No:2207258542 20220725 By momo 版本料號資訊重覆修正
+# Modify.........: No:23070058   20230810 By momo aimi108 PR01 類別，固定顯示
 
 DATABASE ds
 
@@ -1207,9 +1208,13 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
       LET l_pmo05=''
       LET l_pmo06=''
       DECLARE pmo_cur3 CURSOR FOR
-       SELECT pmo05,pmo06 FROM pmo_file
-        WHERE pmo01=sr.pmk01 AND pmo03=sr.pml02 AND pmo04='1'
-        ORDER BY pmo05
+       #SELECT pmo05,pmo06 FROM pmo_file                         #20230810 mark
+       # WHERE pmo01=sr.pmk01 AND pmo03=sr.pml02 AND pmo04='1'   #20230810 mark
+       #UNION                                  #20230810 add
+       SELECT imc03,imc04 FROM imc_file        #20230810 add
+        WHERE imc02='PR01'                     #20230810 add
+          AND imc01 = sr.pml04                 #20230810 add
+        ORDER BY 1
       FOREACH pmo_cur3 INTO l_pmo05,l_pmo06
          EXECUTE insert_prep2 USING sr.pmk01,sr.pml02,'1',l_pmo05,l_pmo06
       END FOREACH
