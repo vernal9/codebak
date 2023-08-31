@@ -3132,15 +3132,16 @@ DEFINE l_pmn02        LIKE pmn_file.pmn02
 
        #入庫
        SELECT rvu01 INTO g_tc_evaa_l[l_cnt].rvu01_l
-         FROM rvu_file
-        WHERE rvu02 = g_tc_evaa_l[l_cnt].rva01_l
+         FROM rvu_file,rvv_file
+        WHERE rvu01 = rvv01
           AND rvuconf <> 'X'
+          AND rvv36 = g_tc_evaa_l[l_cnt].pmm01_l
           AND rvv37 = l_pmn02
        #應付
        SELECT apb01 INTO g_tc_evaa_l[l_cnt].apa01_l
          FROM apb_file,apa_file
         WHERE apb01=apa01
-          AND apa14='Y'
+          AND apa41='Y'
           AND apb06 = g_tc_evaa_l[l_cnt].pmm01_l
           AND apb07 = l_pmn02
           AND rownum = 1
