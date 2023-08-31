@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{233952b6-3e6a-4990-a85c-fc1376ab3a23}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_tc_ghs" order="" uid="{36a8c25a-5a4a-4070-a473-34a0347fb905}" where="">
+    <RecordField colName="tc_ghs01" fieldIdRef="1" fieldType="TABLE_COLUMN" name="tc_ghs_file.tc_ghs01" sqlTabName="tc_ghs_file" sqlType="VARCHAR" table_alias_name="" uid="{b79b6691-8db8-42fd-8778-37249cd57d4d}"/>
+    <RecordField colName="tc_ghs02" fieldIdRef="2" fieldType="TABLE_COLUMN" name="tc_ghs_file.tc_ghs02" sqlTabName="tc_ghs_file" sqlType="VARCHAR" table_alias_name="" uid="{41102728-b948-439d-9ab8-8fdbf873ccbd}"/>
+    <RecordField colName="tc_ghs03" fieldIdRef="3" fieldType="TABLE_COLUMN" name="tc_ghs_file.tc_ghs03" sqlTabName="tc_ghs_file" sqlType="VARCHAR" table_alias_name="" uid="{f38554d6-7ed0-46a3-aa6a-d92a01827130}"/>
+    <RecordField colName="tc_ghs04" fieldIdRef="7" fieldType="TABLE_COLUMN" name="tc_ghs_file.tc_ghs04" sqlTabName="tc_ghs_file" sqlType="VARCHAR" table_alias_name="" uid="{81e25d35-e07d-4614-814a-0d0a8902eb3c}"/>
+    <RecordField colName="tc_ghs05" fieldIdRef="9" fieldType="TABLE_COLUMN" name="tc_ghs_file.tc_ghs05" sqlTabName="tc_ghs_file" sqlType="VARCHAR" table_alias_name="" uid="{65cab778-330e-4dcc-8435-b7dad1883ec8}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{e2cbc7c6-1154-4bb2-b87f-ad66013f68ad}" where="">
+    <RecordField colName="" fieldIdRef="12" fieldType="NON_DATABASE" name="cn2" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{bc023c09-19c2-428d-92cf-c4b2a875a599}"/>
+    <RecordField colName="azp01" fieldIdRef="14" fieldType="TABLE_COLUMN" name="azp_file.azp01" sqlTabName="azp_file" sqlType="VARCHAR" table_alias_name="" uid="{7700c2e0-4379-48e5-aaba-541bcac7ec8e}"/>
+  </Record>
+  <Form gridHeight="24" gridWidth="206" name="cimi500" spacing="normal" text="cimi500">
+    <VBox gridHeight="24" gridWidth="193" name="vb7" posX="1" posY="0">
+      <Folder gridHeight="5" gridWidth="193" name="Folder1" posX="0" posY="1">
+        <Page name="Page1" text="Page1">
+          <Grid gridHeight="3" gridWidth="94" name="Grid1" posX="0" posY="0">
+            <Label gridHeight="1" gridWidth="10" name="Lablel1" posX="1" posY="1" text="azp01"/>
+            <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="azp01" columnCount="" fieldId="14" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="17" image="zoom" name="azp_file.azp01" posX="14" posY="1" rowCount="" sqlTabName="azp_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" title="formonly.ButtonEdit1" widget="ButtonEdit"/>
+          </Grid>
+        </Page>
+      </Folder>
+      <Folder gridHeight="15" gridWidth="193" lstrcomment="false" name="pc832" posX="0" posY="6">
+        <Page lstrtext="false" name="page01" text="Page01">
+          <Table gridHeight="12" gridWidth="193" lstrcomment="false" name="s_tc_ghs" posX="0" posY="0" totalRows="10">
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ghs01" columnCount="" comment="KEY Field, No Blank/Repeated!" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="19" lstrcomment="false" lstrtitle="false" name="tc_ghs_file.tc_ghs01" noEntry="false" notNull="true" posX="0" posY="0" required="true" rowCount="" sqlTabName="tc_ghs_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="Chemical name" widget="Edit"/>
+            <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ghs02" columnCount="" comment="Maintain field data in Multi. Language" fieldId="2" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="16" items="健康危害, 環境危害, 物理性危害" lstrcomment="false" lstrtitle="false" name="tc_ghs_file.tc_ghs02" noEntry="true" notNull="true" posX="19" posY="0" required="true" rowCount="" sqlTabName="tc_ghs_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="3" table_alias_name="" title="tc_ghs02" widget="ComboBox">
+              <Item lstrtext="false" name="健康危害" text="健康危害"/>
+              <Item lstrtext="false" name="環境危害" text="環境危害"/>
+              <Item lstrtext="false" name="物理性危害" text="物理性危害"/>
+            </ComboBox>
+            <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ghs03" columnCount="" comment="&lt;^P&gt;Query Department" fieldId="3" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="18" items="" lstrcomment="false" lstrtitle="false" name="tc_ghs_file.tc_ghs03" noEntry="false" notNull="true" posX="35" posY="0" required="true" rowCount="" sqlTabName="tc_ghs_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" title="tc_ghs03" widget="ComboBox"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ghs04" columnCount="" fieldId="7" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="14" lstrcomment="false" lstrtitle="false" name="tc_ghs_file.tc_ghs04" noEntry="false" notNull="true" posX="53" posY="0" required="true" rowCount="" sqlTabName="tc_ghs_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" title="tc_ghs04" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_ghs05" columnCount="" fieldId="9" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="30" lstrcomment="false" lstrtitle="false" name="tc_ghs_file.tc_ghs05" noEntry="false" posX="67" posY="0" rowCount="" sqlTabName="tc_ghs_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="6" table_alias_name="" title="CAS NO." widget="Edit"/>
+          </Table>
+        </Page>
+      </Folder>
+      <Grid gridHeight="2" gridWidth="193" lstrcomment="false" name="gr4618" posX="0" posY="21">
+        <HLine gridWidth="10" name="hl1422" posX="1" posY="0"/>
+        <Label posX="11" posY="0" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="12" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" noEntry="true" posX="17" posY="0" rowCount="" sqlTabName="" sqlType="SMALLINT" stepX="" stepY="" tabIndex="7" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl1423" posX="25" posY="0"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewBlADIAYwBiAGMANwBjADYALQAxADEANQA0AC0ANABiAGIAMgAtAGIAOAA3AGYALQBhAGQANgA2ADAAMQAzAGYANgA4AGEAZAB9QGmAAAAAAAAAAAAAAAAAAD9gYk3S8an8AQAAAEwAewA3ADcAMAAwAGMAMgBlADAALQA0ADMANwA5AC0ANAA4AGUANQAtAGEAYQBiAGEALQA1ADQAMQBiAGMAYQBjADcAZQBjADgAZQB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewBiADcAOQBiADYANgA5ADEALQA4AGQAYgA4AC0ANAAyAGYAZAAtADgANwA3ADgALQAzADcAMgA0ADkAYwBkADUANwBkADQAZAB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewBiAGMAMAAyADMAYwAwADkALQAxADkAYwAyAC0ANAAyADgAZAAtADkAMgBjAGYALQBjADQAYgAyAGEAOAA3ADUAYQA1ADkAOQB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewA0ADEAMQAwADIANwAyADgALQBiADkANAA4AC0ANAAzADkAZAAtADkAYQBiADgALQA4AGYAZABiAGYAOAA3ADMAYwBjAGIAZAB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewA2ADUAYwBhAGIANwA3ADgALQAzADMAMABlAC0ANABkAGMAYwAtADgANAAzADUALQBiADcAZABhAGQAMQA4ADgAMwBlAGMAOAB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQAAAEwAewAzADYAYQA4AGMAMgA1AGEALQA1AGEANABhAC0ANAAwADcAMAAtAGEANAA3ADMALQAzADQAYQAwADMANAA3AGYAYgA5ADAANQB9AAAAAAAAAAAAAAAAAAAAAD9wYk3S8an8AQAAAEwAewBmADMAOAA1ADUANABkADYALQA3AGUAZAAwAC0ANAA2AGEAMwAtAGEAYQA2AGEALQBkADkAMgBhADAAMQA4ADIANwAxADMAMAB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewA4ADEAZQAyADUAZAAzADUALQBlADAANwBkAC0ANAA2ADEANAAtADgAMQA0AGEALQAwAGQAMABhADgAOQAwADIAZQBiADMAYwB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>
