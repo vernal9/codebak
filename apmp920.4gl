@@ -37,6 +37,7 @@
 # Modify.........: 1905133058 20190515 By momo 依據MRP是否計算決定是否列入評核計算
 # Modify.........: 2002204287 20200225 By momo 特採時若為 發現單位為供應商時，不列入不良率計算
 # Modify.........: 23050047   20230602 By momo 調整 品質異常處理計算公式
+# Modify.........: 23090008   20230914 By momo 供應商評核計算排除 CAP固資類單據
 
 DATABASE ds
  
@@ -111,6 +112,7 @@ FUNCTION p920_p1()
    DEFINE lc_qbe_sn   LIKE gbm_file.gbm01     #No.FUN-580031
    DEFINE l_month     LIKE type_file.chr2
    DEFINE lc_cmd      LIKE type_file.chr1000   #FUN-890078
+   DEFINE l_cnt       LIKE type_file.num5     #20230914
  
    OPEN WINDOW p920_w WITH FORM "apm/42f/apmp920"
      ATTRIBUTE (STYLE = g_win_style CLIPPED)
@@ -196,6 +198,21 @@ FUNCTION p920_p1()
  
          AFTER FIELD mm
             IF g_mm > 12 OR g_mm <= 0  THEN NEXT FIELD mm END IF
+            ##----- 20230914 (S)-----   
+            IF g_mm < 10 AND length(g_mm) < 2 THEN
+               LET g_yymm = g_yy CLIPPED,'0',g_mm CLIPPED
+            ELSE
+               LET g_yymm = g_yy CLIPPED,g_mm CLIPPED
+            END IF
+            SELECT 1 INTO l_cnt FROM ppe_file
+             WHERE ppe01 = g_yymm
+               AND rownum = 1
+            IF l_cnt > 0 THEN
+               IF cl_confirm("cpm-034") THEN
+                  DELETE FROM ppe_file WHERE ppe01 = g_yymm
+               END IF
+            END IF
+            ##----- 20230914 (E)-----
  
          ON IDLE g_idle_seconds
             CALL cl_on_idle()
@@ -380,7 +397,7 @@ FUNCTION p920_p2()
       LET g_success = 'N'          
       RETURN 
    END IF    
-#MOD-960039 --end       
+#MOD-960039 --end 
    
    #LET g_sql = "SELECT pmc01,pmc02 FROM pmc_file,pmi_file",
    #            " WHERE pmc05='1' AND pmi03=pmc01 AND pmiconf='Y' AND ",g_wc                #20180511 by momo
@@ -413,6 +430,7 @@ FUNCTION p920_p2()
                     "   AND pmm04 BETWEEN '",g_bdate,"' AND '",g_edate,"'",
                     "   AND pmm25 IN ('2','6') ",        #20180531 pmm25 modify add 6
                     "   AND pmm45 = 'Y' ",               #20190515 MRP可用
+                    "   AND pmm02 <> 'CAP' ",            #20230914 排除固定資產
                     "   AND NOT EXISTS (SELECT * FROM ima_file WHERE ima01=pmn04 AND (ima06='MISC' OR ima14='Y') ) "  #20180517 add #20190107
  
        PREPARE p920_price_p FROM g_sql
@@ -476,6 +494,7 @@ FUNCTION p920_p2()
                    " WHERE pmm01 = pmn01 ",
                    "   AND pmm18 = 'Y'",             #FUN-D40048 add
                    "   AND pmm45 = 'Y' ",               #20190515 MRP可用
+                   "   AND pmm02 <> 'CAP' ",            #20230914 排除CAP
                   #"   AND (pmnud10 = 2 or pmnud10 is null) ",             #20180911 add by momo 排除廠內因素結短 #20181217 mark
                    "   AND pmm09 = '",l_pmc01,"'",
                   #"   AND pmm04 BETWEEN '",g_bdate,"' AND '",g_edate,"'", #MOD-E10178 mark
@@ -504,6 +523,7 @@ FUNCTION p920_p2()
              WHERE rva01 = rvb01
                AND rvb04 = l_pmn01
                AND rvb03 = l_pmn02    #MOD-E10096 add
+               AND rva10 <> 'CAP'     #20230914 排除 CAP
            #MOD-BC0141 ----- modify end -----
                AND rva06 IS NOT NULL
                AND rvaconf = 'Y'
@@ -547,6 +567,7 @@ FUNCTION p920_p2()
                    "   AND rva05 = '",l_pmc01,"'",
                    "   AND rva06 BETWEEN '",g_bdate,"' AND '",g_edate,"'",
                    "   AND NOT EXISTS (SELECT * FROM ima_file WHERE ima01=qcs021 AND (ima06='MISC' OR ima14='Y')) ",  #20190107
+                   "   AND rva10 <> 'CAP' ",  #20230914 排除固定資產
                    "   AND rvaconf = 'Y'"
  
        PREPARE p920_qcs_p FROM g_sql
@@ -565,6 +586,7 @@ FUNCTION p920_p2()
                    "   AND rva06 BETWEEN '",g_bdate,"' AND '",g_edate,"'",
                    "   AND NOT EXISTS (SELECT * FROM ima_file WHERE ima01=qcs021 AND (ima06='MISC' OR ima14='Y')) ",  #20190107
                    "   AND qcs09 = '2'",   #
+                   "   AND rva10 <> 'CAP' ",  #20230914 排除固定資產
                    "   AND rvaconf = 'Y'"
        PREPARE p920_qcs_p1 FROM g_sql
        DECLARE p920_qcs_c1 SCROLL CURSOR FOR p920_qcs_p1
@@ -583,6 +605,7 @@ FUNCTION p920_p2()
                    "   AND NOT EXISTS (SELECT * FROM ima_file WHERE ima01=qcs021 AND (ima06='MISC' OR ima14='Y')) ",  #20190107
                    "   AND qcs09 = '3'",   #
                    "   AND qcsud02 != '2' ", #20200225 發現單位不為供應商
+                   "   AND rva10 <> 'CAP' ",  #20230914 排除固定資產
                    "   AND rvaconf = 'Y'"
        PREPARE p920_qcs_p2 FROM g_sql
        DECLARE p920_qcs_c2 SCROLL CURSOR FOR p920_qcs_p2
@@ -597,6 +620,7 @@ FUNCTION p920_p2()
                    " WHERE rvu00 = '3'",   #倉退
                    "   AND rvu04 = '",l_pmc01,"'",
                    "   AND rvuconf = 'Y'",       #FUN-D40048 add
+                   "   AND rvu08 <> 'CAP' ",     #20230914 排除固定資產
                    "   AND rvu03 BETWEEN '",g_bdate,"' AND '",g_edate,"'"
        PREPARE p920_rvu_p FROM g_sql
        DECLARE p920_rvu_c SCROLL CURSOR FOR p920_rvu_p
@@ -641,6 +665,7 @@ FUNCTION p920_p2()
                    "   AND rva05 = '",l_pmc01,"'",
                    "   AND rva06 BETWEEN '",g_bdate,"' AND '",g_edate,"'", 
                    "   AND rvaconf = 'Y'",
+                   "   AND rva10 <> 'CAP' ",            #20230914 排除固定資產
                    "   AND pmm45 = 'Y' ",               #20190515 MRP可用
                    "   AND NOT EXISTS (SELECT * FROM ima_file WHERE ima01=rvb05 AND (ima06='MISC' OR ima14='Y')) " #20180517 #20190107
        PREPARE p920_qcr11_p2 FROM g_sql
