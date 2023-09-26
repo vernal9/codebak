@@ -777,6 +777,8 @@
 # Modify.........: No.22120013   20221209 By momo 由asfi301串聯aeci700，aeci700執行工單確認，asfi301需一併更新畫面
 # Modify.........: No.22120054   20230103 By momo 最少生產量與批量卡控調整為提醒
 # Modify.........: No.23040017   20230420 By momo 資料清單增加 訂單單號序號 ta_sfb01
+# Modify.........: NO.23070004   20230706 By momo 新增 生產料件相關文件 ACTION
+# Modify.........: NO.23090017   20230925 By momo 新增 「子階料件PDF」、「母階料件DWG」
 
 DATABASE ds   #MOD-640505
 
@@ -1718,6 +1720,23 @@ DEFINE l_sfp04     LIKE sfp_file.sfp04    #MOD-FC0062 add
             EXIT WHILE
          WHEN "controlg"
             CALL cl_cmdask()
+         ##---- 20230706 add by momo(S) 主件PDF圖檔
+         WHEN "item_pdf"               
+            IF cl_chk_act_auth() THEN
+               #CALL ccl_open(g_sfb.sfb05) 
+               CALL ccl_download(g_sfb.sfb05,'pdf')
+            END IF
+         ##---- 20230706 add by momo(E) 主件PDF圖檔
+         ##---- 20230925 add by momo (S)主件DWG
+         WHEN "item_dwg"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_sfb.sfb05,'dwg')
+            END IF
+         WHEN "sfa03_pdf"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_sfa[l_ac].sfa03,'pdf')
+            END IF
+         ##---- 20230925 add by momo (E)
          WHEN "gen_allotment"
             IF cl_chk_act_auth() THEN
                #IF cl_chk_act_auth() THEN  #FUN-D50022
@@ -8347,6 +8366,22 @@ FUNCTION i301_bp(p_ud)
          LET g_action_choice="controlg"
         #EXIT DISPLAY                  #FUN-D80022 mark
          EXIT DIALOG                   #FUN-D80022 add
+
+      #20230706 主件PDF
+      ON ACTION item_pdf
+         LET g_action_choice="item_pdf"
+         EXIT DIALOG
+
+      #20230925 主件DWG
+      ON ACTION item_dwg
+         LET g_action_choice="item_dwg"
+         EXIT DIALOG
+
+      #20230925 備料PDF
+      ON ACTION sfa03_pdf
+         LET g_action_choice="sfa03_pdf"
+         EXIT DIALOG
+
 #@    ON ACTION 產生備料
       ON ACTION gen_allotment
          LET g_action_choice="gen_allotment"
