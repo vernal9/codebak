@@ -214,12 +214,11 @@ DEFINE
           CALL cl_err('','apm-012',1)
           EXIT INPUT
        END IF
-     
-       IF tm.azp01 = 'TY' THEN 
-       IF (g_grup[1,3] <> g_gen[l_ac].gen03[1,3]) THEN
-          CALL cl_err('','coo-001',1)
-          EXIT INPUT
-       END IF
+       IF g_grup[1,3] <> 'T18' AND tm.azp01='TY' THEN  #20230927 modify 
+         IF (g_grup[1,3] <> g_gen[l_ac].gen03[1,3]) THEN
+            CALL cl_err(g_grup[1,4],'coo-001',1)
+            EXIT INPUT
+         END IF
        END IF
  
     BEFORE ROW
