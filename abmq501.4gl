@@ -45,10 +45,12 @@
 # Modify.........: No.MOD-E60121 14/06/26 By Mandy 單身下查詢條件時,無法show出第2階(含)以後的元件資籵
 # Modify.........: No.MOD-E60124 14/06/26 By Mandy 得到的查詢筆數不正確,欄位FORMONLY.cnt
 # Modify.........: No.MOD-E70144 14/08/01 By Alberti 修正 下階展料單位換算有問題 
+# Modify.........: No.23080014   20230828 By momo abmq501 查詢功能調整 
+# Modify.........: No.23090031   20230928 By momo 增加替代料件資訊
 
 DATABASE ds
  
-GLOBALS "../../config/top.global"
+GLOBALS "../../../tiptop/config/top.global"
  
 #模組變數(Module Variables)
 DEFINE
@@ -56,7 +58,8 @@ DEFINE
         	#wc  	LIKE type_file.chr1000,  #No.FUN-680096 VARCHAR(500) #MOD-D50209
         	#wc2  	LIKE type_file.chr1000   #No.FUN-680096 VARCHAR(500) #MOD-D50209
             wc      STRING, #MOD-D50209
-            wc2     STRING  #MOD-D50209
+            wc2     STRING, #MOD-D50209
+            wc3     STRING
         END RECORD,
     g_bma   RECORD
             bma01 LIKE bma_file.bma01,
@@ -78,14 +81,21 @@ DEFINE
 	g_rec_b LIKE type_file.num5,          #No.FUN-680096 SMALLINT
     g_bmb DYNAMIC ARRAY OF RECORD
             x_level   LIKE type_file.num5,      #No.FUN-680096 SMALLINT
-            bmb02   LIKE bmb_file.bmb02,
-            bmb03   LIKE bmb_file.bmb03,
-            ima02_b LIKE ima_file.ima02,      #MOD-5A0257 add
-            ima021_b LIKE ima_file.ima021,    #MOD-5A0257 add
-            bmb09   LIKE bmb_file.bmb09,      #作業編號    #CHI-CB0050 add
-            bmb06   LIKE bmb_file.bmb06,
-            bmb10   LIKE bmb_file.bmb10,
-            bmb13   LIKE bmb_file.bmb13
+            bmb02     LIKE bmb_file.bmb02,
+            bmb03     LIKE bmb_file.bmb03,
+            ima02_b   LIKE ima_file.ima02,     #MOD-5A0257 add
+            ima021_b  LIKE ima_file.ima021,    #MOD-5A0257 add
+            ima06_N   LIKE ima_file.ima06,     #料號不顯示分群碼 20230823
+            ima06     LIKE ima_file.ima06,     #顯示子階分群碼 20230823
+            bmb09     LIKE bmb_file.bmb09,     #作業編號    #CHI-CB0050 add
+            bmb06     LIKE bmb_file.bmb06,
+            bmb10     LIKE bmb_file.bmb10,
+            ima31     LIKE ima_file.ima31,
+            ima31_fac LIKE ima_file.ima31_fac, #銷售單位 20230823
+            bmb13     LIKE bmb_file.bmb13,     #銷售對庫存換算率 20230823
+            bmd04     LIKE bmd_file.bmd04,     #替代料號 20230928
+            ima02_c   LIKE ima_file.ima02,     #替代料號品名 20230928
+            ima021_c  LIKE ima_file.ima021     #替代料號規格 20230928
             # ima02_b LIKE ima_file.ima02,    #BUG-510115  #MOD-550020 #MOD-5A0257 mark
             # ima021_b LIKE ima_file.ima021   #MOD-550020  #MOD-5A0257 mark
         END RECORD,
@@ -115,7 +125,7 @@ MAIN
  
    WHENEVER ERROR CALL cl_err_msg_log
  
-   IF (NOT cl_setup("ABM")) THEN
+   IF (NOT cl_setup("CBM")) THEN
       EXIT PROGRAM
    END IF
  
@@ -125,7 +135,7 @@ MAIN
     LET g_vdate      = g_today
     LET p_row = 3 LET p_col = 2
  
-    OPEN WINDOW q501_w AT p_row,p_col WITH FORM "abm/42f/abmq501"
+    OPEN WINDOW q501_w AT p_row,p_col WITH FORM "cbm/42f/abmq501"
           ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
  
     CALL cl_ui_init()
@@ -318,8 +328,8 @@ END FUNCTION
  
  
 FUNCTION q501_b_askkey()
-   CONSTRUCT tm.wc2 ON bmb02,bmb03,bmb09                      #CHI-CB0050 add bmb09
-        FROM s_bmb[1].bmb02,s_bmb[1].bmb03,s_bmb[1].bmb09     #CHI-CB0050 add bmb09
+   CONSTRUCT tm.wc2 ON ima06,bmb02,bmb03,bmb09                                 #CHI-CB0050 add bmb09 #20230825
+        FROM s_bmb[1].ima06_N,s_bmb[1].bmb02,s_bmb[1].bmb03,s_bmb[1].bmb09     #CHI-CB0050 add bmb09 #20230825
 
               #No.FUN-580031 --start--     HCN
               BEFORE CONSTRUCT
@@ -329,6 +339,15 @@ FUNCTION q501_b_askkey()
      #CHI-CB0050---add---S
       ON ACTION CONTROLP
          CASE
+            ##--- 20230825 add (S)
+            WHEN INFIELD(ima06_N)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form ="q_imz"
+                 LET g_qryparam.state = "c"
+                 CALL cl_create_qry() RETURNING g_qryparam.multiret
+                 DISPLAY g_qryparam.multiret TO ima06_N
+                 NEXT FIELD ima06_N
+            ##--- 20230825 add (E)
             WHEN INFIELD(bmb09)
                  CALL q_ecd(TRUE,TRUE,g_bmb[1].bmb09)
                         RETURNING g_qryparam.multiret
@@ -358,6 +377,28 @@ FUNCTION q501_b_askkey()
 		   CALL cl_qbe_save()
 		#No.FUN-580031 --end--       HCN
    END CONSTRUCT
+
+   ##--- 20230825 add (S) ----
+   CONSTRUCT tm.wc3 ON ima06                           
+        FROM s_bmb[1].ima06     
+        BEFORE CONSTRUCT
+          CALL cl_qbe_display_condition(lc_qbe_sn)
+     ON ACTION CONTROLP
+        CASE
+          WHEN INFIELD(ima06)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form ="q_imz"
+                 LET g_qryparam.state = "c"
+                 CALL cl_create_qry() RETURNING g_qryparam.multiret
+                 DISPLAY g_qryparam.multiret TO ima06
+                 NEXT FIELD ima06
+        END CASE
+
+      ON ACTION qbe_save
+         CALL cl_qbe_save()
+   END CONSTRUCT
+   ##--- 20230825 add (E) ----
+
 END FUNCTION
  
 FUNCTION q501_menu()
@@ -389,6 +430,7 @@ END FUNCTION
  
 FUNCTION q501_q()
  
+    CALL cl_set_comp_visible("ima06_N,ima06",TRUE) #20230825
     LET g_row_count = 0
     LET g_curs_index = 0
     CALL cl_navigator_setting( g_curs_index, g_row_count )
@@ -498,6 +540,7 @@ FUNCTION q501_show()
 #  END IF
    CALL q501_explosion()
    CALL q501_b_fill() #單身
+   CALL cl_set_comp_visible("ima06_N,ima06",FALSE)
     CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
 END FUNCTION
  
@@ -550,7 +593,7 @@ FUNCTION q501_bom(p_level,p_key,p_total,p_bma06,p_unit) #FUN-550093  #MOD-D20085
           END RECORD,
           l_sql     LIKE type_file.chr1000  #No.FUN-680096  VARCHAR(1000)
    DEFINE l_ima910    DYNAMIC ARRAY OF LIKE ima_file.ima910          #No.FUN-8B0015 
-   
+   DEFINE l_cnt2    LIKE type_file.num10  #20230823 
 
    
     #TQC-C50116--add--str--
@@ -658,7 +701,18 @@ FUNCTION q501_bom(p_level,p_key,p_total,p_bma06,p_unit) #FUN-550093  #MOD-D20085
         INSERT INTO q501_temp VALUES (sr[i].*,g_seq)   #No.MOD-750093 modify
         IF sr[i].bma01 IS NOT NULL THEN #若為主件
           #CALL q501_bom(p_level,sr[i].bmb03,sr[i].bmb06,' ') #FUN-8B0015
-           CALL q501_bom(p_level,sr[i].bmb03,sr[i].bmb06,l_ima910[i],sr[i].bmb10)#FUN-8B0015 #MOD-D20085
+          ##---- 20230825子階過濾(S)
+          #CALL q501_bom(p_level,sr[i].bmb03,sr[i].bmb06,l_ima910[i],sr[i].bmb10)#FUN-8B0015 #MOD-D20085
+          LET l_sql = "SELECT 1 FROM ima_file WHERE ima01 ='",sr[i].bmb03,"' AND " ,tm.wc3 
+          PREPARE q501_preopeny FROM l_sql
+          DECLARE q501_curopeny CURSOR FOR q501_preopeny
+          FOREACH q501_curopeny INTO l_cnt2
+            IF l_cnt2 = 1 THEN
+               CALL q501_bom(p_level,sr[i].bmb03,sr[i].bmb06,l_ima910[i],sr[i].bmb10)
+            END IF
+            EXIT FOREACH
+          END FOREACH
+          ##---- 20230825子階過濾(E)
         END IF
     END FOR
 END FUNCTION
@@ -684,10 +738,14 @@ FUNCTION q501_b_fill()              #BODY FILL UP
    #MOD-E60121--mark---end---
    #MOD-E60121--add----str---
    #改用PREPARE 的方式並且加上tm.wc2的條件,其餘沒變
-   LET g_sql = "SELECT x_level,bmb02,bmb03,ima02,ima021,bmb09, ",
-               "       bmb06,bmb10,bmb13 ",
+
+   LET tm.wc2 = cl_replace_str(tm.wc2,"ima06 in","ima06 not in")         #20230825
+   LET tm.wc2 = cl_replace_str(tm.wc2,"ima06=","ima06 != ")              #20230825
+
+   LET g_sql = "SELECT x_level,bmb02,bmb03,ima02,ima021,' ',ima06,bmb09, ",  #20230823
+               "       bmb06,bmb10,ima31,ima31_fac,bmb13,'','','' ",         #20230823
                "  FROM q501_temp LEFT OUTER JOIN ima_file ",
-               "    ON q501_temp.bmb03 = ima_file.ima01 ",   
+               "    ON bmb03 = ima01 ",   
                " WHERE ",tm.wc2, # add 篩選單身下的查詢條件
                " ORDER BY seq "              
    PREPARE q501_pb FROM g_sql
@@ -704,9 +762,19 @@ FUNCTION q501_b_fill()              #BODY FILL UP
     LET g_rec_b=0
     FOREACH q501_bcs INTO g_bmb[g_cnt].*
        IF STATUS THEN CALL cl_err('Foreach:',STATUS,1) EXIT FOREACH END IF
-       LET g_cnt = g_cnt + 1
 #      IF g_cnt > g_bmb_arrno THEN CALL cl_err('',9035,0) EXIT FOREACH END IF
       # genero shell add g_max_rec check START
+      ##---- 20230928 (S) 替代資訊------
+      SELECT bmd04,ima02,ima021
+        INTO g_bmb[g_cnt].bmd04,g_bmb[g_cnt].ima02_c,g_bmb[g_cnt].ima021_c
+        FROM bmd_file,ima_file
+      WHERE bmd04 = ima01
+        AND bmd01 = g_bmb[g_cnt].bmb03
+        AND bmd06 IS NULL
+        AND bmdacti = 'Y'
+        AND rownum = 1
+      ##---- 20230928 (E) ------
+      LET g_cnt = g_cnt + 1
       IF g_cnt > g_max_rec THEN
          CALL cl_err( '', 9035, 0 )
 	 EXIT FOREACH
