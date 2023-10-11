@@ -48,6 +48,7 @@
 # Modify.........: No:2205168074 20220527 By momo 取替代資料失效時，更新BOM取替代特性
 # Modify.........: No:23070024   20230713 By momo 卡控資料中心，新增狀態檢核
 # Modify.........: No:23070027   20230714 By momo 增加欄位查詢功能 
+# Modify.........: NO:23100001   20231006 By momo 增加顯示 bmb06、bmb07 欄位
 
 DATABASE ds
  
@@ -71,23 +72,29 @@ DEFINE                                     #模組變數(Module Variables)
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
+                bmb06       LIKE bmb_file.bmb06,     #20231006
+                bmb07       LIKE bmb_file.bmb07,     #20231006
                 boa04       LIKE boa_file.boa04,
                 boa05       LIKE boa_file.boa05,
                 boa06       LIKE boa_file.boa06,
                 boa07       LIKE boa_file.boa07,
                 ta_boadate  LIKE boa_file.ta_boadate, #20191007
-                ta_boamodu  LIKE boa_file.ta_boamodu  #20191007
+                ta_boamodu  LIKE boa_file.ta_boamodu, #20191007
+                atp         LIKE type_file.num15_3    #20230714
    END RECORD,
     g_boa_t        RECORD                  #變數舊值
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
+                bmb06       LIKE bmb_file.bmb06,     #20231006
+                bmb07       LIKE bmb_file.bmb07,     #20231006
                 boa04       LIKE boa_file.boa04,
                 boa05       LIKE boa_file.boa05,
                 boa06       LIKE boa_file.boa06,
                 boa07       LIKE boa_file.boa07,
                 ta_boadate  LIKE boa_file.ta_boadate, #20191007
-                ta_boamodu  LIKE boa_file.ta_boamodu  #20191007
+                ta_boamodu  LIKE boa_file.ta_boamodu, #20191007
+                atp         LIKE type_file.num15_3    #20230714
    END RECORD,
      g_wc,g_wc2            string,                 #No.FUN-580092 HCN
      g_sql                 string,                 #No.FUN-580092 HCN
@@ -1025,6 +1032,8 @@ DEFINE
     l_allow_insert  LIKE type_file.num5,     #可新增否    #No.FUN-680096 SMALLINT
     l_allow_delete  LIKE type_file.num5      #可刪除否    #No.FUN-680096 SMALLINT
 DEFINE   l_bmb10    LIKE bmb_file.bmb10
+DEFINE   l_bmb06    LIKE bmb_file.bmb06      #20231006
+DEFINE   l_bmb07    LIKE bmb_file.bmb07      #20231006
  
     LET g_action_choice = ""
     IF s_shut(0) THEN RETURN END IF
@@ -1037,7 +1046,7 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
     CALL cl_opmsg('b')
  
     LET g_forupd_sql =
-       "SELECT boa03,'','',boa04,boa05,boa06,boa07,ta_boadate,ta_boamodu ", #20191007
+       "SELECT boa03,'','',0,0,boa04,boa05,boa06,boa07,ta_boadate,ta_boamodu,0 ", #20191007 #20230714 #20231011
        "  FROM boa_file ",
        "  WHERE boa01= ? ",
        "   AND boa02= ? ",
@@ -1094,6 +1103,13 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
                     LET g_boa_t.*=g_boa[l_ac].*
                     SELECT ima02,ima021 INTO g_boa[l_ac].ima02b,g_boa[l_ac].ima021b FROM ima_file
                      WHERE ima01 = g_boa[l_ac].boa03
+
+                    ##---20231011 (S)
+                    SELECT bmb06,bmb07 INTO g_boa[l_ac].bmb06,g_boa[l_ac].bmb07
+                      FROM bmb_file
+                     WHERE bmb01 = g_boa01
+                       AND bmb03 = g_boa[l_ac].boa03
+                    ##---20231011 (E)
                     IF SQLCA.sqlcode THEN
                         LET g_boa[l_ac].ima02b=" "
                         LET g_boa[l_ac].ima021b=" "
@@ -1171,6 +1187,15 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
             END IF
  
         AFTER FIELD boa04
+            ##---- 20231006 ---(S)
+            SELECT bmb10,bmb06,bmb07
+              INTO g_boa[l_ac].boa05,g_boa[l_ac].bmb06,g_boa[l_ac].bmb07
+              FROM bmb_file
+             WHERE bmb01 = g_boa01
+               AND bmb03 = g_boa[l_ac].boa03
+               AND bmb09 = g_boa[l_ac].boa04
+            ##---- 20231006 ---(E)
+
             IF g_boa[l_ac].boa04 IS NULL THEN
                LET g_boa[l_ac].boa04=" "
             END IF
@@ -1461,9 +1486,15 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
 #                     CALL FGL_DIALOG_SETBUFFER( g_boa[l_ac].boa04 )
                       DISPLAY BY NAME g_boa[l_ac].boa03           #No.MOD-490371
                       DISPLAY BY NAME g_boa[l_ac].boa04           #No.MOD-490371
-                     SELECT bmb10 INTO l_bmb10 FROM bmb_file
+                     ##--- 20231006 modify
+                     SELECT bmb10,bmb06,bmb07 INTO l_bmb10,l_bmb06,l_bmb07
+                       FROM bmb_file
                       WHERE bmb01 = g_boa01
+                        AND bmb03 = g_boa[l_ac].boa03
                      DISPLAY l_bmb10 TO boa05
+                     DISPLAY l_bmb06 TO bmb06
+                     DISPLAY l_bmb07 TO bmb07
+                     ##--- 20231006 modify
                   ELSE
 #                    CALL q_ima(4,0,g_boa[l_ac].boa03) RETURNING g_boa[l_ac].boa03
 #                    CALL FGL_DIALOG_SETBUFFER( g_boa[l_ac].boa03 )
@@ -1567,7 +1598,10 @@ FUNCTION i610_boa03(p_cmd)         #元件料號, 預帶入 boa05
     IF cl_null(g_errno) AND g_check_bma01 = 'Y' THEN
       #因上階料件存在BOM中(g_check_bma01='Y')...SO.....
       #CHECK元件料號必須為上階主件的下階料
-       SELECT UNIQUE bmb03 FROM bmb_file
+      #SELECT UNIQUE bmb03                                  #20231006
+       SELECT UNIQUE bmb10,bmb06,bmb07                      #20231006
+         INTO g_ima63,g_boa[l_ac].bmb06,g_boa[l_ac].bmb07   #20231006
+         FROM bmb_file
         WHERE bmb01 = g_boa01
           AND bmb03 = g_boa[l_ac].boa03
        CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = "abm-015"
@@ -1677,8 +1711,10 @@ DEFINE
     p_wc     STRING                   #20180606 modify
  
     LET g_sql =
-       "SELECT boa03,b.ima02,b.ima021,boa04,boa05,boa06,boa07 ",
-       "       ,ta_boadate,ta_boamodu " ,                 #20191007
+       "SELECT boa03,b.ima02,b.ima021,",
+       "       '','',",                                   #20231006
+       "       boa04,boa05,boa06,boa07 ",
+       "       ,ta_boadate,ta_boamodu,0 " ,               #20191007
       #"  FROM boa_file,OUTER ima_file ",                 #TQC-AB0041
        "  FROM boa_file LEFT OUTER JOIN ima_file b ",     #TQC-AB0041       
        "    ON boa_file.boa03 =b.ima01 ",          #TQC-AB0041
@@ -1699,6 +1735,13 @@ DEFINE
             CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
             EXIT FOREACH
         END IF
+        ##--- 20231006 (S) 組成用量/底數
+        SELECT bmb06,bmb06 INTO g_boa[g_cnt].bmb06,g_boa[g_cnt].bmb07
+          FROM bmb_file
+         WHERE bmb01 = g_boa01
+           AND bmb03 = g_boa[g_cnt].boa03
+        ##--- 20231006 (E)
+        CALL cs_q102_atp_qty(g_boa[g_cnt].boa03) RETURNING g_boa[g_cnt].atp  #20230714
         LET g_cnt = g_cnt + 1
         IF g_cnt > g_max_rec THEN
            CALL cl_err( '', 9035, 0 )
