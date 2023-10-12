@@ -10,6 +10,7 @@
 # Modify.........: No:2205308180 20220530 By momo 當取替代資料失效時，更新BOM取替代特性
 # Modify.........: No:23060010   20230606 By momo abm-017 卡控調整 
 # Modify.........: No:23070027   20230718 By momo 增加QBE與atp_qty顯示
+# Modify.........: No:23100001   20231012 By momo 增加bmb06、bmb07 欄位顯示
 
 DATABASE ds
  
@@ -24,7 +25,7 @@ DEFINE                                     #模組變數(Module Variables)
     g_boa02         LIKE boa_file.boa02,   #元件群組
     g_boa08         LIKE boa_file.boa08,   #說明
     g_ima02         LIKE ima_file.ima02,   #品名規格
-    g_ima021        LIKE ima_file.ima021,   #品名規格
+    g_ima021        LIKE ima_file.ima021,  #品名規格
     g_ima05         LIKE ima_file.ima05,   #目前使用版本
     g_ima08         LIKE ima_file.ima08,   #來源碼
     g_ima25         LIKE ima_file.ima25,
@@ -38,6 +39,8 @@ DEFINE                                     #模組變數(Module Variables)
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
+                bmb06       LIKE bmb_file.bmb06,      #20231012
+                bmb07       LIKE bmb_file.bmb07,      #20231012
                 boa04       LIKE boa_file.boa04,
                 boa05       LIKE boa_file.boa05,
                 boa06       LIKE boa_file.boa06,
@@ -70,6 +73,8 @@ DEFINE                                     #模組變數(Module Variables)
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
+                bmb06       LIKE bmb_file.bmb06,     #20231012
+                bmb07       LIKE bmb_file.bmb07,     #20231012
                 boa04       LIKE boa_file.boa04,
                 boa05       LIKE boa_file.boa05,
                 boa06       LIKE boa_file.boa06,
@@ -1065,6 +1070,12 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
                         LET g_boa[l_ac].ima021=" "
                         LET g_boa[l_ac].ima08=" "
                     END IF
+                    ##----- 20231012 add (S)
+                    SELECT bmb06,bmb07 INTO g_boa[l_ac].bmb06,g_boa[l_ac].bmb07
+                      FROM bmb_file
+                     WHERE bmb01 = g_boa01
+                       AND bmb03 = g_boa[l_ac].boa03
+                    ##----- 20231012 add (E)
                 END IF
                 CALL cl_show_fld_cont()     #FUN-550037(smin)
             END IF
@@ -1561,7 +1572,9 @@ FUNCTION i610_boa03(p_cmd)         #元件料號, 預帶入 boa05
     IF cl_null(g_errno) AND g_check_bma01 = 'Y' THEN
       #因上階料件存在BOM中(g_check_bma01='Y')...SO.....
       #CHECK元件料號必須為上階主件的下階料
-       SELECT UNIQUE bmb03 FROM bmb_file
+      #SELECT UNIQUE bmb03 FROM bmb_file     #20231012 mark     應抓取BOM單位
+       SELECT UNIQUE bmb10                   #20231012  modify
+         INTO g_ima63  FROM bmb_file         #20231012 add
         WHERE bmb01 = g_boa01
           AND bmb03 = g_boa[l_ac].boa03
        CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = "abm-015"
@@ -1674,11 +1687,14 @@ DEFINE
     p_wc     STRING                  
      
     LET g_sql =
-       "SELECT boa01,a.ima02,a.ima021,a.ima08,boa02,boa03,b.ima02,b.ima021,boa04,boa05,boa06,boa07 ",
+       "SELECT boa01,a.ima02,a.ima021,a.ima08,boa02,boa03,b.ima02,b.ima021,",
+       "       bmb06,bmb07,",                                                             #20231012
+       "       boa04,boa05,boa06,boa07 ",
        "       ,ta_boadate,ta_boamodu,boa08  " ,      
        "  FROM boa_file LEFT JOIN ima_file b ",           
        "    ON boa_file.boa03 =b.ima01 ",          
-       "  LEFT JOIN ima_file a ON a.ima01=boa01 ",                               
+       "  LEFT JOIN ima_file a ON a.ima01=boa01 ",       
+       "  LEFT JOIN bmb_file ON bmb01 = boa01 AND bmb03 = boa03 ",                #20231012                   
        " WHERE (NVL(boa08,'N')='",g_boa08,"' ) ",
        "   AND ",p_wc CLIPPED 
  
