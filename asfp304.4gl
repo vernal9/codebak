@@ -175,6 +175,7 @@
 # Modify.........:                       20181019 By momo 新增核取 pr_date, 產生時選擇是否參考採購前置日
 # Modify.........: NO:1908083453 20190814 By momo 增加 pmkud03 預設值N
 # Modify.........: NO:23090030   20231004 By momo 增加訂單數量，並該數量與生產量勾稽，不同時跳出提示
+# Modify.........: NO:23100041   20231030 By momo 應生產量有誤，未考量退貨情況
 
 DATABASE ds
  
@@ -838,8 +839,11 @@ FUNCTION p304_fill_b_data(p_gem01)
     #IF s_industry('slk') THEN  #FUN-D80022 mark 
     IF s_industry('slk') AND g_sma.sma150 = 'N' THEN  #FUN-D80022 add
       LET g_sql = "SELECT 'Y',oeb01,oeb03,oeb04,ima02,ima021,'N','', ",
-                  "oeb12, ",                                              #20231004
-                  "oeb918,'',ima910,oeb12-oeb905,oeb919,NULL,oeb15, ",    #FUN-A50066 #FUN-A80102 #FUN-A80054   #No.FUN-940103 add ima021   #MOD-C50030 mark  #MOD-C70255 remark
+                 #"oeb12, ",                                              #20231004 #20231030
+                  "oeb12-oeb905-oeb24+oeb25-oeb26, ",                     #20231030 modify 未出貨量
+                  "oeb918,'',ima910,",
+                  "oeb12-oeb905,",
+                  "oeb919,NULL,oeb15, ",    #FUN-A50066 #FUN-A80102 #FUN-A80054   #No.FUN-940103 add ima021   #MOD-C50030 mark  #MOD-C70255 remark
      #LET g_sql = "SELECT 'Y',oeb01,oeb03,oeb04,ima02,ima021,'N','',oeb918,'',ima910,oeb12-oeb905-oeb24+oeb25,oeb919,NULL,oeb15, ",    #FUN-A50066 #FUN-A80102 #FUN-A80054   #No.FUN-940103 add ima021 #MOD-C50030  #MOD-C70255 mark
                   " '1',ima111,' ','Y',oeb930,'',oeb05,ima55,((100+ima562)/100),ima60,ima601 ",   #No.MOD-940205 add
                   " ,ima54,ima08 ",       #MOD-AB0243 add
@@ -858,8 +862,12 @@ FUNCTION p304_fill_b_data(p_gem01)
                   "  AND NOT EXISTS(SELECT * from sfb_file where sfb22= oeb01 and sfb221 =oeb03)"  #No.FUN-870117
       ELSE
       LET g_sql = "SELECT 'Y',oeb01,oeb03,oeb04,ima02,ima021,'N','', ",
-                  "oeb12, ",                                   #20231004 add
-                  "oeb918,'',ima910,oeb12-oeb905,oeb919,NULL,oeb16, ",   #MOD-530799 add  #FUN-650193 add ima910  #FUN-A50066 #FUN-A80102 #FUN-A80054    #No.FUN-940103 add ima021   #MOD-C50030 mark #MOD-C70255 remark #20180410 oeb15 change oeb16
+                 #"oeb12, ",                                              #20231004 add #20231030 mark
+                  "oeb12-oeb905-oeb24+oeb25-oeb26, ",                     #20231030 modify 未出貨量
+                  "oeb918,'',ima910,",
+                 #"oeb12-oeb905,",
+                  "oeb12-oeb905-oeb24+oeb25-oeb26, ",                     #20231030 modify 未出貨量
+                  "oeb919,NULL,oeb16, ",   #MOD-530799 add  #FUN-650193 add ima910  #FUN-A50066 #FUN-A80102 #FUN-A80054    #No.FUN-940103 add ima021   #MOD-C50030 mark #MOD-C70255 remark #20180410 oeb15 change oeb16
      #LET g_sql = "SELECT 'Y',oeb01,oeb03,oeb04,ima02,ima021,'N','',oeb918,'',ima910,oeb12-oeb905,oeb919,NULL,oeb15, ",   #MOD-530799 add  #FUN-650193 add ima910  #FUN-A50066 #FUN-A80102 #FUN-A80054    #No.FUN-940103 add ima021   #MOD-C50030 mark #MOD-C70255 remark
      #LET g_sql = "SELECT 'Y',oeb01,oeb03,oeb04,ima02,ima021,'N','',oeb918,'',ima910,oeb12-oeb905-oeb24+oeb25,oeb919,NULL,oeb15, ",   #MOD-530799 add  #FUN-650193 add ima910  #FUN-A50066 #FUN-A80102 #FUN-A80054    #No.FUN-940103 add ima021 #MOD-C50030  #MOD-C70255 mark
                   " '1',ima111,' ','Y',oeb930,'',oeb05,ima55,((100+ima562)/100),ima60,ima601 ",   #No.MOD-940205 add
