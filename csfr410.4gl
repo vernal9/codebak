@@ -53,6 +53,7 @@
 # Modify.........: No:2203037682 20220317 By momo 新增列印雜發需求
 # Modify.........: No:23030027   20230321 By momo 國別抓取調整為抓取帳款客戶
 # Modify.........: No:23030054   20230331 By momo 增加訂單單身備註
+# Modify.........: NO:23100018   20231026 By momo 增加出貨料號是否存在axmi130判斷
 
 DATABASE ds  #No.TQC-A50044
  
@@ -184,11 +185,15 @@ MAIN
                "oeb20.ged_file.ged02,",         #20190806
                "oeb27.oeb_file.oeb27,",         #20190806
                "oao06.oao_file.oao06,",         #訂單單身備註 20230331
+               "obe01.obe_file.obe01,",         #包裝料號 20231026
                "sfb13.sfb_file.sfb13,",         #工單開工日
                "sfw03.sfw_file.sfw03,",         #工單備註
                "azf03.azf_file.azf03,",         #排交變更原因類別
                "tc_oeq07.tc_oeq_file.tc_oeq07,",#延期原因 20210517
                "oga02.oga_file.oga02,",         #出貨日
+               "sfbud02.sfb_file.sfbud02,",     #料箱狀態 20231027
+               "l_num2.type_file.num5,",        #欠數量   20231027
+               "l_str3.type_file.chr1000,",     #欠料狀態 20231027
                "l_str2.type_file.chr1000,",
                "oeb916.oeb_file.oeb916,",
                "oeb917.oeb_file.oeb917,",
@@ -217,7 +222,7 @@ MAIN
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,                                                                  
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ,?,?,?,?,? ",
                "       ,?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ,?,?,?,?,?  ",
-               "       ,?,?,?,?,?, ?,?,?) "          #20190806 #20190828 #20210517 #20210906 #20230331                                       
+               "       ,?,?,?,?,?, ?,?,?,?,?,?,?) "          #20190806 #20190828 #20210517 #20210906 #20230331  #20231026 #20231027                                
    PREPARE insert_prep FROM g_sql                                                                                                   
    IF STATUS THEN                                                                                                                   
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM                                                                             
@@ -670,6 +675,12 @@ DEFINE   l_oebc05       LIKE oebc_file.oebc05,
 #FUN-EA0031--add end--
 
 DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
+DEFINE l_obe01          LIKE obe_file.obe01             #20231026 包裝料號
+DEFINE l_sfbud02        LIKE sfb_file.sfbud02           #20231027 料箱狀態
+DEFINE l_num2           LIKE type_file.num5             #20231027 欠料數
+DEFINE l_num3           LIKE type_file.num5             #20231027 超領未發
+DEFINE l_str3           LIKE type_file.chr1000          #20231027 欠料狀態
+DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
 
    CALL cl_del_data(l_table)                 #No.FUN-7A0036
    CALL cl_del_data(l_table1)                #No.FUN-EA0031	
@@ -688,8 +699,8 @@ DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
                   "      '', '', ",                                                               
                   "      oea42, oeahold,oeaconf,oea14,oea15,",     #20190828                                                     
                   "      oeb03, oeb04, oeb06,",                                                                          
-                  "      oeb05, oeb11, oeb12, oeb24, oeb15, ",               
-                  "      oeb16, ged02, oeb27, oao06, sfb13, '', ", #20190806  #20230331 add oao06                                                                                            
+                  "      oeb05, oeb11, oeb12, oeb24-oeb25, oeb15, ",   #20231030 modify oeb24 change oeb24-oeb25            
+                  "      oeb16, ged02, oeb27, oao06, sfb13, '', ", #20190806  #20230331 add oao06                                                                                      
                   "      oeb910,oeb912,oeb913,oeb915,oeb916,oeb917,sfb01,ima021 ",  #20210906 add sfb01  #20220318                                                
                   " FROM oeb_file ",
                   "      LEFT JOIN ged_file ON oeb20 = ged01 ",  #20190806
@@ -713,7 +724,7 @@ DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
 
    #只抓未出貨資料
    IF tm.v = 'Y' THEN
-      LET l_sql=l_sql CLIPPED,"   AND (oeb12 - oeb24 + oeb25 ) > 0 "
+      LET l_sql=l_sql CLIPPED,"   AND (oeb12 - oeb24 + oeb25 ) > 0 "      
    END IF
 
    #不列印結案資料
@@ -856,12 +867,47 @@ DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
       SELECT count(*) INTO l_oeocnt
         FROM sfa_file,sfb_file
        WHERE sfa01=sfb01 AND sfb87='Y'
-         #AND ta_sfb01 = l_oea01_3         #20210906 mark
-         AND sfb01 = sr.sfb01              #20210906 mark
+         AND sfb04 <='7'
+         #AND ta_sfb01 = l_oea01_3                  #20210906 mark
+         AND (sfb01 = sr.sfb01 OR sfb86=sr.sfb01)   #20210906 mark
          AND sfa11 <> 'X' AND sfa03 LIKE '5%'
 
+      #20231027 取批號與料箱狀態(S)
+      LET l_oea01_3 =''
+      LET l_sfbud02 = ''
+      SELECT ta_sfb01,sfbud02 INTO l_oea01_3,l_sfbud02
+        FROM sfb_file
+       WHERE sfb01 = sr.sfb01
+         AND sfb87='Y'
+         AND sfb04 <='7'
+      IF NOT cl_null(l_sfbud02) THEN
+         LET l_sfbud02 = '●'
+      END IF
+   
+      LET l_num2 = 0
+      SELECT COUNT(*) INTO l_num2
+        FROM sfb_file,sfa_file
+       WHERE sfb01=sfa01
+         AND ta_sfb01 = l_oea01_3
+         AND sfa05-sfa06 > 0
+         AND sfb87='Y'
+         AND sfb04 <='7'
+      LET l_str3=''
+      LET l_str4=''
 
+      LET l_num3 = 0
+      SELECT COUNT(*) INTO l_num3
+        FROM sfs_file,sfp_file  
+       WHERE sfs01=sfp01
+         AND sfp04='N' and sfpconf<>'X'
+         AND sfb04 <='7'
+         AND sfs03 = sr.sfb01
+      IF l_num3 > 0 OR l_num2 > 0 THEN
+      #   CALL cs_stockout(l_oea01_3, g_plant) RETURNING l_str3,l_num2  #20231106 mark
+      END IF
+      LET l_num2 = l_num2+l_num3
 
+      #20231027 取批號與料箱狀態(E)
       #----- 20180410 add by momo 源頭多角訂單帳款客戶與送貨客戶(S)
       SELECT occ02 INTO sr.oea915 FROM occ_file
        WHERE occ01=sr.oea915
@@ -944,6 +990,17 @@ DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
        WHERE oga01=ogb01 AND oga09 IN ('2','4','6') AND ogapost='Y'
          AND ogb31=sr.oea01 AND ogb32=sr.oeb03
 
+      ##---- 20231026 axmi130 無包裝資料顯示料號(S)
+      LET l_obe01=''
+      SELECT obe01 INTO l_obe01 FROM obe_file
+       WHERE obe01 = sr.oeb04
+      IF cl_null(l_obe01) THEN
+         LET l_obe01 = sr.oeb04
+      ELSE
+         LET l_obe01 = ''
+      END IF
+      ##---- 20231026 axmi130 無包裝資料顯示料號(E)
+
 
       SELECT geb02 INTO sr.occ21 FROM geb_file WHERE geb01=sr.occ21
       
@@ -958,10 +1015,12 @@ DEFINE l_ta_obk02       LIKE obk_file.ta_obk02          #客戶規格
                                  sr.oeb06,sr.oeb11,sr.oeb12,sr.oeb24,sr.oeb15,         #180815 modify by ruby  #190418 add oeb11 by ruby 
                                  sr.oeb16,
                                  sr.oeb20, sr.oeb27,                              #20190806
-                                 sr.oao06,                                        #20230331 
+                                 sr.oao06,                                        #20230331
+                                 l_obe01,                                         #20231026 
                                  sr.sfb13,l_sfw03,l_azf03,
                                  l_tc_oeq07,                                      #20210517
-                                 sr.oga02,                  
+                                 sr.oga02,   
+                                 l_sfbud02,l_num2,l_str3,                          #20231027               
                                  l_str2,sr.oeb916,
                                  sr.oeb917,l_oeocnt,sr.ima021,l_ta_ima02,l_ima906,         ##180524 add l_oeocnt by ruby
                                  l_eca02,                                                 #20180723 add eca02
