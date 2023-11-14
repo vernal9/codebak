@@ -358,6 +358,8 @@
 # Modify.........: No:22090031   20220926 By momo 列印增加顯示欄位 ima021規格、ima24檢驗否、imz02分群碼說明、bmb14元件使用特性、bmb19工單開立選項
 # Modify.........: No:22110029   20221121 By momo 增加檢核 bmb06 與 imaud08 長度檢核
 # Modify.........: No:2023050005 20230504 By momo 增加檢核 元件料號+作業編號重覆出現之情況   
+# Modify.........: No:23060002   20230609 By momo 報表增加 bmb04生效日期 與 bmb05失效日期
+# Modify.........: No:23110014   20231109 By momo EXCEL匯入增加欄位
 
 DATABASE ds
 
@@ -921,6 +923,8 @@ DEFINE  l_bmb13   LIKE ze_file.ze03             #No.FUN-810014
                "bmb14.bmb_file.bmb14,",     #20220926 add
                "bmb19.bmb_file.bmb19,",     #20220926 add
                "bmb10.bmb_file.bmb10,",     #CHI-C90013 add ,
+               "bmb04.bmb_file.bmb04,",     #20230609 add
+               "bmb05.bmb_file.bmb05,",     #20230609 add
                "id.type_file.num10,",       #CHI-C90013 add
                "pid.type_file.num10"        #CHI-C90013 add   
 
@@ -1077,7 +1081,10 @@ DEFINE  l_bmb13   LIKE ze_file.ze03             #No.FUN-810014
       bmb03         LIKE bmb_file.bmb03,
       bmb06         LIKE bmb_file.bmb06,
       bmb07         LIKE bmb_file.bmb07,
-      bmb09         LIKE bmb_file.bmb09)
+      bmb09         LIKE bmb_file.bmb09, 
+      bmb13         LIKE bmb_file.bmb13,    #20231109
+      bmbud02       LIKE bmb_file.bmbud02,  #20231009
+      bmbud03       LIKE bmb_file.bmbud03)  #20231109
    #M014 180205 By TSD.Andy -----(E)
 
     CALL i600_menu()
@@ -7753,7 +7760,7 @@ DEFINE
          AND bmb01 = g_bma.bma01
          AND bmb03 = g_bmb[g_cnt].bmb03
       GROUP BY bmb03,bmb09
-      HAVING COUNT(bmb03)>2
+      HAVING COUNT(bmb03)>=2
       IF l_cnt > 0 THEN
          LET ga_color[g_cnt].bmb09 = "red reverse"
       ELSE
@@ -12046,6 +12053,8 @@ DEFINE l_bmb DYNAMIC ARRAY OF RECORD
           bmb14   LIKE ima_file.ima02,        #20220926 add
           bmb19   LIKE ima_file.ima02,        #20220926 add
           bmb10   LIKE bmb_file.bmb10,
+          bmb04   LIKE bmb_file.bmb04,        #20230609 生效日
+          bmb05   LIKE bmb_file.bmb05,        #20230609 失效日
           ima910  LIKE ima_file.ima910
        END RECORD
 #FUN-D90027--add--str--
@@ -12081,7 +12090,7 @@ DEFINE l_bmb19    LIKE ima_file.ima021
 
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,
                " VALUES(?,?,?,?,?,  ?,?,?,?,? ,?,?,?,? ",         #CHI-C90013 add ,?,?
-               "      , ?,?,?,?,?)"                               #20220926 add 5?
+               "      , ?,?,?,?,?,  ?,?)"                         #20220926 add 5? #20230609 add 2?
    PREPARE insert_prep FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep:',status,1)
@@ -12216,7 +12225,9 @@ DEFINE l_bmb19    LIKE ima_file.ima021
                                       ,'','',''        #20220926 add
                                       ,'','1','1' 
                                       ,'',''           #20220926 add
-                                      ,l_bma[l_n].ima55,l_id,p_id       #CHI-C90013 add ,l_id,p_id
+                                      ,l_bma[l_n].ima55
+                                      ,'',''           #20230609 add
+                                      ,l_id,p_id       #CHI-C90013 add ,l_id,p_id
  
        IF SQLCA.sqlcode THEN
           CALL cl_err('Foreach:',SQLCA.sqlcode,1)
@@ -12250,7 +12261,9 @@ DEFINE l_bmb19    LIKE ima_file.ima021
                          "       ima021,ima24,imz02,",                          #20220926
                          "       bmb09,bmb06,bmb07,",
                          "       bmb14,bmb19,",                                 #20220926
-                         "       bmb10,ima910",
+                         "       bmb10, ",
+                         "       bmb04,bmb05,",                                 #20230609
+                         "       ima910",         
                          " FROM bmb_file,ima_file",
                          " LEFT JOIN imz_file ON ima06 = imz01 ",               #20220926
                          " WHERE bmb01 ='", l_bma_b[l_bh_cnt].bma01 ,"'",
@@ -12272,7 +12285,7 @@ DEFINE l_bmb19    LIKE ima_file.ima021
 
              FOREACH i600_c2 INTO l_bmb[l_n2].*
                 IF SQLCA.sqlcode THEN
-                   CALL cl_err('Foreach:',SQLCA.sqlcode,1)
+                   CALL cl_err('Foreach i600_c2:',SQLCA.sqlcode,1)
                     EXIT FOREACH
                 END IF
                 LET   l_id = l_id +1         #CHI-C90013 add
@@ -12285,7 +12298,9 @@ DEFINE l_bmb19    LIKE ima_file.ima021
                                             ,l_bmb[l_n2].bmb09
                                             ,l_bmb[l_n2].bmb06,l_bmb[l_n2].bmb07
                                             ,l_bmb[l_n2].bmb14,l_bmb[l_n2].bmb19   #20220926 add
-                                            ,l_bmb[l_n2].bmb10,l_id,l_bma_b[l_bh_cnt].p_id    #CHI-C90013 add l_id,l_bma_b[l_bh_cnt].p_id 
+                                            ,l_bmb[l_n2].bmb10
+                                            ,l_bmb[l_n2].bmb04,l_bmb[l_n2].bmb05   #20230609 add
+                                            ,l_id,l_bma_b[l_bh_cnt].p_id    #CHI-C90013 add l_id,l_bma_b[l_bh_cnt].p_id 
                 EXECUTE insert_prep2 USING l_bmb[l_n2].bmb03,l_bmb[l_n2].ima910,l_id  #TEMP記錄下一層主件        #CHI-C90013 add l_id
  
                 #FUN-D90027--add--str--
@@ -12531,7 +12546,10 @@ FUNCTION i600_load_excel()
              bmb03         LIKE bmb_file.bmb03,
              bmb06         LIKE bmb_file.bmb06,
              bmb07         LIKE bmb_file.bmb07,
-             bmb09         LIKE bmb_file.bmb09
+             bmb09         LIKE bmb_file.bmb09,
+             bmb13         LIKE bmb_file.bmb13,   #20231109
+             bmbud02       LIKE bmb_file.bmbud02, #20231109
+             bmbud03       LIKE bmb_file.bmbud03  #20231109
                            END RECORD
    DEFINE l_n              LIKE type_file.num5
    DEFINE l_row_num        LIKE type_file.num5
@@ -12552,7 +12570,8 @@ FUNCTION i600_load_excel()
 
    LET g_excel_close = 'N'
 
-   CALL p001_import_excel(1,1,1,6)      #取得EXCEL資料
+   #CALL p001_import_excel(1,1,1,6)      #取得EXCEL資料  #20231109 mark
+   CALL p001_import_excel(1,1,1,9)       #取得EXCEL資料  #20231109 modify
       RETURNING l_rdata_tmp
 
    IF g_excel_close = 'Y' OR g_success = 'N' THEN
@@ -12566,9 +12585,12 @@ FUNCTION i600_load_excel()
    FOR l_row_num = 2 TO RowIndex - 1
       LET l_excel[l_row_num].bma01 = l_rdata_tmp[1].row[l_row_num].col[1]
       LET l_excel[l_row_num].bmb03 = l_rdata_tmp[1].row[l_row_num].col[3]
+      LET l_excel[l_row_num].bmb09 = l_rdata_tmp[1].row[l_row_num].col[4]
       LET l_excel[l_row_num].bmb06 = l_rdata_tmp[1].row[l_row_num].col[5]
       LET l_excel[l_row_num].bmb07 = l_rdata_tmp[1].row[l_row_num].col[6]
-      LET l_excel[l_row_num].bmb09 = l_rdata_tmp[1].row[l_row_num].col[4]
+      LET l_excel[l_row_num].bmb13 = l_rdata_tmp[1].row[l_row_num].col[7]    #20231109 
+      LET l_excel[l_row_num].bmbud02 = l_rdata_tmp[1].row[l_row_num].col[8]  #20231109 
+      LET l_excel[l_row_num].bmbud03 = l_rdata_tmp[1].row[l_row_num].col[9]  #20231109 
 
       LET l_row = l_row_num USING '<<<<&'
       LET l_str = '(Row ',l_row,')'
@@ -12601,7 +12623,8 @@ FUNCTION i600_load_excel()
       IF l_excel_flag = 'Y' THEN
          INSERT INTO excel_tmp
          VALUES(l_row_num,l_excel[l_row_num].bma01,l_excel[l_row_num].bmb03,
-                l_excel[l_row_num].bmb06,l_excel[l_row_num].bmb07,l_excel[l_row_num].bmb09)
+                l_excel[l_row_num].bmb06,l_excel[l_row_num].bmb07,l_excel[l_row_num].bmb09,
+                l_excel[l_row_num].bmb13,l_excel[l_row_num].bmbud02,l_excel[l_row_num].bmbud03)  #20231109
       END IF
    END FOR
 
@@ -12666,7 +12689,8 @@ FUNCTION i600_excel_ins()
    PREPARE bma_tmp_pre FROM l_sql
    DECLARE bma_tmp_curs CURSOR FOR bma_tmp_pre 
  
-   LET l_sql = "SELECT bma01,bmb03,bmb06,bmb07,bmb09     ",
+   LET l_sql = "SELECT bma01,bmb03,bmb06,bmb07,bmb09,    ",
+               "       bmb13,bmbud02,bmbud03             ",  #20231109
                "  FROM excel_tmp   ",
                "  WHERE bma01 = ?  ",
                " ORDER BY row_num  "
@@ -12991,7 +13015,8 @@ FUNCTION i600_excel_ins()
 
       LET l_uflag = 'N'
       FOREACH bmb_tmp_curs USING g_bma_c.bma01 INTO g_bmb_c.bmb01,g_bmb_c.bmb03,
-                                                    g_bmb_c.bmb06,g_bmb_c.bmb07,g_bmb_c.bmb09
+                                                    g_bmb_c.bmb06,g_bmb_c.bmb07,g_bmb_c.bmb09,
+                                                    g_bmb_c.bmb13,g_bmb_c.bmbud02,g_bmb_c.bmbud03  #20231109
          IF SQLCA.sqlcode THEN
             CALL cl_err('foreach bmb_tmp_curs',SQLCA.sqlcode,1)
             LET g_success = 'N'
@@ -13011,7 +13036,7 @@ FUNCTION i600_excel_ins()
          LET g_bmb_c.bmb22 ='Y'    
          LET g_bmb_c.bmb23 = 100
          LET g_bmb_c.bmb11 = NULL  
-         LET g_bmb_c.bmb13 = NULL
+         #LET g_bmb_c.bmb13 = NULL  #20231109 mark
          LET g_bmb_c.bmb31 = 'N'
          LET g_bmb_c.bmb31 = 'N'
          LET g_bmb_c.bmb18 = 0     LET g_bmb17 = 'N'
