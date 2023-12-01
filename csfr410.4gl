@@ -194,6 +194,10 @@ MAIN
                "sfbud02.sfb_file.sfbud02,",     #料箱狀態 20231027
                "l_num2.type_file.num5,",        #欠數量   20231027
                "l_str3.type_file.chr1000,",     #欠料狀態 20231027
+               "l_str31.type_file.chr1000,",     #欠料狀態 20231027
+               "l_str32.type_file.chr1000,",     #欠料狀態 20231027
+               "l_str33.type_file.chr1000,",     #欠料狀態 20231027
+               "l_str34.type_file.chr1000,",     #欠料狀態 20231027
                "l_str2.type_file.chr1000,",
                "oeb916.oeb_file.oeb916,",
                "oeb917.oeb_file.oeb917,",
@@ -222,7 +226,7 @@ MAIN
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,                                                                  
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ,?,?,?,?,? ",
                "       ,?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ,?,?,?,?,?  ",
-               "       ,?,?,?,?,?, ?,?,?,?,?,?,?) "          #20190806 #20190828 #20210517 #20210906 #20230331  #20231026 #20231027                                
+               "       ,?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ,?) "          #20190806 #20190828 #20210517 #20210906 #20230331  #20231026 #20231027                                
    PREPARE insert_prep FROM g_sql                                                                                                   
    IF STATUS THEN                                                                                                                   
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM                                                                             
@@ -274,6 +278,7 @@ DEFINE lc_qbe_sn      LIKE gbm_file.gbm01   #No.FUN-580031
    LET tm.a    = '3'
    LET tm.b    = '3'
 #   LET tm.c    = 'N'       #No.FUN-7B0154
+   LET tm.d = 'N'           #20231116
    LET tm.more = 'N'
    LET tm.bdate = g_today   #20220317
    LET tm.edate = g_today   #20220317
@@ -284,15 +289,6 @@ DEFINE lc_qbe_sn      LIKE gbm_file.gbm01   #No.FUN-580031
    LET tm.x    = 'Y'        #No.FUN-850142
    LET tm.v    = 'Y'        #No.TQC-940009
    LET tm.oea00= 'A'        #No.FUN-960004
-  #FUN-EA0031--add str--
-   IF s_industry("slk") AND g_sma.sma150='Y' THEN
-      CALL cl_set_comp_visible("d",TRUE)
-      LET tm.d='Y'
-   ELSE
-      CALL cl_set_comp_visible("d",FALSE)
-      LET tm.d='N'
-   END IF
-  #FUN-EA0031--add end--
 
    WHILE TRUE
       CONSTRUCT BY NAME tm.wc ON oea01,oea02,oea03,oea04,
@@ -680,7 +676,12 @@ DEFINE l_sfbud02        LIKE sfb_file.sfbud02           #20231027 料箱狀態
 DEFINE l_num2           LIKE type_file.num5             #20231027 欠料數
 DEFINE l_num3           LIKE type_file.num5             #20231027 超領未發
 DEFINE l_str3           LIKE type_file.chr1000          #20231027 欠料狀態
+DEFINE l_str31          LIKE type_file.chr1000          #20231027 欠料狀態
+DEFINE l_str32          LIKE type_file.chr1000          #20231027 欠料狀態
+DEFINE l_str33          LIKE type_file.chr1000          #20231027 欠料狀態
+DEFINE l_str34          LIKE type_file.chr1000          #20231027 欠料狀態
 DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
+DEFINE l_wip            LIKE type_file.num10            #20231129 WIP量
 
    CALL cl_del_data(l_table)                 #No.FUN-7A0036
    CALL cl_del_data(l_table1)                #No.FUN-EA0031	
@@ -785,7 +786,9 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
   #FUN-EA0031--add end--
 
    LET l_name = 'csfr410' 
-                                                                      
+   IF tm.d='Y' THEN
+      LET l_name = 'csfr410_1'
+   END IF                                                               
                                                                                             
 
    FOREACH r410_curs1 INTO sr.*
@@ -872,42 +875,51 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
          AND (sfb01 = sr.sfb01 OR sfb86=sr.sfb01)   #20210906 mark
          AND sfa11 <> 'X' AND sfa03 LIKE '5%'
 
-      #20231027 取批號與料箱狀態(S)
-      LET l_oea01_3 =''
-      LET l_sfbud02 = ''
-      SELECT ta_sfb01,sfbud02 INTO l_oea01_3,l_sfbud02
-        FROM sfb_file
-       WHERE sfb01 = sr.sfb01
-         AND sfb87='Y'
-         AND sfb04 <='7'
-      IF NOT cl_null(l_sfbud02) THEN
-         LET l_sfbud02 = '●'
-      END IF
+      ##--- 20231116 add by momo 
+      IF tm.d = 'Y' THEN
+         #-- 取批號與料箱狀態(S)
+         LET l_oea01_3 =''
+         LET l_sfbud02 = ''
+         SELECT ta_sfb01,sfbud02 INTO l_oea01_3,l_sfbud02
+           FROM sfb_file
+          WHERE sfb01 = sr.sfb01
+            AND sfb87='Y'
+            AND sfb04 <='7'
+         IF NOT cl_null(l_sfbud02) THEN
+            LET l_sfbud02 = '●'
+         END IF
+
    
-      LET l_num2 = 0
-      SELECT COUNT(*) INTO l_num2
-        FROM sfb_file,sfa_file
-       WHERE sfb01=sfa01
-         AND ta_sfb01 = l_oea01_3
-         AND sfa05-sfa06 > 0
-         AND sfb87='Y'
-         AND sfb04 <='7'
-      LET l_str3=''
-      LET l_str4=''
+         LET l_num2 = 0
+         SELECT COUNT(*) INTO l_num2
+           FROM sfb_file,sfa_file
+          WHERE sfb01=sfa01
+            AND ta_sfb01 = l_oea01_3
+            AND sfa05-sfa06 > 0
+            AND sfb87='Y'
+            AND sfb04 <='7'
+         LET l_str3=''
+         LET l_str31=''
+         LET l_str32=''
+         LET l_str33=''
+         LET l_str34=''
+         LET l_str4=''
 
-      LET l_num3 = 0
-      SELECT COUNT(*) INTO l_num3
-        FROM sfs_file,sfp_file  
-       WHERE sfs01=sfp01
-         AND sfp04='N' and sfpconf<>'X'
-         AND sfb04 <='7'
-         AND sfs03 = sr.sfb01
-      IF l_num3 > 0 OR l_num2 > 0 THEN
-      #   CALL cs_stockout(l_oea01_3, g_plant) RETURNING l_str3,l_num2  #20231106 mark
+         LET l_num3 = 0
+         SELECT COUNT(*) INTO l_num3
+           FROM sfs_file,sfp_file  
+          WHERE sfs01=sfp01
+            AND sfp04='N' and sfpconf<>'X'
+            AND sfb04 <='7'
+            AND sfs03 = sr.sfb01
+         IF l_num3 > 0 OR l_num2 > 0 THEN
+            #--缺料計算
+            CALL cs_stockout(l_oea01_3, g_plant) RETURNING l_str3,l_str31,l_str32,l_str33,l_str34,l_num2  #20231106 mark
+         END IF
+         LET l_num2 = l_num2+l_num3
       END IF
-      LET l_num2 = l_num2+l_num3
+      #---20231116 --- (E) 
 
-      #20231027 取批號與料箱狀態(E)
       #----- 20180410 add by momo 源頭多角訂單帳款客戶與送貨客戶(S)
       SELECT occ02 INTO sr.oea915 FROM occ_file
        WHERE occ01=sr.oea915
@@ -946,19 +958,42 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
 
       #---- 顯示最小工作站名稱、國別
       LET l_eca02 = ''
-      IF sr.oeb04[1,1] = '0' THEN                                        #只抓成品
-         SELECT eca02 INTO l_eca02 
-           FROM eca_file,ecb_file,ima_file                               #20180906 add ima_file                     
-          WHERE ecb08=eca01 AND ecb01 = sr.oeb04
-            AND ima01=ecb01 AND ima94=ecb02                              #20180906 add
-            AND ecbacti='Y'
-            AND ecb03 = (SELECT MIN(ecb03) FROM ecb_file,ima_file        #20180906 add ima_file
-                       WHERE ima01=ecb01 AND ima94=ecb02                 #20180906 add
-                         AND ecb01 = sr.oeb04 
-                         AND ecb08 NOT IN ('BA001')) #剔除 BA001
-      END IF
-
+      IF tm.d = 'N' THEN
+         IF sr.oeb04[1,1] = '0' THEN                                        #只抓成品
+            SELECT eca02 INTO l_eca02 
+              FROM eca_file,ecb_file,ima_file                               #20180906 add ima_file                     
+             WHERE ecb08=eca01 AND ecb01 = sr.oeb04
+               AND ima01=ecb01 AND ima94=ecb02                              #20180906 add
+               AND ecbacti='Y'
+               AND ecb03 = (SELECT MIN(ecb03) FROM ecb_file,ima_file        #20180906 add ima_file
+                             WHERE ima01=ecb01 AND ima94=ecb02                 #20180906 add
+                               AND ecb01 = sr.oeb04 
+                               AND ecb08 NOT IN ('BA001')) #剔除 BA001
+          END IF
       ##---- 20210906 add by momo 顯示發料站別
+      ##---- 20231116 add by momo 缺料時顯示WIP站別 (S)
+      ELSE
+         SELECT '已完成' INTO l_eca02
+           FROM sfb_file
+          WHERE sfb01 = sr.sfb01
+            AND sfb08 = sfb09+sfb12
+         IF cl_null(sr.sfb01) THEN LET l_eca02 = '查無資料' END IF
+         IF cl_null(l_eca02) THEN
+            LET l_sql = " SELECT to_char(WMSYS.WM_CONCAT(ecm45)), ",
+                        "        ecm301+ecm302+ecm303-ecm311-ecm312-ecm313-ecm314-ecm316 ",
+                        "   FROM ecm_file ",
+                        "  WHERE ecm01 = '",sr.sfb01,"' ",
+                        "    AND ecm301+ecm302+ecm303-ecm311-ecm312-ecm313-ecm314-ecm316 > 0 ",
+                        " GROUP BY ecm01,ecm301+ecm302+ecm303-ecm311-ecm312-ecm313-ecm314-ecm316 "
+            PREPARE r410_ecm45 FROM l_sql
+            DECLARE r410_ecm45_cur CURSOR FOR r410_ecm45
+            FOREACH r410_ecm45_cur INTO l_eca02,l_wip
+                    LET l_eca02 = l_eca02,'-',l_wip
+            END FOREACH
+         END IF
+      END IF 
+
+      ##---- 20231116 add by momo 缺料時顯示WIP站別 (E)
       LET l_eca02_2 = ''
       SELECT eca02 INTO l_eca02_2
         FROM eca_file,ecm_file
@@ -967,7 +1002,6 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
          AND ecm03 = (SELECT MIN(ecm03) FROM ecm_file 
                        WHERE ecm01=sr.sfb01
                          AND ecm04 NOT IN ('BA01'))
-
       ##---- 顯示工單備註 
       LET l_sfw03=''
       SELECT sfw03 INTO l_sfw03 FROM sfw_file
@@ -1020,125 +1054,13 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
                                  sr.sfb13,l_sfw03,l_azf03,
                                  l_tc_oeq07,                                      #20210517
                                  sr.oga02,   
-                                 l_sfbud02,l_num2,l_str3,                          #20231027               
+                                 l_sfbud02,l_num2,l_str3,l_str31,l_str32,l_str33,l_str34,  #20231027               
                                  l_str2,sr.oeb916,
                                  sr.oeb917,l_oeocnt,sr.ima021,l_ta_ima02,l_ima906,         ##180524 add l_oeocnt by ruby
                                  l_eca02,                                                 #20180723 add eca02
                                  l_eca02_2,                                               #20210906 add eca02_2
                                  t_azi03,t_azi04,t_azi05    
-     #FUN-EA0031--add str-- 
-      IF tm.d = 'Y' THEN
-         LET l_flag='N'
-         LET l_cnt=0
-         #判斷是否存在顏色相關資料記錄
-         SELECT COUNT(*) INTO l_cnt FROM agd_file
-         WHERE agd02 IN (SELECT oebc05 FROM oebc_file
-                          WHERE oebc01 = sr.oea01
-                            AND oebc03 = sr.oeb03)
-           AND agd01=(SELECT ima940 FROM ima_file WHERE ima01=sr.oeb04)
-         IF l_cnt>0 THEN
-            LET l_flag='Y'
-         ELSE
-           #判斷是否存在尺寸相關資料記錄
-            SELECT COUNT(*) INTO l_cnt FROM agd_file
-            WHERE agd02 IN (SELECT oebc06 FROM oebc_file
-                             WHERE oebc01 = sr.oea01
-                               AND oebc03 = sr.oeb03)
-              AND agd01=(SELECT ima941 FROM ima_file WHERE ima01=sr.oeb04)
-            IF l_cnt>0 THEN
-               LET l_flag='Y'
-            END IF
-         END IF
-      END IF
 
-      #抓取顏色尺寸資料
-        IF l_flag='Y' THEN
-           LET l_next = 1
-           FOREACH r410_curs2 USING sr.oea01,sr.oeb03,sr.oeb04
-                              INTO l_oebc06            
-              IF SQLCA.sqlcode != 0 THEN
-                 CALL cl_err('foreach r410_curs2:',SQLCA.sqlcode,1) EXIT FOREACH
-              END IF
-
-             #尺寸的名稱
-              LET l_oebc06_name = ''
-              LET l_agd04_size = ''
-              LET l_oebc07 = ''
-              #尺寸說明
-              SELECT agd03,agd04 INTO l_oebc06_name,l_agd04_size FROM agd_file 
-              WHERE agd02=l_oebc06
-                AND agd01=(SELECT ima941 FROM ima_file WHERE ima01=sr.oeb04)
-              CASE
-                 WHEN (l_next <= 10)  #1-10
-                    #跑每一個顏色
-                    FOREACH r410_curs3 USING sr.oea01,sr.oeb03,sr.oeb04,l_oebc06
-                                       INTO l_oebc05,l_oebc07
-                       LET l_oebc07_1=''
-                       LET l_oebc07_2=''
-                       LET l_oebc07_3=''
-                       LET l_oebc07_4=''
-                       LET l_oebc07_1= l_oebc07
-                       LET l_oebc05_name=''
-                       LET l_agd04_color=''
-                       SELECT agd03,agd04 INTO l_oebc05_name,l_agd04_color FROM agd_file
-                        WHERE agd02=l_oebc05
-                          AND agd01=(SELECT ima940 FROM ima_file WHERE ima01=sr.oeb04)
-                       EXECUTE insert_prep1 USING sr.oea01,sr.oeb03,l_oebc05,l_oebc05_name,
-                                                  l_oebc06,l_oebc06_name,l_oebc07,l_oebc07_1,l_oebc07_2,
-                                                  l_oebc07_3,l_oebc07_4,l_agd04_color,l_agd04_size
-                    END FOREACH
-                 WHEN (l_next > 10 AND l_next <= 20) #11-20
-                    #跑每一個顏色
-                    FOREACH r410_curs3 USING sr.oea01,sr.oeb03,sr.oeb04,l_oebc06
-                                       INTO l_oebc05,l_oebc07
-                       LET l_oebc07_1=''
-                       LET l_oebc07_2=l_oebc07
-                       LET l_oebc05_name=''
-                       LET l_agd04_color=''
-                       SELECT agd03,agd04 INTO l_oebc05_name,l_agd04_color FROM agd_file
-                        WHERE agd02=l_oebc05
-                          AND agd01=(SELECT ima940 FROM ima_file WHERE ima01=sr.oeb04)
-                       EXECUTE insert_prep1 USING sr.oea01,sr.oeb03,l_oebc05,l_oebc05_name,
-                                                  l_oebc06,l_oebc06_name,l_oebc07,l_oebc07_1,l_oebc07_2,
-                                                  l_oebc07_3,l_oebc07_4,l_agd04_color,l_agd04_size
-                    END FOREACH
-                 WHEN (l_next > 20 AND l_next <= 30) #21-30
-                    #跑每一個顏色
-                    FOREACH r410_curs3 USING sr.oea01,sr.oeb03,sr.oeb04 ,l_oebc06
-                                       INTO l_oebc05,l_oebc07
-                       LET l_oebc07_2=''
-                       LET l_oebc07_3=l_oebc07
-                       LET l_oebc05_name=''
-                       LET l_agd04_color=''
-                       SELECT agd03,agd04 INTO l_oebc05_name,l_agd04_color FROM agd_file
-                        WHERE agd02=l_oebc05
-                          AND agd01=(SELECT ima940 FROM ima_file WHERE ima01=sr.oeb04)
-                       EXECUTE insert_prep1 USING sr.oea01,sr.oeb03,l_oebc05,l_oebc05_name,
-                                                  l_oebc06,l_oebc06_name,l_oebc07,l_oebc07_1,l_oebc07_2,
-                                                  l_oebc07_3,l_oebc07_4,l_agd04_color,l_agd04_size
-                    END FOREACH
-                 WHEN (l_next > 30) #30以上
-                    #跑每一個顏色
-                    FOREACH r410_curs3 USING sr.oea01,sr.oeb03,sr.oeb04 ,l_oebc06
-                                     INTO l_oebc05,l_oebc07
-                       LET l_oebc07_3=''
-                       LET l_oebc07_4=l_oebc07
-                       LET l_oebc05_name=''
-                       LET l_agd04_color=''
-                       SELECT agd03,agd04 INTO l_oebc05_name,l_agd04_color FROM agd_file
-                        WHERE agd02=l_oebc05
-                          AND agd01=(SELECT ima940 FROM ima_file WHERE ima01=sr.oeb04)
-                       EXECUTE insert_prep1 USING sr.oea01,sr.oeb03,l_oebc05,l_oebc05_name,
-                                                  l_oebc06,l_oebc06_name,l_oebc07,l_oebc07_1,l_oebc07_2,
-                                                  l_oebc07_3,l_oebc07_4,l_agd04_color,l_agd04_size
-                    END FOREACH
-                 END CASE
-                 IF NOT cl_null(l_oebc07) THEN
-                    LET l_next = l_next + 1
-                 END IF
-              END FOREACH
-        END IF
-     #FUN-EA0031--add end--
 #No.FUN-7A0036---End
    END FOREACH
 #No.FUN-7A0036---Begin
@@ -1157,8 +1079,8 @@ DEFINE l_str4           LIKE type_file.chr1000          #20231027 超領狀態
                                                                                                                                     
    LET l_sql = "SELECT * FROM ", g_cr_db_str CLIPPED, l_table CLIPPED
                ,"|","SELECT * FROM ",g_cr_db_str CLIPPED,l_table1 CLIPPED        #FUN-EA0031
-                                                      
-   CALL cl_prt_cs3('csfr410',l_name,l_sql,g_str)    
+                    
+    CALL cl_prt_cs3('csfr410',l_name,l_sql,g_str)    
 #   CALL cl_prt(l_name,g_prtway,g_copies,g_len)
 #No.FUN-7A0036---End
 END FUNCTION
