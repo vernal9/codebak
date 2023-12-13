@@ -2304,12 +2304,22 @@ FUNCTION t420_menu()
                END IF
          END IF
 
+         ##---- 20231120 add by momo (S) 料號PDF
+         WHEN "item_pdf"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_pml[l_ac].pml04,'pdf')
+            END IF
+         ##---- 20231120 add by momo (E)
+
          ## 20230801 add
-         WHEN "related_document2" #料號PDF
-　　　　　　　IF cl_chk_act_auth() THEN
-                 CALL ccl_open(g_pml[l_ac].pml04)
-              END IF
- 
+         WHEN "related_document2" #料號其他
+　　　　　　IF cl_chk_act_auth() THEN
+               IF g_pmk.pmk01 IS NOT NULL THEN
+                  LET g_doc.column1 = "ima01"
+                  LET g_doc.value1 = g_pml[l_ac].pml04
+                  CALL cl_doc()
+               END IF
+            END IF
          #@WHEN GPM規範顯示   
          WHEN "gpm_show"
               LET l_partnum = ''
@@ -4487,9 +4497,10 @@ END FUNCTION
 #FUN-B90101--add--end--
 
 FUNCTION t420_bp(p_ud)
-   DEFINE   p_ud   LIKE type_file.chr1    #No.FUN-680136 VARCHAR(1)
+   DEFINE   p_ud    LIKE type_file.chr1    #No.FUN-680136 VARCHAR(1)
    DEFINE   l_head_disable_t   LIKE type_file.num5    #MOD-G70061 add
-   DEFINE   l_cnt  LIKE type_file.num5
+   DEFINE   l_cnt   LIKE type_file.num5
+   DEFINE   l_ac_t  LIKE type_file.num5               #20231205 
 #FUN-C20006--mark--begin--
 ##FUN-B90101--add--begin--
 #&ifdef SLK
@@ -4502,6 +4513,12 @@ FUNCTION t420_bp(p_ud)
     IF p_ud <> "G" OR g_action_choice = "detail" THEN
        RETURN
     END IF
+
+    ##--- 20231205 add by momo (S)
+    IF g_action_choice = "item_pdf" THEN
+       LET l_ac_t = l_ac
+    END IF
+    ##--- 20231205 add by momo (E)
  
    LET g_action_choice = " "
 
@@ -4580,6 +4597,13 @@ FUNCTION t420_bp(p_ud)
  
       BEFORE ROW
          LET l_ac = ARR_CURR()
+         ##---- 20231205 add by momo (S)
+         IF l_ac_t > 0 THEN
+            CALL fgl_set_arr_curr(l_ac_t)
+            LET l_ac = l_ac_t
+            LET l_ac_t = 0
+         END IF
+         ##---- 20231205 add by momo (E)
          CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
 #FUN-B90101--mark--                                        
 #      ON ACTION insert
@@ -5041,6 +5065,12 @@ FUNCTION t420_bp(p_ud)
          LET g_action_choice="purchase_quotation"
          EXIT DIALOG
       #M003 171127 By TSD.Jin--end----
+
+      ##--- 20231120
+      ON ACTION item_pdf
+         LET g_action_choice = "item_pdf"
+         LET l_ac_t = l_ac                     #20231205
+         EXIT DIALOG
 
       ##20230801 add
       ON ACTION related_document2                
