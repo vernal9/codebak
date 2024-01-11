@@ -516,6 +516,8 @@
 # Modify.........: NO:23060021   20230626 By momo 增加合併數量刪除重覆功能（pml04,ta_pml01）
 # Modify.........: No:23070017   20230710 By momo 請購單複製時，pmkud13採購接受日期應為空
 # Modify.........: NO:23070055   20230801 By momo 增加 料件PDF開啟功能
+# Modify.........: NO:24010014   20240111 By momo 增加顯示CH類別，行序1品名2規格
+
 
 DATABASE ds
  
@@ -2308,6 +2310,13 @@ FUNCTION t420_menu()
          WHEN "item_pdf"
             IF cl_chk_act_auth() THEN
                CALL ccl_download(g_pml[l_ac].pml04,'pdf')
+            END IF
+         ##---- 20231120 add by momo (E)
+
+         ##---- 20231120 add by momo (S) 料號DWG
+         WHEN "item_dwg"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_pml[l_ac].pml04,'dwg')
             END IF
          ##---- 20231120 add by momo (E)
 
@@ -4269,9 +4278,9 @@ FUNCTION t420_b_fill(p_wc2,p_wc3)          #FUN-B90101 add 第二個參數，服
 ##FUN-A60035 ---add end
 #FUN-A60035 ---MARK END
 
-     DEFINE p_wc3    STRING                  #FUN-B90101 add
-     DEFINE l_cnt3   LIKE type_file.num5     #存在分量計價否 20200528
-     DEFINE l_cnt4   LIKE type_file.num5     #存在BO否
+   DEFINE p_wc3    STRING                  #FUN-B90101 add
+   DEFINE l_cnt3   LIKE type_file.num5     #存在分量計價否 20200528
+   DEFINE l_cnt4   LIKE type_file.num5     #存在BO否
 
    IF cl_null(p_wc2) THEN
       LET p_wc2 = " 1=1"
@@ -4305,7 +4314,8 @@ FUNCTION t420_b_fill(p_wc2,p_wc3)          #FUN-B90101 add 第二個參數，服
                 "       pml930,'',pml06,pml38,pml16,pml11,pml56,pml123,'',pml91,pml05 ",  #No.FUN-870007 #FUN-990080 add pml16 #FUN-B80167 add pml05    
                 "       ,pmlud01,pmlud02,pmlud03,pmlud04,pmlud05,",
                 "       pmlud06,pmlud07,pmlud08,pmlud09,pmlud10,",
-                "       pmlud11,pmlud12,pmlud13,pmlud14,pmlud15",
+                "       pmlud11,pmlud12,pmlud13,pmlud14,pmlud15,",
+                "       '','' ",                                          #20240111 品名規格額外說明 CH
                #" FROM pml_file,OUTER ima_file ",                         #20211201 mark          
                 " FROM pml_file, OUTER ima_file,OUTER imz_file ",         #20211201 modify
                 " WHERE pml01= '",g_pmk.pmk01,"' AND ",p_wc2 CLIPPED,
@@ -4324,11 +4334,22 @@ FUNCTION t420_b_fill(p_wc2,p_wc3)          #FUN-B90101 add 第二個參數，服
    CALL g_pml.clear()
    CALL g_pml_color.clear()  #20200528
    LET l_cnt=1
-   FOREACH t420_cs2 INTO g_pml[l_cnt].*
+   FOREACH t420_cs2 INTO g_pml[l_cnt].*                  
    
       IF SQLCA.sqlcode THEN
          CALL cl_err('prepare2:',SQLCA.sqlcode,1) EXIT FOREACH
       END IF
+
+      ##---- 20240111 add by momo (S)
+      #品名
+      SELECT imc04 INTO g_pml[l_cnt].imc04_1 FROM imc_file
+       WHERE imc01 = g_pml[l_cnt].pml04 
+         AND imc02 = 'CH' AND imc03 = 1
+      #規格
+      SELECT imc04 INTO g_pml[l_cnt].imc04_2 FROM imc_file
+       WHERE imc01 = g_pml[l_cnt].pml04 
+         AND imc02 = 'CH' AND imc03 = 2
+      ##---- 20240111 add by momo (E)
 
       ##---- 20200528 add by momo (S)判斷是否存在分量計價 
       LET l_cnt3 = 0
@@ -4515,7 +4536,7 @@ FUNCTION t420_bp(p_ud)
     END IF
 
     ##--- 20231205 add by momo (S)
-    IF g_action_choice = "item_pdf" THEN
+    IF g_action_choice = "item_pdf" OR g_action_choice = "item_dwg" THEN
        LET l_ac_t = l_ac
     END IF
     ##--- 20231205 add by momo (E)
@@ -5070,6 +5091,12 @@ FUNCTION t420_bp(p_ud)
       ON ACTION item_pdf
          LET g_action_choice = "item_pdf"
          LET l_ac_t = l_ac                     #20231205
+         EXIT DIALOG
+
+      ##--- 20231219
+      ON ACTION item_dwg
+         LET g_action_choice = "item_dwg"
+         LET l_ac_t = l_ac                     
          EXIT DIALOG
 
       ##20230801 add
