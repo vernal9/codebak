@@ -40,6 +40,7 @@ DEFINE l_sfa05     LIKE sfa_file.sfa05 #未發
 DEFINE l_pmn01     LIKE pmn_file.pmn01
 DEFINE l_pmn02     LIKE pmn_file.pmn02
 DEFINE l_qcs14     LIKE qcs_file.qcs14
+DEFINE l_sie11     LIKE sie_file.sie11 #未備置量 20231214
 
    WHENEVER ERROR CONTINUE
 
@@ -56,7 +57,7 @@ DEFINE l_qcs14     LIKE qcs_file.qcs14
                " WHERE sfa01 = sfb01 AND sfa05 > sfa06 ",
                "   AND sfb04 <='7' AND sfb87<>'X' ",
                "   AND ta_sfb01 = '",p_ta_sfb01,"' ",
-               "   AND NOT EXISTS (SELECT 1 FROM sic_file WHERE sic03=sfa01 AND sic03=sfa03 ) ",
+             # "   AND NOT EXISTS (SELECT 1 FROM sic_file WHERE sic03=sfa01 AND sic03=sfa03 ) ",  #20231214 mark
                " ORDER BY 1"
    CALL cl_parse_qry_sql(g_sql,p_plant) RETURNING g_sql
    PREPARE check_sfa03 FROM g_sql
@@ -84,16 +85,47 @@ DEFINE l_qcs14     LIKE qcs_file.qcs14
         IF l_img10 >= l_sfa05 THEN
            CONTINUE FOREACH
         END IF
+        IF l_img10 > 0 THEN LET l_sfa05= l_sfa05 - l_img10 END IF #取欠料餘量 20240112
+
+        #-- 抓取同單號備置量
+        SELECT SUM(sie11) INTO l_sie11
+          FROM sie_file,sfb_file
+         WHERE sie01 = l_sfa03
+           AND ta_sfb01 = p_ta_sfb01
+           AND sie05 = sfb01
+           AND sie11 > 0
+        IF cl_null(l_sie11) THEN LET l_sie11 = 0 END IF
+        IF l_sie11 >= l_sfa05 THEN
+           CONTINUE FOREACH
+        END IF
+        IF l_sie11 > 0 THEN LET l_sfa05= l_sfa05 - l_sie11 END IF #取欠料餘量 20240112
      
         ##-- 取其他批號或無批號庫存量
-        SELECT SUM(img10),img04 INTO l_img10
+        #SELECT SUM(img10),img04 INTO l_img10   #20240112 mark
+        SELECT SUM(img10) INTO l_img10          #20240112 modify
              FROM img_file
            WHERE img10 > 0
              AND img01 = l_sfa03
              AND img23 = 'Y'
              #-- view_nostockout 抓取未扣帳訂單與雜發單 --
              AND NOT EXISTS (SELECT 1 FROM view_nostockout WHERE img04 = lot )
-        GROUP BY img04
+        #GROUP BY img04                        #20230112 mark
+        IF cl_null(l_img10) THEN LET l_img10 = 0 END IF
+        IF l_img10 >= l_sfa05 THEN
+           CONTINUE FOREACH
+        END IF
+        IF l_img10 > 0 THEN LET l_sfa05= l_sfa05 - l_img10 END IF #取欠料餘量 20240112
+
+        ##--- 20231214 取備置 
+        LET l_sie11 = 0
+        SELECT SUM(sie11) INTO l_sie11
+          FROM sie_file
+         WHERE sie01 = l_sfa03
+           AND sie05||LPAD(sie15,3,'0') <> p_ta_sfb01
+           AND sie11 > 0
+        IF cl_null(l_sie11) THEN LET l_sie11 = 0 END IF
+             
+        LET l_img10 = l_img10 - l_sie11                  #庫存-備置
 
         IF cl_null(l_img10) THEN LET l_img10 = 0 END IF
         IF l_img10 >= l_sfa05 THEN

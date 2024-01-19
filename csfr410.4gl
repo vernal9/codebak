@@ -756,34 +756,7 @@ DEFINE l_wip            LIKE type_file.num10            #20231129 WIP量
    END IF
    DECLARE r410_curs1 CURSOR FOR r410_prepare1
  
-  #FUN-EA0031--add str--
-   #抓取尺寸總共有幾個
-     LET l_sql="SELECT DISTINCT(oebc06)",
-               "  FROM oebc_file, oeb_file ",
-               " WHERE oebc01=oeb01 AND oebc03=oeb03 AND oebc01=? AND oebc03=? AND oeb04=?",
-               " ORDER BY oebc06"
-     PREPARE r410_prepare2 FROM l_sql
-     IF SQLCA.sqlcode THEN
-        CALL cl_err('prepare r410_prepare2:',SQLCA.sqlcode,1)
-        CALL cl_used(g_prog,g_time,2) RETURNING g_time
-        EXIT PROGRAM
-     END IF
-     DECLARE r410_curs2 CURSOR FOR r410_prepare2
-
-     #抓取該尺寸的顏色總共有幾個
-     LET l_sql="SELECT oebc05,oebc07",
-               "  FROM oebc_file,oeb_file ",
-               " WHERE oebc01=oeb01 AND oebc03=oeb03 AND oebc01=? AND oebc03=? AND oeb04=? AND oebc06=?",
-               "   AND oebc07 <> '0'",
-               " ORDER BY oebc05"
-     PREPARE r410_prepare3 FROM l_sql
-     IF SQLCA.sqlcode THEN
-        CALL cl_err('prepare r410_prepare3:',SQLCA.sqlcode,1)
-        CALL cl_used(g_prog,g_time,2) RETURNING g_time
-        EXIT PROGRAM
-     END IF
-     DECLARE r410_curs3 CURSOR FOR r410_prepare3
-  #FUN-EA0031--add end--
+  
 
    LET l_name = 'csfr410' 
    IF tm.d='Y' THEN
