@@ -14,6 +14,7 @@
 # Modify.........: No:22080007   20220812 By momo 追加 ima130 銷售特性
 # Modify.........: No:22120051   20230103 By momo 追加QBE與INPUT欄位
 # Modify.........: No:23030037   20230322 By momo 增加是否存在PO
+# Modify.........: No:24010043   20240123 By momo 追加 ima08 來源碼修改功能
  
 DATABASE ds
  
@@ -31,6 +32,7 @@ DEFINE
                   i_ta_ima01    LIKE ima_file.ta_ima01,
                   i_ta_ima08    LIKE ima_file.ta_ima08,      
                   i_ima1007     LIKE ima_file.ima1007,
+                  i_ima08       LIKE ima_file.ima08,   #20240123
                   i_ima10       LIKE ima_file.ima10,   #20200702
                   i_ima11       LIKE ima_file.ima11,   #20200702    
                   i_ta_ima07    LIKE ima_file.ta_ima07,#20200702  
@@ -56,6 +58,8 @@ DEFINE
                   ima02_a      LIKE ima_file.ima02,       #新品名
                   ima021_01    LIKE ima_file.ima021,      #規格
                   ima021_a     LIKE ima_file.ima021,      #新規格
+                  ima08_b      LIKE ima_file.ima08,       #原來源碼 20240123
+                  ima08_a      LIKE ima_file.ima08,       #新來源碼 20240123
                   ima09_b      LIKE ima_file.ima09,       #原系列 
                   ima09_a      LIKE ima_file.ima09,       #新系列
                   ta_ima01_a   LIKE ima_file.ta_ima01,    #新免備品料
@@ -159,7 +163,8 @@ FUNCTION p115_tm()
    CALL cl_set_head_visible("","YES")     #No.FUN-6B0033
  
    CONSTRUCT BY NAME g_wc ON ima01,ima02,ima021,ima06,ima131,imaacti,ima130, #20210701 #20220812
-                             ima09,ima1007,ta_ima05,ta_ima07                 #20230103
+                             ima09,ima1007,ta_ima05,ta_ima07,                #20230103
+                             ima08                                           #20240123
 
    BEFORE CONSTRUCT         #20210705
      DISPLAY 'Y' TO imaacti #20210705
@@ -251,7 +256,8 @@ FUNCTION p115_tm()
                  tm.i_ima10,tm.i_ima11,tm.i_ta_ima07,                     #20200702
                  tm.i_ima1401,tm.i_ima109,tm.i_ima131,tm.i_imaacti, #20210706
                  tm.i_ima130,                                       #20220812
-                 tm.i_ta_ima05,tm.i_ta_ima03                        #20230103
+                 tm.i_ta_ima05,tm.i_ta_ima03,                       #20230103
+                 tm.i_ima08                                         #20240123
                    WITHOUT DEFAULTS 
  
  
@@ -424,8 +430,9 @@ END FUNCTION
 FUNCTION p115_p1()
    DEFINE l_exit LIKE type_file.chr1
  
-   LET g_sql = "SELECT 'N','Y',ima01,ima02,ima02,ima021,ima021,ima09,",                      #20230322
-               "       ' ',ta_ima01,ta_ima08,ima1007,ta_ima06, ",
+   LET g_sql = "SELECT 'N','N',ima01,ima02,ima02,ima021,ima021,",                            #20230322
+               "       ima08,' ',",                                                          #20240123                     
+               "       ima09,' ',ta_ima01,ta_ima08,ima1007,ta_ima06, ",
                "       ima10,' ',ima11,' ',ta_ima07,' ',ta_ima02, ",                         #20200702
                "       ta_ima03,ta_ima04,ta_ima05,NVL(imaud07,0),NVL(imaud08,0), ",          #20200702 #20201130
                "       ima1401,ima109,ima131,ima110,imaacti, ",                              #20210706
@@ -452,7 +459,7 @@ FUNCTION p115_p1()
       END IF
      
       ##---- 檢核是否存在PO (S) 20230322
-      SELECT 'N' INTO g_ima[g_cnt].checkpo
+      SELECT 'Y' INTO g_ima[g_cnt].checkpo
         FROM pmm_file,pmn_file
        WHERE pmm01=pmn01 AND pmm18='Y'
          AND pmn04 = g_ima[g_cnt].ima01_b
@@ -542,6 +549,14 @@ FUNCTION p115_p1()
       END IF
       ##--- 20220812 add (E)
 
+      ##--- 20240123 (S) 來源碼
+      IF NOT cl_null(tm.i_ima08) THEN     
+         LET g_ima[g_cnt].ima08_a = tm.i_ima08
+      ELSE
+         LET g_ima[g_cnt].ima08_a = g_ima[g_cnt].ima08_b
+      END IF
+      ##--- 20240123 (E)
+
       LET g_cnt = g_cnt + 1                           #累加筆數
  
       IF g_cnt > g_max_rec THEN
@@ -628,6 +643,7 @@ FUNCTION p115_update()
              CONTINUE FOR
           END IF
           UPDATE ima_file SET ima09    = g_ima[l_i].ima09_a,
+                              ima08    = g_ima[l_i].ima08_a,   #20240123
                               ima10    = g_ima[l_i].ima10_a,   #20200702
                               ima11    = g_ima[l_i].ima11_a,   #20200702
                               ima1007  = g_ima[l_i].ima1007_a,
@@ -714,8 +730,13 @@ END FUNCTION
 FUNCTION p115_b()
    DEFINE l_exit LIKE type_file.chr1
  
-   LET g_sql = "SELECT 'N',ima01,ima02,ima02,ima021,ima021,ima09,",
-               "       ima09,ta_ima01,ta_ima08,ima1007 ",
+   LET g_sql = "SELECT 'N','N',ima01,ima02,ima02,ima021,ima021,",                            #20230322
+               "       ima08,ima08,",                                                        #20240123                     
+               "       ima09,ima09,ta_ima01,ta_ima08,ima1007,ta_ima06, ",
+               "       ima10,ima10,ima11,ima11,ta_ima07,ta_ima07,ta_ima02, ",                #20200702
+               "       ta_ima03,ta_ima04,ta_ima05,NVL(imaud07,0),NVL(imaud08,0), ",          #20200702 #20201130
+               "       ima1401,ima109,ima131,ima110,imaacti, ",                              #20210706
+               "       ima130 ",                                                             #20220812
                "  FROM ima_file ",
                " WHERE  ",g_wc CLIPPED
         
@@ -730,61 +751,13 @@ FUNCTION p115_b()
    DECLARE p005_curs CURSOR FOR p005_prepare
  
    CALL g_ima.clear()
-   CALL g_bne2.clear()
 
    LET g_cnt = 1
-   FOREACH p005_curs INTO g_ima[g_cnt].*,g_bne2[g_cnt].*
+   FOREACH p005_curs INTO g_ima[g_cnt].*
       IF SQLCA.sqlcode THEN                                  #有問題
          CALL cl_err('FOREACH:',SQLCA.sqlcode,1) EXIT FOREACH
       END IF
       
-      #IF NOT cl_null(tm.ecu01) THEN
-      #   IF g_bne2[g_cnt].ima1916_1 != tm.ecu01 THEN
-      #      CONTINUE FOREACH
-      #   END IF 
-      #END IF
-
-      IF NOT cl_null(tm.i_ima09) THEN
-         LET g_ima[g_cnt].ima09_a = tm.i_ima09
-      ELSE
-         LET g_ima[g_cnt].ima09_a = g_ima[g_cnt].ima09_b
-      END IF
-      IF NOT cl_null(tm.i_ta_ima01) THEN
-         LET g_ima[g_cnt].ta_ima01_a = tm.i_ta_ima01
-      END IF
-      IF NOT cl_null(tm.i_ta_ima08) THEN
-         LET g_ima[g_cnt].ta_ima08_a = tm.i_ta_ima01
-      END IF
-      IF NOT cl_null(tm.i_ima1007) THEN
-         LET g_ima[g_cnt].ima1007_a = tm.i_ima1007
-      END IF
-      IF NOT cl_null(tm.i_ima02) THEN
-         LET g_ima[g_cnt].ima02_a = tm.i_ima02
-      END IF
-      IF NOT cl_null(tm.i_ima021) THEN
-         LET g_ima[g_cnt].ima021_a = tm.i_ima021
-      END IF
-      IF NOT cl_null(tm.i_ta_ima06) THEN
-         LET g_ima[g_cnt].ta_ima06_a = tm.i_ta_ima06
-      END IF
-      ##---- 20200702 
-      IF NOT cl_null(tm.i_ima10) THEN
-         LET g_ima[g_cnt].ima10_a = tm.i_ima10
-      ELSE
-         LET g_ima[g_cnt].ima10_a = g_ima[g_cnt].ima10_b
-      END IF
-
-      IF NOT cl_null(tm.i_ima11) THEN
-         LET g_ima[g_cnt].ima11_a = tm.i_ima11
-      ELSE
-         LET g_ima[g_cnt].ima11_a = g_ima[g_cnt].ima11_b
-      END IF
-
-      IF NOT cl_null(tm.i_ta_ima07) THEN
-         LET g_ima[g_cnt].ta_ima07_a = tm.i_ta_ima07
-      ELSE
-         LET g_ima[g_cnt].ta_ima07_a = g_ima[g_cnt].ta_ima07_b
-      END IF
       ##---- 20200702
       LET g_ima[g_cnt].choice = 'N'       
  
@@ -805,6 +778,7 @@ FUNCTION p115_b()
    END IF
    CALL SET_COUNT(g_cnt)                               #告之DISPALY ARRAY
    DISPLAY g_cnt TO FORMONLY.cn3                       #顯示總筆數
+  
    WHILE TRUE 
      LET l_exit = 'y'
      INPUT ARRAY g_ima WITHOUT DEFAULTS FROM s_ima.*  #顯示並進行選擇
@@ -850,6 +824,7 @@ FUNCTION p115_b()
      IF INT_FLAG THEN RETURN END IF   #使用者中斷
      IF l_exit = 'y' THEN EXIT WHILE END IF
    END WHILE
+
 END FUNCTION
 
 FUNCTION p005_sel_all(p_value)
