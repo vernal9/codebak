@@ -306,6 +306,8 @@
 # Modify.........: No:2206028201 20220602 By momo     asf-283 卡控調整，需排除作廢單據
 # Modify.........: No:23030021   20230316 By momo     變更作業編號時需一併變更製程序 sna013a/ana013b
 # Modify.........: No:23040041   20230504 By momo     增加顯示 ta_sfb01 訂單單號序號
+# Modify.........: No:23060011   20230612 By momo     asf-307 / asf-308 調整為只提醒不強制卡控
+# Modify.........: NO:24010051   20240201 By momo     增加資料清單功能
 
 DATABASE ds
 
@@ -456,6 +458,25 @@ DEFINE g_sna05a_o      LIKE sna_file.sna05a
 #FUN-DA0108 -----End-------
 DEFINE g_exit_sw       BOOLEAN                     #MOD-DC0038
 DEFINE g_flag          LIKE type_file.chr1         #CHI-E40015 add
+##----- 20240201 By momo 資料清單 (S)
+DEFINE w               ui.Window
+DEFINE f               ui.Form
+DEFINE page            om.DomNode
+DEFINE g_action_flag   STRING
+DEFINE g_rec_b1        LIKE type_file.num10
+DEFINE l_ac1           LIKE type_file.num10
+DEFINE g_snb_l         DYNAMIC ARRAY OF RECORD
+       ta_sfb01_l      LIKE sfb_file.ta_sfb01,
+       snb01_l         LIKE snb_file.snb01,
+       sfb05_l         LIKE sfb_file.sfb05,
+       snb02_l         LIKE snb_file.snb02,
+       snb022_l        LIKE snb_file.snb022,
+       snb99_l         LIKE snb_file.snb99,   
+       snbconf_l       LIKE snb_file.snbconf,
+       snb08b_l        LIKE snb_file.snb08b,
+       snb08a_l        LIKE snb_file.snb08a           
+                       END RECORD
+##----- 20240201 By momo 資料清單 (E)
 
 MAIN
 
@@ -743,12 +764,43 @@ FUNCTION t803_menu()
   DEFINE l_sfb02      LIKE sfb_file.sfb02
   DEFINE l_sfb82      LIKE sfb_file.sfb82
  #FUN-D70102 add end----
+  ##---- 20240201 (S)
+  DEFINE l_node       om.DomNode,
+         win          ui.Window,
+         f            ui.Form
+  ##--- 20240201 (E)
 
   LET l_flowuser = "N"   #FUN-920208
 
 
    WHILE TRUE
-      CALL t803_bp("G")
+      ##---20240201 資料清單 (S) 
+      #CALL t803_bp("G")
+      CASE
+         WHEN (g_action_flag IS NULL) OR (g_action_choice = "main")
+              CALL t803_bp("G")
+         WHEN (g_action_flag = "page_list")
+              CALL t803_list_fill()
+              CALL t803_bp1("G")
+              IF NOT cl_null(g_action_choice) AND l_ac1 > 0 THEN
+                 SELECT * INTO g_snb.* FROM snb_file
+                  WHERE snb01 = g_snb_l[l_ac1].snb01_l
+                    AND snb02 = g_snb_l[l_ac1].snb02_l
+              END IF
+              IF NOT cl_null(g_action_choice) OR NOT cl_null(g_action_flag) THEN
+                 LET g_action_choice = 'main'
+                 LET l_ac1 = ARR_CURR()
+                 LET g_jump = l_ac1
+                 LET mi_no_ask = TRUE
+                 IF g_rec_b1 > 0 THEN
+                    CALL t803_fetch('/')
+                 END IF
+                 CALL cl_set_comp_visible("page_list",FALSE)
+                 CALL ui.interface.refresh()
+                 CALL cl_set_comp_visible("page_list",TRUE)
+              END IF
+      END CASE
+      ##---20240201 資料清單 (E) 
       CASE g_action_choice
 
           WHEN "insert"
@@ -1629,13 +1681,13 @@ DEFINE l_min_pmn43  LIKE pmn_file.pmn43    #MOD-E20126 add
                  IF l_ima561 > 0 THEN #生產單位批量&最少生產數量
                     IF g_snb.snb08a<l_ima561 THEN
                        CALL cl_err(l_ima561,'asf-307',0)
-                       NEXT FIELD snb08a
+                       #NEXT FIELD snb08a                    #20230612 mark
                     END IF
                  END IF
                  IF NOT cl_null(l_ima56) AND l_ima56>0  THEN #生產單位批量
                     IF (g_snb.snb08a MOD l_ima56) > 0 THEN
                        CALL cl_err(l_ima56,'asf-308',0)
-                       NEXT FIELD snb08a
+                       #NEXT FIELD snb08a                    #20230612 mark
                     END IF
                  END IF
               END IF   #MOD-F10084 add
@@ -7218,7 +7270,14 @@ FUNCTION t803_bp(p_ud)
       ##########################################################################
       # Standard 4ad ACTION
       ##########################################################################
-        ON ACTION CONTROLS
+   
+      ##--- 20240201 (S) 資料清單
+      ON ACTION page_list
+         LET g_action_flag = "page_list"
+         EXIT DISPLAY
+      ##--- 20240201 (E)
+
+      ON ACTION CONTROLS
            CALL cl_set_head_visible("","AUTO")
       ON ACTION insert
          LET g_action_choice="insert"
@@ -12895,13 +12954,13 @@ FUNCTION t803_chk_snab07(p_qty)
       IF l_ima561 > 0 AND p_qty<>0 THEN #生產單位批量&最少生產數量
          IF p_qty<l_ima561 THEN
             CALL cl_err(l_ima561,'asf-307',0)
-            RETURN FALSE 
+            #RETURN FALSE                             #20230612 mark
          END IF
       END IF
       IF NOT cl_null(l_ima56) AND l_ima56>0 AND p_qty<>0 THEN #生產單位批量
          IF (p_qty MOD l_ima56) > 0 THEN
             CALL cl_err(l_ima56,'asf-308',0)
-            RETURN FALSE 
+            #RETURN FALSE                             #20230612 mark
          END IF
       END IF
    END IF   #MOD-F10084 add
@@ -12956,3 +13015,193 @@ DEFINE l_res          LIKE type_file.num5
 END FUNCTION 
 #CHI-E40015-End-Add
 
+##---- 20240201 (S) 資料清單
+FUNCTION t803_list_fill()
+  DEFINE l_cnt    LIKE type_file.num10
+  DEFINE l_snb01  LIKE snb_file.snb01
+  DEFINE l_snb02  LIKE snb_file.snb02
+
+  CALL g_snb_l.clear()
+  LET l_cnt = 1
+  
+  FOREACH t803_b_cs INTO l_snb01,l_snb02
+    IF SQLCA.sqlcode THEN
+       CALL cl_err('foreach list',SQLCA.sqlcode,1)
+       CONTINUE FOREACH
+    END IF
+    SELECT ta_sfb01,snb01,sfb05,snb02,snb022,snb99,snbconf,snb08b,snb08a
+      INTO g_snb_l[l_cnt].*
+      FROM snb_file,sfb_file
+     WHERE snb01 = sfb01
+       AND snb01 = l_snb01
+       AND snb02 = l_snb02
+    LET l_cnt = l_cnt + 1 
+    IF l_cnt > g_max_rec THEN
+       IF g_action_choice = "query" THEN
+          CALL cl_err('',9035,0)
+       END IF
+       EXIT FOREACH
+    END IF
+  END FOREACH
+  OPEN t803_b_cs
+  LET g_rec_b1 = l_cnt - 1
+  DISPLAY g_rec_b1 TO FORMONLY.cnt
+  DISPLAY ARRAY g_snb_l TO s_snb_l.* ATTRIBUTE(COUNT=g_rec_b1,UNBUFFERED)
+   BEFORE DISPLAY
+     EXIT DISPLAY
+   END DISPLAY 
+END FUNCTION
+
+FUNCTION t803_bp1(p_ud)
+   DEFINE   p_ud   LIKE type_file.chr1         
+
+
+   IF p_ud <> "G" OR g_action_choice = "detail" THEN
+      RETURN
+   END IF
+
+   LET g_action_choice = " "
+
+   CALL cl_set_act_visible("accept,cancel", FALSE)
+   DISPLAY ARRAY g_snb_l TO s_snb_l.* ATTRIBUTE(COUNT=g_rec_b1,UNBUFFERED)
+
+      BEFORE DISPLAY
+         CALL cl_navigator_setting( g_curs_index, g_row_count )
+
+
+      BEFORE ROW
+         LET l_ac1 = ARR_CURR()
+         CALL cl_show_fld_cont()
+
+      ##########################################################################
+      # Standard 4ad ACTION
+      ##########################################################################
+   
+      ON ACTION main
+         LET g_action_flag = 'main'
+         LET l_ac1 = ARR_CURR()
+         LET g_jump = l_ac1
+         LET mi_no_ask = TRUE
+         IF g_rec_b1 > 0 THEN
+            CALL t803_fetch('/')
+         END IF
+         CALL cl_set_comp_visible("page_list",FALSE)
+         CALL ui.Interface.refresh()
+         CALL cl_set_comp_visible("page_list",TRUE)
+         EXIT DISPLAY
+
+      ON ACTION query
+         LET g_action_choice="query"
+         EXIT DISPLAY
+     
+      ON ACTION first
+         CALL t803_fetch('F')
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
+           IF g_rec_b1 != 0 THEN
+         CALL fgl_set_arr_curr(1)  
+           END IF
+
+      ON ACTION previous
+         CALL t803_fetch('P')
+         CALL cl_navigator_setting(g_curs_index, g_row_count)  
+           IF g_rec_b1 != 0 THEN
+         CALL fgl_set_arr_curr(1)  
+           END IF
+
+      ON ACTION jump
+         CALL t803_fetch('/')
+         CALL cl_navigator_setting(g_curs_index, g_row_count)  
+           IF g_rec_b1 != 0 THEN
+         CALL fgl_set_arr_curr(1) 
+           END IF
+
+
+      ON ACTION next
+         CALL t803_fetch('N')
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
+           IF g_rec_b1 != 0 THEN
+         CALL fgl_set_arr_curr(1)  
+           END IF
+
+
+      ON ACTION last
+         CALL t803_fetch('L')
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
+           IF g_rec_b1 != 0 THEN
+         CALL fgl_set_arr_curr(1)  
+           END IF
+      ON ACTION modify
+          LET g_action_choice="modify"
+          EXIT DISPLAY
+
+      ON ACTION detail
+         LET g_action_choice="detail"
+         LET l_ac1 = 1
+         EXIT DISPLAY
+      ON ACTION output
+         LET g_action_choice="output"
+         EXIT DISPLAY
+      ON ACTION help
+         LET g_action_choice="help"
+         EXIT DISPLAY
+
+      ON ACTION locale
+         CALL cl_dynamic_locale()
+      
+         IF g_aza.aza75 MATCHES '[Yy]' THEN
+            CALL aws_ebocli_toolbar()
+            CALL cl_set_act_visible("ebo_status_query", TRUE)
+            CALL t803_set_sendtype_comb()
+            CALL cl_set_comp_visible("sendtype", TRUE)
+            IF g_aza.aza77 MATCHES '[Yy]' THEN
+               CALL cl_set_act_visible("ebo_transfer", TRUE)
+            ELSE
+               CALL cl_set_act_visible("ebo_transfer",FALSE)
+            END IF
+         ELSE
+            CALL cl_set_act_visible("ebo_status_query",FALSE)
+            CALL cl_set_act_visible("ebo_transfer",FALSE)
+            CALL cl_set_comp_visible("sendtype", FALSE)
+         END IF
+      
+         CALL t803_aps_ui_default()
+
+      ON ACTION exit
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+
+      ##########################################################################
+      # Special 4ad ACTION
+      ##########################################################################
+      ON ACTION controlg
+         LET g_action_choice="controlg"
+         EXIT DISPLAY
+
+
+      ON ACTION accept
+         LET g_action_choice="main"
+         LET l_ac1 = ARR_CURR()
+         LET g_jump = l_ac1
+         LET mi_no_ask = TRUE
+         CALL t803_fetch('/')
+         CALL cl_set_comp_visible("page_list",FALSE)
+         CALL cl_set_comp_visible("page_list",TRUE)
+         CALL ui.interface.refresh()
+         EXIT DISPLAY
+
+      ON ACTION cancel
+         LET INT_FLAG=FALSE 		
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE DISPLAY
+
+     
+
+      &include "qry_string.4gl"
+   END DISPLAY
+   CALL cl_set_act_visible("accept,cancel", TRUE)
+END FUNCTION
+##---- 20240201 (E) 
