@@ -488,6 +488,8 @@ FUNCTION p412_bp(p_ud)
           CALL cl_navigator_setting( g_curs_index, g_row_count )
  
         BEFORE ROW
+            CALL cl_set_comp_entry("ecm18,ecm05,ecm50,ecm51",TRUE)
+            CALL cl_set_comp_entry("sfbud01",FALSE)
             LET l_ac = ARR_CURR()
             CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
             ##---- 20240226 (S)
