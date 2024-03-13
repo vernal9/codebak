@@ -10,7 +10,8 @@
 # Modify.........: No:FUN-A80036 10/08/11 By Carrier 资料抛转时,使用的中间表变成动态表名
 # Modify.........: No:CHI-B60098 13/04/03 By Alberti 新增 geu00 為 KEY 值
 # Modify.........: No:FUN-D70057 13/07/09 By Alberti 新增 修改日期(bmadate)欄位做為篩選條件
-
+# Modify.........: No:24030007   20240318 By momo QBE 增加 ima09、ima1007
+# Modify.........:               20240312 By momo 筆數上限移除、增加 bma10 BOM狀態、BOM無拋轉多階調整
  
 DATABASE ds
 #NO.FUN-820031---begin
@@ -35,13 +36,15 @@ DEFINE g_bma      DYNAMIC ARRAY OF RECORD
                   ima55    LIKE ima_file.ima55,
                   ima05    LIKE ima_file.ima05,
                   ima08    LIKE ima_file.ima08,
-                  bma05    LIKE bma_file.bma05
-                 ,bmadate  LIKE bma_file.bmadate  #FUN-D70057 add
+                  bma05    LIKE bma_file.bma05,
+                  bmadate  LIKE bma_file.bmadate, #FUN-D70057 add
+                  bma10    LIKE bma_file.bma10    #20240312 add BOM狀態
                   END RECORD
 DEFINE g_bma1     DYNAMIC ARRAY OF RECORD
                   sel      LIKE type_file.chr1,
                   bma01    LIKE bma_file.bma01,
-                  bma06    LIKE bma_file.bma06 
+                  bma06    LIKE bma_file.bma06,
+                  bma10    LIKE bma_file.bma10   #20240312
                   END RECORD
 DEFINE 
        #g_sql      LIKE type_file.chr1000
@@ -53,6 +56,10 @@ DEFINE i          LIKE type_file.num5
 DEFINE g_cnt1     LIKE type_file.num10
 DEFINE g_db_type  LIKE type_file.chr3
 DEFINE g_err      LIKE type_file.chr1000
+DEFINE g_bma01    LIKE bma_file.bma01            #20240312 add
+DEFINE g_bma06    LIKE bma_file.bma06            #20240312 add
+DEFINE g_bma10    LIKE bma_file.bma10            #20240312 add
+
  
 MAIN
   DEFINE p_row,p_col    LIKE type_file.num5
@@ -235,12 +242,14 @@ FUNCTION p102_tm()
     CONSTRUCT tm1.wc ON bma01,bma06,ima02,ima021,
                         ima09,ima1007,                            #20240308 add
                         ima55,ima05,                  
-                        ima08,bma05,bmadate                       #FUN-D70057 add bmadate
+                        ima08,bma05,bmadate,                      #FUN-D70057 add bmadate
+                        bma10                                     #20240312 add
          FROM s_bma[1].bma01,s_bma[1].bma06,s_bma[1].ima02,                    
               s_bma[1].ima021,
               s_bma[1].ima09,s_bma[1].ima1007,                    #20240308
               s_bma[1].ima55,s_bma[1].ima05,                    
-              s_bma[1].ima08,s_bma[1].bma05,s_bma[1].bmadate      #FUN-D70057 add bmadate
+              s_bma[1].ima08,s_bma[1].bma05,s_bma[1].bmadate,     #FUN-D70057 add bmadate
+              s_bma[1].bma10                                      #20240212 add
  
     BEFORE CONSTRUCT                                                         
           CALL cl_qbe_init()                                                    
@@ -305,6 +314,7 @@ FUNCTION p102_b_fill()
                 "       ima09,ima1007,",                              #20240308
                 "       ima55,",
                 "       ima05,ima08,bma05,bmadate ",                  #FUN-D70057 add bmadate 
+                "      ,bma10 ",                                      #20240312 add
                 " FROM bma_file,ima_file ",
                 " WHERE bma01=ima01 AND bma05 is not null AND ",
                 " imaacti = 'Y' AND bmaacti = 'Y' AND ",tm1.wc,
@@ -320,10 +330,12 @@ FUNCTION p102_b_fill()
             EXIT FOREACH
         END IF
         LET l_i = l_i + 1
-        IF l_i > g_max_rec THEN
-           CALL cl_err( '', 9035, 0 )
-	   EXIT FOREACH
-        END IF
+        ##----- 20240312 mark by momo (S)
+        #IF l_i > g_max_rec THEN
+           #CALL cl_err( '', 9035, 0 )
+	   #EXIT FOREACH
+        #END IF
+        ##----- 20240312 mark by momo (E)
     END FOREACH
     CALL g_bma.deleteElement(l_i)
     LET g_rec_b = l_i - 1
@@ -434,6 +446,7 @@ FUNCTION p102()
    DEFINE l_j       LIKE type_file.num10
  
    CALL g_bma1.clear()
+   CALL g_azp1.clear()                  #FUN-D40122 add  清空抛转时db值
    LET l_j = 1
    FOR l_i = 1 TO g_bma.getLength()
        IF g_bma[l_i].sel = 'Y' THEN
@@ -449,14 +462,25 @@ FUNCTION p102()
       RETURN                                                                                                                        
    END IF
  
-   CALL s_dc_sel_db(tm1.gev04,'2')                                                                                                  
+   #CALL s_dc_sel_db(tm1.gev04,'2')                                                                                              
    IF INT_FLAG THEN                                                                                                                 
       LET INT_FLAG=0                                                                                                                
       RETURN                                                                                                                        
    END IF
  
    CALL s_showmsg_init()
-   CALL s_abmi600_carry(g_bma1,g_azp,tm1.gev04,'0')  #No.FUN-830090
+   #CALL s_abmi600_carry(g_bma1,g_azp,tm1.gev04,'0')  #No.FUN-830090   
+   ##---- 20240612 add (S)
+   FOR l_i = 1 TO l_j-1 
+       LET g_bma01 = g_bma1[l_i].bma01
+       LET g_bma06 = g_bma1[l_i].bma06   
+       LET g_bma10 = g_bma1[l_i].bma10
+       CALL s_abmi600_com_carry(g_bma01,g_bma06,g_bma10,g_plant,1)
+       IF g_azp1.getLength() >= 1 THEN     #如果抛转db不为空时，可继续抛转下阶 
+          CALL p102_carry_all()                             #20240312 add
+       END IF
+   END FOR
+   ##---- 20240612 add (E)
    CALL s_showmsg()
  
 END FUNCTION
@@ -646,3 +670,63 @@ FUNCTION p102_download_files(p_path)
    CALL s_dc_drop_temp_table(l_tabname)
 END FUNCTION
 #NO.FUN-820031---end
+
+##---- 20240312 add by momo (S)展下階BOM
+FUNCTION p102_carry_all()
+   DEFINE l_bmb03     LIKE bmb_file.bmb03
+   DEFINE l_bma01     LIKE bma_file.bma01
+   DEFINE l_bma06     LIKE bma_file.bma06
+   DEFINE l_bma10     LIKE bma_file.bma10
+   DEFINE l_sql       STRING
+   DEFINE l_n         LIKE type_file.num5
+   DEFINE l_j         LIKE type_file.num5
+
+   DROP TABLE carry_all
+   CREATE TEMP TABLE carry_all(
+      n      LIKE type_file.num5,
+      b1     LIKE bmb_file.bmb01,
+      b2     LIKE bmb_file.bmb03,
+      b3     LIKE bmb_file.bmb29)
+   DROP TABLE carry_all1
+   CREATE TEMP TABLE carry_all1(
+      s1     LIKE bmb_file.bmb01,
+      s3     LIKE bmb_file.bmb03)
+
+   LET l_sql = "  INSERT INTO carry_all ",
+               "  SELECT LEVEL,bmb01,bmb03,bmb29 FROM bmb_file ",
+               "   WHERE (bmb04 <= '",g_today,"' OR bmb04 IS NULL) AND (bmb05 > '",g_today,"' OR bmb05 IS NULL) ",
+               "   START WITH ( bmb01 = '",g_bma01,"' ",                                       
+               "     AND bmb29 = '",g_bma06,"' ",
+               "     AND (bmb04 <= '",g_today,"' OR bmb04 IS NULL) AND (bmb05 > '",g_today,"' OR bmb05 IS NULL)) ",
+               "   CONNECT BY PRIOR bmb03 = bmb01 ",
+               "     AND (bmb04 <= '",g_today,"' OR bmb04 IS NULL) AND (bmb05 > '",g_today,"' OR bmb05 IS NULL) "
+   PREPARE carry_all_cs FROM l_sql
+   EXECUTE carry_all_cs
+   IF SQLCA.sqlcode THEN
+      CALL cl_err3("INS","carry_all",g_bma01,g_bma06,SQLCA.sqlcode,"","carry_all",1)
+      LET g_success = 'N'
+      RETURN
+   END IF
+
+   LET l_sql = null
+   LET l_sql = " INSERT INTO carry_all1 ",
+               " SELECT DISTINCT b1,b3 FROM carry_all ",
+               "  START WITH b1 IN (SELECT b2 FROM carry_all WHERE n=1 AND b3 = '",g_bma06,"') CONNECT BY PRIOR b2 = b1 "
+   PREPARE carry_all_cs1 FROM l_sql
+   EXECUTE carry_all_cs1
+
+   DECLARE carry_all_curs CURSOR WITH HOLD FOR SELECT s1,s3 FROM carry_all1
+   FOREACH carry_all_curs INTO l_bma01,l_bma06
+      SELECT bma10 INTO l_bma10 FROM bma_file WHERE bma01 = l_bma01 AND bma06 = l_bma06
+      CALL ui.Interface.refresh()
+      CALL s_abmi600_com_carry(l_bma01,l_bma06,l_bma10,g_plant,1)
+      IF INT_FLAG THEN                                                                                                                 
+         LET INT_FLAG=0                                                                                                                
+         EXIT FOREACH                                                                                                                        
+      END IF
+   END FOREACH
+   DROP TABLE carry_all
+   DROP TABLE carry_all1
+END FUNCTION
+##---- 20240312 add by momo (E)
+
