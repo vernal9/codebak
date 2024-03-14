@@ -185,6 +185,7 @@
 # Modify.........:                19/09/11 By Ruby 調整axmi151最近單價更新邏輯
 # Modify.........: No.23030035   20230324 By momo 檢核料號與數量
 # Modify.........: NO.23070003   20230706 By momo  axmt410 銷售特性卡控，單別5397時不卡控 
+# Modify.........: No.224030004  20240313 By momo SKYFamily 中介檔處理 送簽、確認
 
 DATABASE ds
  
@@ -520,6 +521,7 @@ FUNCTION t400sub_y_chk(p_flag,p_oea01)
        END IF
        #非產品不可銷售檢核 20230706
        IF l_oea.oea01[2,5] <> '5397' THEN
+          LET l_cnt = 0
           SELECT 1 INTO l_cnt FROM ima_file
            WHERE ima01 = l_oeb.oeb04
              AND ima130 = '0'
@@ -1048,6 +1050,7 @@ FUNCTION t400sub_y_upd(p_oea01,p_action_choice,p_inTransaction)   #CHI-B80050
         #COMMIT WORK                                      #CHI-B80050 mark
          IF NOT p_inTransaction THEN COMMIT WORK END IF   #CHI-B80050
          CALL cl_flow_notify(l_oea.oea01,'Y')
+         CALL cs_axmmid(l_oea.oea01,"axmt410")              #20240313 add
          DISPLAY BY NAME l_oea.oeaconf
       ELSE
          LET l_oea.oeaconf = 'N'
@@ -1099,7 +1102,7 @@ FUNCTION t400sub_y_upd(p_oea01,p_action_choice,p_inTransaction)   #CHI-B80050
   END IF
   #210520 add by ruby --s-- 確認時發信通知
   #IF (g_plant='TY' OR g_plant='TY_TEST') AND (l_oea.oeaud01 NOT MATCHES '*銷帳用*' AND l_oea.oeaud01 NOT MATCHES '*扣帳用*') THEN         #210628 add by ruby #210901 add by ruby
-  IF (g_plant='TY') AND (l_oea.oeaud01 NOT MATCHES '*銷帳用*' AND l_oea.oeaud01 NOT MATCHES '*扣帳用*') THEN 
+  IF (g_plant='TY' or g_plant='KR') AND (l_oea.oeaud01 NOT MATCHES '*銷帳用*' AND l_oea.oeaud01 NOT MATCHES '*扣帳用*') THEN 
     CALL t400sub_mail(l_oea.*) 
   END IF                       
   #210520 add by ruby --e--
@@ -5516,8 +5519,17 @@ FUNCTION  t400sub_mail(l_oea)
               LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED 
            ELSE
               LET l_recipient =l_recipient CLIPPED ,l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED  
-           END IF          
-           LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
+           END IF 
+           IF g_plant='TY' THEN         
+             LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
+           END IF
+           IF g_plant='KR' THEN     
+             IF cl_null(l_gen06) THEN
+               LET l_recipient =l_recipient CLIPPED ,"wu684@toyorobot.com:宋永世:1;hskim@toyorobot.com:金昊性:1;homejo123@toyorobot.com:曹昌煥:1;ruby@toyorobot.com:徐健瑋:1" CLIPPED
+             ELSE
+               LET l_recipient =l_recipient CLIPPED ,";wu684@toyorobot.com:宋永世:1;hskim@toyorobot.com:金昊性:1;homejo123@toyorobot.com:曹昌煥:1;hikim@toyorobot.com:金昊一:1;ruby@toyorobot.com:徐健瑋:1" CLIPPED
+             END IF  
+           END IF  
          LET g_xml.recipient = l_recipient
            
   #訂單交期通知 --s--
@@ -5556,18 +5568,27 @@ FUNCTION  t400sub_mail(l_oea)
          LET l_wc = cl_replace_str(l_wc,"'","\"")
          CALL FGL_SETENV("MAIL_TO",l_recipient)  
          
-         IF l_occ21='TW' OR l_occ21='CN' THEN             
+         IF g_plant='TY' THEN
+          IF l_occ21='TW' OR l_occ21='CN' THEN             
            LET l_cmd = "axmr400 '", 
                         g_today,"' '",g_user CLIPPED,"' '",
                         g_rlang,"' 'Y' 'A' '1' '",l_wc CLIPPED,
                         "' 'Y' 'Y' 'N' 'default' 'default' 'axmr400' 'Y' 'N' '",g_xml.subject,"' '",g_xml.body,"' '",g_xml.recipient,"' 'axmr400_0_std'"                                  
            CALL cl_cmdrun(l_cmd)
-         ELSE
+          ELSE
            LET l_cmd = "axmr400 '", 
                         g_today,"' '",g_user CLIPPED,"' '",
                         g_rlang,"' 'Y' 'A' '1' '",l_wc CLIPPED,
                         "' 'Y' 'Y' 'N' 'default' 'default' 'axmr400' 'Y' 'N' '",g_xml.subject,"' '",g_xml.body,"' '",g_xml.recipient,"' 'axmr400_0_std_3'"                                  
            CALL cl_cmdrun(l_cmd)         
+          END IF
+         END IF
+         IF g_plant='KR' THEN
+           LET l_cmd = "axmr400 '", 
+                        g_today,"' '",g_user CLIPPED,"' '",
+                        g_rlang,"' 'Y' 'A' '1' '",l_wc CLIPPED,
+                        "' 'Y' 'Y' 'N' 'default' 'default' 'axmr400' 'Y' 'N' '",g_xml.subject,"' '",g_xml.body,"' '",g_xml.recipient,"' 'axmr400_0_std_3'"                                  
+           CALL cl_cmdrun(l_cmd)            
          END IF
   #訂單交期通知--e--
   
@@ -5639,8 +5660,17 @@ FUNCTION t400sub_mail_QR(l_oea)
            END IF
          END FOREACH
          
-           LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED 
-           LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
+           LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED
+           IF g_plant='TY' THEN 
+             LET l_recipient =l_recipient CLIPPED ,";staff06@toyorobot.com:謝芳昀:","1" CLIPPED                          #220111 add by ruby
+           END IF
+           IF g_plant='KR' THEN
+             IF cl_null(l_gen06) THEN
+               LET l_recipient =l_recipient CLIPPED ,"wu684@toyorobot.com:宋永世:1;hskim@toyorobot.com:金昊性:1;homejo123@toyorobot.com:曹昌煥:1" CLIPPED
+             ELSE     
+               LET l_recipient =l_recipient CLIPPED ,";wu684@toyorobot.com:宋永世:1;hskim@toyorobot.com:金昊性:1;homejo123@toyorobot.com:曹昌煥:1" CLIPPED
+             END IF
+           END IF             
            LET g_xml.recipient = l_recipient
            CALL FGL_SETENV("MAIL_TO",l_recipient)  
   

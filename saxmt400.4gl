@@ -1031,6 +1031,10 @@
 # Modify.........: No.23030035   20230324 By momo Check 料號需存在主檔，0開頭成品料號數量檢核不可超過oazud10
 # Modify.........: No.23040018   23/04/18 By Ruby 更改折數可修改單身客戶設備編號oebud05
 # Modify.........: No.23050050   20230606 By momo oeaud02 記錄「终端客戶」oeaud02
+# Modify.........: NO.23070003   20230706 By momo 調整5397單別，不卡控axm-188(非產品不可銷售)
+# Modify.........: No.23110010   23/11/06 By Ruby 單身增加[庫存數量]，依img10可用庫存帶入
+# Modify.........: No.23120058   23/12/25 By Ruby 單身輸入時檢查成本數量不得超出oazud10設定
+# Modify.........: No.224030004  20240313 By momo SKYFamily 中介檔處理 取消確認、作廢、取消確認 
 
 DATABASE ds
 
@@ -6727,6 +6731,7 @@ DEFINE l_ima02      LIKE ima_file.ima02
 DEFINE l_ima021     LIKE ima_file.ima021
 DEFINE l_ima54      LIKE ima_file.ima54    #220215 add by ruby
 DEFINE l_pmc03_1    LIKE pmc_file.pmc03    #220215 add by ruby
+DEFINE l_img10      LIKE img_file.img10    #231106 add by ruby
 DEFINE l_count      LIKE type_file.num5
     #-----END CHI-990037-----
 #TQC-A70029 --unmark-- end--
@@ -8319,13 +8324,16 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
               LET l_ima021 = NULL
               LET l_ima54 = NULL         #220215 add by ruby
               LET l_pmc03_1 = NULL       #220215 add by ruby
+              LET l_img10 = 0         #231106 add by ruby
              #MOD-GA0033--add----end---
               #SELECT ima02,ima021 INTO l_ima02,l_ima021 FROM ima_file                       #220215 mark by ruby
               SELECT ima02,ima021,ima54 INTO l_ima02,l_ima021,l_ima54 FROM ima_file          #220215 add by ruby
                WHERE ima01 = g_oeb[l_ac].oeb04
+              SELECT SUM(img10) INTO l_img10 FROM img_file WHERE img10<>0 AND img23='Y' AND img02<>'Y01' AND img01=g_oeb[l_ac].oeb04   #231106 add by ruby
               LET g_oeb[l_ac].oeb06 = l_ima02
               LET g_oeb[l_ac].ima021 = l_ima021                                 
               LET g_oeb[l_ac].ima54 = l_ima54                                     #220215 add by ruby
+              LET g_oeb[l_ac].img10 = l_img10                                     #231106 add by ruby
               SELECT pmc03 INTO l_pmc03_1 FROM pmc_file WHERE pmc01=l_ima54       #220215 add by ruby
               LET g_oeb[l_ac].pmc03_1 = l_pmc03_1                                 #220215 add by ruby
               CALL t400_oea01()  #FUN-A80054
@@ -8335,6 +8343,7 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
                               g_oeb[l_ac].oebud05,                     #20190326 
                               g_oeb[l_ac].ima54,                       #220215 add by ruby
                               g_oeb[l_ac].pmc03_1,                     #220215 add by ruby
+                              g_oeb[l_ac].img10,                       #231106 add by ruby
                               g_oeb[l_ac].ima021,g_oeb[l_ac].oeb918    #FUN-A80054
            END IF
         END IF
@@ -12708,9 +12717,10 @@ FUNCTION t400_b_fill(p_wc2,p_wc5)              #BODY FILL UP
         "       oeb70,ima15,oeb16, ",   #No.FUN-6B0151 add oeb16
         "       '','','','','', ",       #No.FUN-7C0017
         "       oebud01,oebud02,oebud03,oebud04,oebud05,oebud06,oebud07,oebud08,oebud09,oebud10,oebud11,oebud12,oebud13,oebud14,oebud15,", #No.FUN-840011
-        "       oeb44,oeb45,oeb46,oeb47,oeb48,ima54,pmc03", #No.FUN-870007 #220215 add ima54,pmc03 by ruby
+        "       oeb44,oeb45,oeb46,oeb47,oeb48,ima54,pmc03,nvl(img10,0)", #No.FUN-870007 #220215 add ima54,pmc03 by ruby #231106 add img10 by ruby
         " FROM oeb_file LEFT OUTER JOIN  ima_file ON oeb04 = ima01",
         " LEFT JOIN pmc_file ON ima54=pmc01",                                   #220215 add by ruby
+        " LEFT JOIN (SELECT img01,SUM(img10) as img10 FROM img_file WHERE img10<>0 AND img23='Y' AND img02<>'Y01' GROUP BY img01) ON oeb04=img01 ", #231106 add by ruby
         " WHERE oeb01 ='",g_oea.oea01,"'",  #單頭
         " AND ",p_wc2 CLIPPED,                     #單身
        #" AND oeb1003='1' ",    #TQC-AC0163 By shi
@@ -19157,6 +19167,7 @@ FUNCTION t400_z()   #when g_oea.oeaconf='Y' (Turn to 'N')
       LET g_oea.oeaconf='N'
       COMMIT WORK
       DISPLAY BY NAME g_oea.oeaconf,g_oea.oea49
+      CALL cs_axmmid(g_oea.oea01,"axmt410")     #20240313 add 
 
       SELECT oea49 INTO g_oea.oea49 FROM oea_file
        WHERE oea01 = g_oea.oea01
@@ -19560,6 +19571,7 @@ FUNCTION t400_x(p_type)   #FUN-D20025
        END IF
       #FUN-D80128 add end-----
        COMMIT WORK
+       CALL cs_axmmid(g_oea.oea01,"axmt410")    #20240313
        CALL cl_flow_notify(g_oea.oea01,'V')
     ELSE
        ROLLBACK WORK
@@ -21553,6 +21565,7 @@ DEFINE l_rtz06      LIKE rtz_file.rtz06
 DEFINE l_check    LIKE type_file.chr1  #MOD-CB0247 add
 DEFINE l_ima54    LIKE ima_file.ima54  #220215 add by ruby
 DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
+DEFINE l_img10    LIKE img_file.img10  #231106 add by ruby
 
    IF g_azw.azw04 = '2' THEN
       SELECT rtz04,rtz06 INTO l_rtz04,l_rtz06
@@ -21949,6 +21962,9 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
      LET l_pmc03_1=''                                                           #220215 add by ruby
      SELECT pmc03 INTO l_pmc03_1 FROM pmc_file WHERE pmc01=l_ima54              #220215 add by ruby
 
+     LET l_img10=0                                                                                          #231106 add by ruby
+     SELECT SUM(img10) INTO l_img10 FROM img_file WHERE img10<>0 AND img23='Y' AND img02<>'Y01' AND img01=g_oeb[l_ac].oeb04   #231106 add by ruby
+
      IF g_oeb[l_ac].oeb06 IS NULL OR
         (g_oeb[l_ac].oeb04 != g_oeb04_o ) OR         #MOD-CC0181 g_oeb_t.oeb04 -> g_oeb04_o
          g_oeb04_o IS NULL THEN  #No.MOD-490388      #MOD-CC0181 g_oeb_t.oeb04 -> g_oeb04_o
@@ -21962,6 +21978,7 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
         DISPLAY BY NAME g_oeb[l_ac].oeb04   #MOD-920281
         DISPLAY g_oeb[l_ac].ima54 TO ima54                       #220215 add by ruby
         DISPLAY g_oeb[l_ac].pmc03_1 TO pmc03_1                   #220215 add by ruby
+        DISPLAY g_oeb[l_ac].img10 TO img10                       #231106 add by ruby
      END IF
 
      IF g_oea.oea00 MATCHES '[123467]' AND l_imaacti='N' THEN     #FUN-690044
@@ -21971,9 +21988,11 @@ DEFINE l_pmc03_1  LIKE pmc_file.pmc03  #220215 add by ruby
      END IF
 
      IF g_oea.oea00 MATCHES '[123467]' AND l_ima130 = '0' THEN    #FUN-690044
-        CALL cl_err('ima130=0:','axm-188',0)
-        RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
-              ,l_qty   #TQC-690041 add
+        IF g_oea.oea01[2,5] <> '5397' THEN                        #20230706 add
+           CALL cl_err('ima130=0:','axm-188',0)
+           RETURN FALSE,g_buf,g_buf1,l_b2,l_ima130,l_ima131,g_buf2,l_ima25,l_imaacti
+                 ,l_qty   #TQC-690041 add
+        END IF                                                    #20230306 add
      END IF
 
      LET g_buf = NULL
@@ -25238,6 +25257,17 @@ FUNCTION t400_chk_oeb12(p_cmd,l_qty,g_tt_oeb12)
          CALL cl_err(g_oeb[l_ac].oeb12,'afa-037',0) #No.TQC-6B0117
          RETURN FALSE
       END IF
+      
+      #231225 add by ruby --s--
+       #成品數量檢核
+       IF g_oeb[l_ac].oeb04[1,1] = '0' AND (NOT cl_null(g_oaz.oazud10) AND g_oaz.oazud10>0)THEN
+          IF g_oeb[l_ac].oeb12 > g_oaz.oazud10 THEN
+             CALL cl_err(g_oeb[l_ac].oeb04,'cxm-036',1)
+             RETURN FALSE
+          END IF
+       END IF 
+      #231225 add by ruby --e--
+            
       IF g_oea.oea11 = '2' THEN
          #計算已新增換貨訂單數量(l_oeb12)
           LET l_oeb12=0
@@ -35310,6 +35340,7 @@ FUNCTION t400_customer()
    END IF
    CLOSE t400_cl
    COMMIT WORK
+   CALL cs_axmmid(g_oea.oea01,"axmt410")   #20240313 add
 END FUNCTION 
 #FUN-E10036-ENd-ADd
 
@@ -35428,6 +35459,7 @@ FUNCTION t400_salesman()
       
    CLOSE t400_cl
    COMMIT WORK
+   CALL cs_axmmid(g_oea.oea01,"axmt410")     #20240313 add
 END FUNCTION 
 #190909 add by ruby --e--
 
