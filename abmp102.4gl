@@ -364,7 +364,8 @@ FUNCTION p102_b()
     END IF
    
     INPUT ARRAY g_bma WITHOUT DEFAULTS FROM s_bma.*
-          ATTRIBUTE(COUNT=g_rec_b,MAXCOUNT=g_max_rec,UNBUFFERED,
+          #ATTRIBUTE(COUNT=g_rec_b,MAXCOUNT=g_max_rec,UNBUFFERED,            #20240315 mark
+          ATTRIBUTE(COUNT=g_rec_b,UNBUFFERED,                                #20240315 modify remove maxcount
                     INSERT ROW=FALSE,DELETE ROW=FALSE,APPEND ROW=FALSE)
  
        BEFORE INPUT
