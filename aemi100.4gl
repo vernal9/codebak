@@ -41,6 +41,9 @@
 # Modify.........: No:2205108024 20220511 By momo 增加施作日期記錄欄位(ta_fjc01)
 # Modify.........: No:2207088431 20220712 By momo 增加顯示 保項項目說明 fio02
 # Modify.........: No:22080043   20220818 By momo fia16 調整為設備保養人員,fia17 調整為維修人員 
+# Modify.........: No:24040001   20240401 By momo 調整財產編號開窗 Q
+# Modify.........: No:24040010   20240411 By momo 增加fiaacti有效碼顯示圖示
+
 
 DATABASE ds
  
@@ -268,7 +271,8 @@ FUNCTION i100_cs()
          WHEN INFIELD(fia011)
             CALL cl_init_qry_var()
             LET g_qryparam.state = "c"
-            LET g_qryparam.form ="q_faj3"
+            #LET g_qryparam.form ="q_faj3"    #20240401 mark
+            LET g_qryparam.form ="q_faj"      #20240401 modify
             CALL cl_create_qry() RETURNING g_qryparam.multiret
             DISPLAY g_qryparam.multiret TO fia011
             NEXT FIELD fia011
@@ -276,7 +280,8 @@ FUNCTION i100_cs()
             CALL cl_init_qry_var()
             LET g_qryparam.state = "c"
             LET g_qryparam.multiret_index = 2
-            LET g_qryparam.form ="q_faj3"
+           #LET g_qryparam.form ="q_faj3"    #20240401 mark
+            LET g_qryparam.form ="q_faj"     #20240401 modify
             CALL cl_create_qry() RETURNING g_qryparam.multiret
             DISPLAY g_qryparam.multiret TO fia012
             NEXT FIELD fia012
@@ -1088,7 +1093,8 @@ DEFINE   l_n        LIKE type_file.num5     #TQC-720052
               WHEN INFIELD(fia011)
                  CALL cl_init_qry_var()
                  LET g_qryparam.default1 = g_fia.fia011
-                 LET g_qryparam.form ="q_faj3"
+                 #LET g_qryparam.form ="q_faj3"       #20240401 mark
+                 LET g_qryparam.form ="q_faj"         #20240401 modify
                  CALL cl_create_qry() RETURNING g_fia.fia011,g_fia.fia012
                  DISPLAY BY NAME g_fia.fia011
                  DISPLAY BY NAME g_fia.fia012
@@ -1602,6 +1608,9 @@ FUNCTION i100_show()
           g_fia.fiaud09,g_fia.fiaud10,g_fia.fiaud11,g_fia.fiaud12,
           g_fia.fiaud13,g_fia.fiaud14,g_fia.fiaud15 
           #FUN-840068     ----end----
+   ##---- 20240411 (S)-----
+   CALL cl_set_field_pic(g_fia.fiaacti,"","","","",g_fia.fiaacti)
+   ##---- 20240411 (E)-----
    CALL i100_fia011('d')
    CALL i100_fia03('d')
    CALL i100_fia09('d')
@@ -1618,7 +1627,7 @@ FUNCTION i100_show()
    CALL i100_b2_fill(g_wc3)                 #單身
    CALL i100_b3_fill(g_wc4)                 #單身
    CALL i100_b4_fill(g_wc5)                 #單身
-    CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
+   CALL cl_show_fld_cont()                  #No.FUN-550037 hmf
 END FUNCTION
  
 #取消整筆 (所有合乎單頭的資料)
@@ -4107,6 +4116,7 @@ FUNCTION i100_x()
          FROM fia_file
         WHERE fia01=g_fia.fia01
        DISPLAY BY NAME g_fia.fiaacti,g_fia.fiamodu,g_fia.fiadate
+       CALL cl_set_field_pic(g_fia.fiaacti,"","","","",g_fia.fiaacti)  #20240411
    END IF
    CLOSE i100_cl
    COMMIT WORK
