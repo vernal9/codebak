@@ -75,9 +75,9 @@ DEFINE
     g_argv1         LIKE tc_mpn_file.tc_mpn01,
     g_ss            LIKE type_file.chr1,   
     g_sa            LIKE type_file.chr1,   #可執行狀態 
-    g_wc,g_sql     STRING, 
+    g_wc,g_sql      STRING, 
     g_rec_b         LIKE type_file.num5,   #單身筆數             
-	    l_ac            LIKE type_file.num5    #目前處理的ARRAY CNT  
+    l_ac,l_ac2      LIKE type_file.num5    #目前處理的ARRAY CNT  
 	DEFINE p_row,p_col  LIKE type_file.num5    
 	 
 	#主程式開始
@@ -167,9 +167,9 @@ DEFINE
 			      s_tc_mpn[1].tc_mpndate,s_tc_mpn[1].tc_mpnplant
 			     
 	 
-		      BEFORE CONSTRUCT
-			 CALL cl_qbe_init()
-			 #DISPLAY 'N' TO tc_mpn10
+		    BEFORE CONSTRUCT
+		       CALL cl_qbe_init()
+		       DISPLAY g_plant TO tc_mpnplant
 
 	      
 		    AFTER FIELD tc_mpn03
@@ -250,6 +250,7 @@ DEFINE
 		 WHEN "detail" 
 		    IF cl_chk_act_auth() THEN
 		       LET g_sa = 'u'
+		       CALL p412_b_fill(g_wc)              
 		       CALL p412_b()
 		    ELSE
 		       LET g_action_choice = NULL
@@ -262,6 +263,21 @@ DEFINE
 		       CALL p412_b()
 		       LET g_sa = ''
 		    END IF
+                 #- 研發-更新料號(S) 20240422
+                 WHEN "refresh_item"
+                    IF cl_chk_act_auth() THEN
+		       CALL p412_b_fill(g_wc)   
+                       IF cl_null(g_tc_mpn[l_ac].oeb01) THEN
+                          LET g_tc_mpn[l_ac].tc_mpn06=''
+                          UPDATE tc_mpn_file SET tc_mpn06=(SELECT ima01 FROM ima_file 
+                                                            WHERE ima021=g_tc_mpn[l_ac].tc_mpn05
+                                                              AND imaacti='Y' AND ima130='1')
+                            WHERE tc_mpn01 = g_tc_mpn[l_ac].tc_mpn01 
+                              AND tc_mpn02 = g_tc_mpn[l_ac].tc_mpn02
+                              AND tc_mpn03 = g_tc_mpn[l_ac].tc_mpn03
+                       END IF
+                    END IF
+                 #- 研發-更新料號(E) 20240422
 		 #- 研發
 		 WHEN "create_item"
 		    IF cl_chk_act_auth() THEN
@@ -614,7 +630,7 @@ DEFINE
 		       CALL fgl_set_arr_curr(l_ac)
 		    END IF
 		    IF l_ac > 0 THEN
-		       IF NOT cl_null(g_tc_mpn[l_ac].oeb01) THEN
+		       IF NOT cl_null(g_tc_mpn[l_ac].oeb01) AND NOT cl_null(g_tc_mpn[l_ac].tc_mpn15) THEN #20231013 add 排交日不可為空
 			  RETURN
 		       END IF
 		    END IF
@@ -661,6 +677,12 @@ DEFINE
 		    LET g_tc_mpn[l_ac].tc_mpn09 = 'N'
 		    LET g_tc_mpn[l_ac].tc_mpn10 = 'N'
 		    LET g_tc_mpn[l_ac].tc_mpn11 = 'N'
+		    LET g_tc_mpn[l_ac].tc_mpn14 = ''  #20231003
+		    LET g_tc_mpn[l_ac].tc_mpn15 = ''  #20231003
+		    LET g_tc_mpn[l_ac].tc_mpn16 = ''  #20231003
+		    LET g_tc_mpn[l_ac].tc_mpn17 = ''  #20231003
+		    LET g_tc_mpn[l_ac].tc_mpn18 = ''  #20231003
+		    LET g_tc_mpn[l_ac].tc_mpn02 = ''  #20231003
 		    LET g_tc_mpn[l_ac].tc_mpnoriu = g_user
 		    LET g_tc_mpn[l_ac].tc_mpnplant = g_plant
 		    LET g_tc_mpn_t.* = g_tc_mpn[l_ac].*         #新輸入資料             
@@ -675,7 +697,13 @@ DEFINE
 		       CANCEL INSERT
 		    END IF
 
+                    ##--- 20231003 mark (S)
+                    {
 		    #取生管回覆
+                    LET g_tc_mpn[l_ac].tc_mpn14='' #20231003
+                    LET g_tc_mpn[l_ac].tc_mpn15='' #20231003
+                    LET g_tc_mpn[l_ac].tc_mpn16='' #20231003
+
 		    SELECT tc_mpn14,tc_mpn15,tc_mpn16
 		      INTO g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,g_tc_mpn[l_ac].tc_mpn16
 		      FROM tc_mpn_file
@@ -685,7 +713,21 @@ DEFINE
 		       AND tc_mpn14 IS NOT NULL
 		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
 		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn15
-		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn16                              
+		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn16    
+                    }
+                    ##--- 20231003 mark (E)
+
+                    #判斷料號有效否與是否可販售 20230816
+                    SELECT 1 INTO l_cnt
+                      FROM ima_file
+                     WHERE ima01 = g_tc_mpn[l_ac].tc_mpn06
+                       AND (imaacti='N' 
+                        OR ima130='0')
+                    IF l_cnt = 1 THEN 
+                       CALL cl_err('','axm-129',1)
+		       LET INT_FLAG = 0
+		       CANCEL INSERT
+                    END IF
 		    
 		    INSERT INTO tc_mpn_file(tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,
 					    tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10,tc_mpn11,
@@ -739,7 +781,13 @@ DEFINE
 			END IF
 		     END IF
 		    
+                    ##---- 20231003 mark (S)
+                    {
 		    #取生管回覆
+                    LET g_tc_mpn[l_ac].tc_mpn14=''  #20231003
+                    LET g_tc_mpn[l_ac].tc_mpn15=''  #20231003
+                    LET g_tc_mpn[l_ac].tc_mpn16=''  #20231003
+
 		    SELECT tc_mpn14,tc_mpn15,tc_mpn16
 		      INTO g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,g_tc_mpn[l_ac].tc_mpn16
 		      FROM tc_mpn_file
@@ -750,6 +798,8 @@ DEFINE
 		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
 		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn15
 		    DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn16
+                    }
+                    ##---- 20231003 mark (E)
 
 		 AFTER FIELD tc_mpn03
 		    SELECT occ02 INTO g_tc_mpn[l_ac].occ02
@@ -775,6 +825,9 @@ DEFINE
 			  SELECT ima01 INTO g_tc_mpn[l_ac].tc_mpn06
 			    FROM ima_file
 			  WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
+                            AND imaacti='Y'
+                            ORDER BY ima01
+                           
 			  #依客戶規格取得廠內料號、規格
 			  IF cl_null(g_tc_mpn[l_ac].tc_mpn06) THEN
 			     SELECT ima01,ima021 
@@ -819,6 +872,14 @@ DEFINE
 		     NEXT FIELD tc_mpn14
 		  END IF
 		  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
+
+                ##--- 20231013 排交日為空已轉訂單，清除oeb71拋轉項次 (S)
+                BEFORE FIELD tc_mpn15
+                  IF cl_null(g_tc_mpn[l_ac].tc_mpn15) THEN
+                     UPDATE oeb_file SET oeb71='' 
+                      WHERE oeb01 = g_tc_mpn[l_ac].oeb01 AND oeb71= g_tc_mpn[l_ac].tc_mpn02 
+                  END IF
+                ##--- 20231013 排交日為空已轉訂單，清除oeb71拋轉項次 (E)
 
 		AFTER FIELD tc_mpn15
 		  IF g_tc_mpn[l_ac].tc_mpn15 < g_today THEN
@@ -1081,17 +1142,19 @@ DEFINE
 		    CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
 		    EXIT FOREACH
 		END IF
+ 
 	      
 		##-訂單
 		IF cl_null(g_tc_mpn[g_cnt].oeb01) THEN
 		   SELECT oeb01 INTO g_tc_mpn[g_cnt].oeb01
 		     FROM oeb_file,oea_file
 		    WHERE oeb01 = oea01
-		      AND oea10 = g_tc_mpn[g_cnt].tc_mpn01
-		      AND oeb04 = g_tc_mpn[g_cnt].tc_mpn06
-		      AND oea03 = g_tc_mpn[g_cnt].tc_mpn03
-		      AND oeb15 = g_tc_mpn[g_cnt].tc_mpn14
-
+		      AND oea03 = g_tc_mpn[g_cnt].tc_mpn03            
+		      AND oea10 = g_tc_mpn[g_cnt].tc_mpn01              
+                      AND ((oeb71 = g_tc_mpn[g_cnt].tc_mpn02)
+		      OR  (oeb04 = g_tc_mpn[g_cnt].tc_mpn06
+		      AND oeb15 = g_tc_mpn[g_cnt].tc_mpn14))
+                      AND oeaconf <> 'X'                                #240202 add by ruby
 		END IF
 		#-BOM發放日
 		IF cl_null(g_tc_mpn[g_cnt].bma05) THEN
@@ -1122,23 +1185,22 @@ DEFINE
 		#--更新料號、結案碼
 		IF cl_null(g_tc_mpn[g_cnt].tc_mpn06) AND g_tc_mpn[g_cnt].tc_mpn10='N' 
 						     AND g_tc_mpn[g_cnt].tc_mpn11='N' THEN
-		   IF g_tc_mpn[g_cnt].tc_mpn04='N' THEN
-		      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
-			FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn05
-		   ELSE
-		      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
-			FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn13
-		   END IF
+                   IF g_tc_mpn[g_cnt].tc_mpn04='N' THEN
+                      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
+                        FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn05
+                   ELSE
+                      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
+                        FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn13
+                   END IF
 
-		      UPDATE tc_mpn_file SET tc_mpn06 = g_tc_mpn[g_cnt].tc_mpn06,
-					     tc_mpn10 = g_tc_mpn[g_cnt].tc_mpn10
-		       WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
-			 AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
-			 AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
-			 AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
-			 AND tc_mpn06 IS NULL
-		END IF
-
+                      UPDATE tc_mpn_file SET tc_mpn06 = g_tc_mpn[g_cnt].tc_mpn06,
+                                             tc_mpn10 = g_tc_mpn[g_cnt].tc_mpn10
+                       WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+                         AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+                         AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+                         AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+                         AND tc_mpn06 IS NULL
+                END IF                                        
 
 		LET g_cnt = g_cnt + 1
 	      
@@ -1173,6 +1235,11 @@ DEFINE
 	 
 	      BEFORE ROW
 		 LET l_ac = ARR_CURR()
+                 IF l_ac2 > 0 THEN
+                    CALL fgl_set_arr_curr(l_ac2)
+                    LET l_ac = l_ac2
+                    LET l_ac2 = 0
+                 END IF
 		 CALL cl_show_fld_cont()                   
 	 
 	      ##########################################################################
@@ -1237,6 +1304,13 @@ DEFINE
 		 LET g_action_choice="modify_date"
 		 LET l_ac = ARR_CURR()
 		 EXIT DISPLAY
+
+              ##--- 20240422 add (S) 料號更新
+	      ON ACTION refresh_item
+		 LET g_action_choice="refresh_item"
+		 LET l_ac = ARR_CURR()
+		 EXIT DISPLAY
+              ##--- 20240422 add (E)
 		 
 	      ON ACTION create_item
 		 LET g_action_choice="create_item"
@@ -1247,11 +1321,18 @@ DEFINE
 		 LET g_action_choice="refresh_detail"
 		 LET  g_idle_seconds = 0
 		 CALL p412_b_fill(g_wc)   
-	      
+	     
+              #--- 20230913 轉訂單
+              ON ACTION transfer_so
+                 LET g_msg = "cxmp413"
+                 CALL cl_cmdrun(g_msg)
+                 EXIT DISPLAY
+ 
 	      ON ACTION axmt410
 		 LET g_msg = " axmt410 '", g_tc_mpn[l_ac].oeb01,"'"
 		 CALL cl_cmdrun_wait(g_msg CLIPPED)
 		 EXIT DISPLAY
+
 		 
 	      ON ACTION help
 		 LET g_action_choice="help"
@@ -1297,7 +1378,7 @@ DEFINE
 	 
 	      ON ACTION related_document                #相關文件
 		 LET g_action_choice="related_document"          
-		 LET l_ac = ARR_CURR()
+		 LET l_ac2 = l_ac                       #20230816
          EXIT DISPLAY
  
       AFTER DISPLAY
@@ -1342,7 +1423,7 @@ FUNCTION p412_b_no_entry()
 
    #-- 銷售
    IF g_sa = 'a' or g_sa='u' THEN
-      CALL cl_set_comp_entry("tc_mpn10",TRUE)
+      CALL cl_set_comp_entry("tc_mpn10,tc_mpn19",TRUE)
 
       IF l_ac = 0 THEN
          CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)
