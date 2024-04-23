@@ -115,6 +115,7 @@
 # Modify.........: No:2001134146 20200113 By momo 委外採購量分批時可委外量錯誤調整;更改供應商未重新抓取單價調整
 # Modify.........: No.2107226668 20210726 By momo 修改單價功能，只開放分量計價
 # Modify.........: NO.22110053   20221129 By momo 修正 No.2107226668 取最新核價單語法
+# Modify.........: NO.           20240423 By momo 可委外量應扣除 已完工量
  
 DATABASE ds
  
@@ -724,6 +725,7 @@ FUNCTION p700_b_fill()                 #單身填充
   DEFINE l_ecm66    LIKE ecm_file.ecm66     #MOD-D50005 add
   DEFINE l_ecm58    LIKE ecm_file.ecm58     #M012 180130 By TSD.Nic
   DEFINE l_sfb12    LIKE sfb_file.sfb12     #20200909 報廢 
+  DEFINE l_sfb09    LIKE sfb_file.sfb09     #20240423 完工
 
   LET l_ecm58 = '' #M012 180130 By TSD.Nic 
          
@@ -879,8 +881,14 @@ FUNCTION p700_b_fill()                 #單身填充
 
        #LET g_pmn[g_cnt].subqty = l_wip                        #20200113 mark   #20211130
         LET g_pmn[g_cnt].subqty = l_wip - l_ecm322   #20211130 modify -委外完工
-       #SELECT sfb12 INTO l_sfb12 FROM sfb_file WHERE sfb01 = g_pmn[g_cnt].ecm01   #20200909報廢 #20220322 mark 後站報廢不應影響前站委外
-       #LET g_pmn[g_cnt].subqty = g_pmn[g_cnt].subqty - l_sfb12                    #20200909     #20220322 mark
+       LET l_sfb12 = 0
+       SELECT SUM(ecm313) INTO l_sfb12 FROM ecm_file #20200909前站報廢應扣除
+        WHERE ecm01 = g_pmn[g_cnt].ecm01 
+          AND ecm03 < g_pmn[g_cnt].ecm03
+       LET g_pmn[g_cnt].subqty = g_pmn[g_cnt].subqty - l_sfb12           
+       LET l_sfb09 = 0                                                             #20240423         
+       SELECT sfb09 INTO l_sfb09 FROM sfb_file WHERE sfb01=g_pmn[g_cnt].ecm01      #20240423 add by momo 
+       LET g_pmn[g_cnt].subqty = g_pmn[g_cnt].subqty - l_sfb09                     #20240423 add by momo 
 
        IF g_pmn[g_cnt].subqty <= 0 THEN
           INITIALIZE g_pmn[g_cnt].* TO NULL
