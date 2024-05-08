@@ -57,6 +57,8 @@
 #                                                 調整 停產卡控，只提示不強制
 # Modify.........: No:23030031/2 20230317 By momo 生效日期卡控調整為不分營運中心
 # Modify.........: No:23080027   20230830 By momo 同步停產，依『資料中心拋轉設定作業(aooi602)
+# Modify.........: No:24050007   20240508 By momo 優化cbm-003錯誤訊息提示，增加主件資訊，以利快速排除
+
 
 DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
@@ -702,7 +704,8 @@ DEFINE l_bmd07    LIKE bmd_file.bmd07  #CHI-C20060
            WHERE boa01= b_bmy.bmy14 AND boa03=b_bmy.bmy05
          AND (boa07 IS NULL OR boa07 > g_today)
          IF l_cnt > 0 THEN 
-            CALL cl_err(b_bmy.bmy05,'cbm-003',1) 
+            #CALL cl_err(b_bmy.bmy05,'cbm-003',1)                        #20240508 mark 
+            CALL s_errmsg('bmx01',b_bmy.bmy05,b_bmy.bmy14,'cbm-003',1)   #20240508 modify
             LET g_success='N'
             RETURN
          END IF
