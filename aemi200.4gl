@@ -51,6 +51,7 @@
 # Modify.........: No:2201137461 20220117 By momo 增加結案文件
 # Modify.........: No:2205108024 20220513 By momo 工單性質：保養時對應保修項目，工單結案時回寫實際完工日至「施作日期」ta_fjc01欄位 
 # Modify.........: No:22080045   20220831 By momo 增加顯示 fia16 保養人員 fia17 維修人員
+# Modify.........: NO:24010026   20240122 By momo 完工鈕，可一併調整 fil17、fil19、fil20
 
 DATABASE ds
  
@@ -2220,7 +2221,9 @@ FUNCTION i200_wf()   #need modify
   LET l_time=TIME
   LET g_fil.fil15=g_today
   LET g_fil.fil151=l_time[1,2],l_time[4,5]
-  INPUT BY NAME g_fil.fil15,g_fil.fil151,g_fil.fil07,g_fil.filud02 #20211118 #20220117
+  CALL cl_set_comp_entry("fil17",TRUE)                              #20240122
+  INPUT BY NAME g_fil.fil15,g_fil.fil151,g_fil.fil07,g_fil.filud02, #20211118 #20220117
+                g_fil.fil17,g_fil.fil19,g_fil.fil20                 #20240122
         WITHOUT DEFAULTS
  
         AFTER FIELD fil151
@@ -2261,6 +2264,7 @@ FUNCTION i200_wf()   #need modify
      LET g_fil.fil07=''                                    #20211118
      LET g_fil.filud02=''                                  #20220117
      DISPLAY BY NAME g_fil.fil15,g_fil.fil151,g_fil.fil07,g_fil.filud02  #20211118 #20220117
+     DISPLAY BY NAME g_fil.fil17,g_fil.fil19,g_fil.fil20                 #20240122
      RETURN
   END IF
  
@@ -2275,7 +2279,10 @@ FUNCTION i200_wf()   #need modify
 
   UPDATE fil_file SET fil15=g_fil.fil15,fil151=g_fil.fil151,
                       fil07=g_fil.fil07,                   #20211118
-                      filud02=g_fil.filud02                #20220117
+                      filud02=g_fil.filud02,               #20220117
+                      fil17=g_fil.fil17,                   #20240122
+                      fil19=g_fil.fil19,                   #20240122
+                      fil20=g_fil.fil20                    #20240122
    WHERE fil01=g_fil.fil01
   IF SQLCA.sqlcode THEN
 #    CALL cl_err('update fil15',SQLCA.sqlcode,0)   #No.FUN-660092
@@ -2283,6 +2290,7 @@ FUNCTION i200_wf()   #need modify
      LET g_success='N'
   END IF
   DISPLAY BY NAME g_fil.fil15,g_fil.fil151,g_fil.fil07,g_fil.filud02    #20211118 #20220117
+  DISPLAY BY NAME g_fil.fil17,g_fil.fil19,g_fil.fil20                   #20240122
  
   UPDATE fia_file SET fia24=g_fil.fil19 WHERE fia01=g_fil.fil03
   IF SQLCA.sqlcode THEN

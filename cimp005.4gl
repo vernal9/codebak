@@ -836,3 +836,28 @@ FUNCTION p005_sel_all(p_value)
   END FOR
 
 END FUNCTION
+
+## ---- 20240307 下載 (S)
+FUNCTION p115_download()
+   DEFINE  l_i       LIKE type_file.num5
+   DEFINE l_msg1    LIKE type_file.chr1000
+ 
+   LET g_success = 'Y'
+   BEGIN WORK
+      FOR l_i = 1 TO g_cnt
+          IF g_ima[l_i].choice = 'N' THEN
+             CONTINUE FOR
+          END IF
+          CALL ccl_download(g_ima[l_i].ima01_b,'pdf')
+          
+      END FOR
+      IF g_success = 'Y' THEN
+         COMMIT WORK
+         CALL p115_b()
+         CALL cl_end2(1) RETURNING l_flag        #批次作業正確結束
+      ELSE
+         ROLLBACK WORK
+         CALL cl_end2(2) RETURNING l_flag        #批次作業失敗
+      END IF 
+END FUNCTION
+## ---- 20240307 下載 (E)

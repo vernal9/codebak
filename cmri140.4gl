@@ -4,7 +4,8 @@
 # Descriptions...: MRP資料維護作業
 # Date & Author..: 20180713 By Momo
 # Modify.........: 20210624 By momo 
-# Modify.........: NO.23070026   20230717 modify by momo 增加取替代資訊顯示
+# Modify.........: NO.23070026   20230717 By momo 增加取替代資訊顯示
+# Modify.........: No.23120034   20231225 By momo 單身調整後，停留在原行數  
 
 DATABASE ds
  
@@ -16,20 +17,20 @@ DEFINE
     g_mss_v_t       LIKE mss_file.mss_v,   #類別代號 (舊值)
     g_mss           DYNAMIC ARRAY OF RECORD    #程式變數(Program Variables)
         mss11       LIKE mss_file.mss11,
-	    mss09       LIKE mss_file.mss09,
-	    mss08       LIKE mss_file.mss08,  
+	mss09       LIKE mss_file.mss09,
+	mss08       LIKE mss_file.mss08,  
         ima27       LIKE ima_file.ima27,    #20210624
         atp_qty     LIKE type_file.num10,   #20210624
         mss00       LIKE mss_file.mss00,   
-	    mss01       LIKE mss_file.mss01,
-	    ima02       LIKE ima_file.ima02,
+	mss01       LIKE mss_file.mss01,
+	ima02       LIKE ima_file.ima02,
         ima021      LIKE ima_file.ima021,     
         ima08       LIKE ima_file.ima08,     
         mss03       LIKE mss_file.mss03,     
-	    mss041      LIKE mss_file.mss041,
+	mss041      LIKE mss_file.mss041,
     	mss043      LIKE mss_file.mss043,
-	    mss044      LIKE mss_file.mss044,
-	    mss051      LIKE mss_file.mss051,
+        mss044      LIKE mss_file.mss044,
+	mss051      LIKE mss_file.mss051,
         mss052      LIKE mss_file.mss052,
         mss053      LIKE mss_file.mss053,
         mss061      LIKE mss_file.mss061,
@@ -40,20 +41,20 @@ DEFINE
                     END RECORD,
     g_mss_t         RECORD                 #程式變數 (舊值)
         mss11       LIKE mss_file.mss11,
-	    mss09       LIKE mss_file.mss09,
-	    mss08       LIKE mss_file.mss08, 
+	mss09       LIKE mss_file.mss09,
+	mss08       LIKE mss_file.mss08, 
         ima27       LIKE ima_file.ima27,    #20210624
         atp_qty     LIKE type_file.num10,   #20210624
         mss00       LIKE mss_file.mss00,      
-	    mss01       LIKE mss_file.mss01,
-	    ima02       LIKE ima_file.ima02,
+	mss01       LIKE mss_file.mss01,
+	ima02       LIKE ima_file.ima02,
         ima021      LIKE ima_file.ima021,     
         ima08       LIKE ima_file.ima08,     
         mss03       LIKE mss_file.mss03,     
-	    mss041      LIKE mss_file.mss041,
-	    mss043      LIKE mss_file.mss043,
-	    mss044      LIKE mss_file.mss044,
-	    mss051      LIKE mss_file.mss051,
+	mss041      LIKE mss_file.mss041,
+	mss043      LIKE mss_file.mss043,
+	mss044      LIKE mss_file.mss044,
+	mss051      LIKE mss_file.mss051,
         mss052      LIKE mss_file.mss052,
         mss053      LIKE mss_file.mss053,
         mss061      LIKE mss_file.mss061,
@@ -95,6 +96,7 @@ DEFINE
     g_rec_b         LIKE type_file.num5,         #單身筆數        #No.FUN-680104 SMALLINT
     g_rec_b2        LIKE type_file.num5,
     l_ac            LIKE type_file.num5,         #目前處理的ARRAY CNT        #No.FUN-680104 SMALLINT
+    g_ac_t          LIKE type_file.num5,         #當前行數記錄 20231225
     g_sql1          STRING,                      #20230717
     g_bmd          DYNAMIC ARRAY OF RECORD       #20230717
         bmd04       LIKE bmd_file.bmd04,         #20230717
@@ -580,6 +582,7 @@ DEFINE
  
         AFTER ROW
             LET l_ac = ARR_CURR()
+            LET g_ac_t = ARR_CURR()       #20231225 記錄原行數
         #   LET l_ac_t = l_ac  #FUN-D30034
             IF INT_FLAG THEN
                CALL cl_err('',9001,0)
@@ -768,6 +771,13 @@ FUNCTION i140_bp(p_ud)
  
       BEFORE ROW
          LET l_ac = ARR_CURR()
+         #---- 20231225 modify by momo (S)
+         IF g_ac_t > 0 THEN
+            CALL fgl_set_arr_curr(g_ac_t)
+            LET l_ac = g_ac_t
+            LET g_ac_t = 0
+         END IF
+         #---- 20231225 modify by momo (E)
          #---- 20230717 add (S)
          #CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
          IF l_ac = 0 THEN
@@ -918,7 +928,7 @@ DEFINE g_cnt1   LIKE type_file.num10
     LET g_sql1 =
        "SELECT bmd04,0 ",
        "  FROM bmd_file ",           
-       " WHERE bmd01 = '",g_mss[g_cnt].mss01,"' ",
+       " WHERE bmd01 = '",g_mss[l_ac].mss01,"' ",
        "   AND bmd06 IS NULL AND bmdacti='Y' "      
        
  
@@ -931,6 +941,7 @@ DEFINE g_cnt1   LIKE type_file.num10
             CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
             EXIT FOREACH
         END IF
+        CALL cs_q102_atp_qty(g_bmd[g_cnt1].bmd04) RETURNING g_bmd[g_cnt1].atp
         LET g_cnt1 = g_cnt1 + 1
         IF g_cnt1 > g_max_rec THEN
            CALL cl_err( '', 9035, 0 )

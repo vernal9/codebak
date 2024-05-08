@@ -686,6 +686,7 @@ DEFINE l_bmd07    LIKE bmd_file.bmd07  #CHI-C20060
                  "     ORDER BY bmy03"                 #MOD-BB0164 add
      PREPARE i720sub_y_p FROM g_sql
      DECLARE i720sub_y_c2 CURSOR FOR i720sub_y_p
+     CALL s_showmsg_init()                             #20240508
      FOREACH i720sub_y_c2 INTO b_bmy.*
         IF cl_null(b_bmy.bmy05) THEN CONTINUE FOREACH END IF
 
@@ -707,7 +708,8 @@ DEFINE l_bmd07    LIKE bmd_file.bmd07  #CHI-C20060
             #CALL cl_err(b_bmy.bmy05,'cbm-003',1)                        #20240508 mark 
             CALL s_errmsg('bmx01',b_bmy.bmy05,b_bmy.bmy14,'cbm-003',1)   #20240508 modify
             LET g_success='N'
-            RETURN
+            CONTINUE FOREACH                                             #20240508
+            #RETURN                                                      #20240508
          END IF
          ##----- 20180517 by momo (E)
 
