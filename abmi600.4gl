@@ -360,6 +360,7 @@
 # Modify.........: No:2023050005 20230504 By momo 增加檢核 元件料號+作業編號重覆出現之情況   
 # Modify.........: No:23060002   20230609 By momo 報表增加 bmb04生效日期 與 bmb05失效日期
 # Modify.........: No:23110014   20231109 By momo EXCEL匯入增加欄位
+# Modify.........: No:24050022   20240515 By momo 測試區檢查 bma_file 不可為SNY
 
 DATABASE ds
 
@@ -1534,6 +1535,8 @@ FUNCTION i600_menu()
          WHEN "insert"
             IF cl_chk_act_auth() THEN
                LET g_a_flag = 'Y'       #FUN-CB0078 
+               CALL i600_chk_sny()                             #20240515 add
+               IF NOT cl_null(g_errno) THEN EXIT CASE END IF  #20240515
                CALL i600_a()
                LET g_data_keyvalue = g_bma.bma01,"/",g_bma.bma06   #No:FUN-F50016
                LET g_a_flag = 'N'       #FUN-CB0078 
@@ -1586,6 +1589,8 @@ FUNCTION i600_menu()
 
          WHEN "reproduce"
             IF cl_chk_act_auth() THEN
+                CALL i600_chk_sny()                             #20240515 add
+                IF NOT cl_null(g_errno) THEN EXIT CASE END IF  #20240515
                 CALL i600_copy() #ROLLBACK WORK #MOD-530690
                 LET g_bp_flag = "main"
             END IF
@@ -1976,6 +1981,8 @@ FUNCTION i600_menu()
          #@WHEN "Excel匯入"
          WHEN "load_excel"
            IF cl_chk_act_auth() THEN
+              CALL i600_chk_sny()                             #20240515 add
+              IF NOT cl_null(g_errno) THEN EXIT CASE END IF   #20240515
               CALL i600_load_excel()
            END IF
          #M014 180131 By TSD.Andy -----(E)
@@ -13923,3 +13930,21 @@ FUNCTION i600_order()
 
 END FUNCTION
 ##---- 20191016 依訂單查詢 (E)
+
+##---- 20240515 add by momo (S)
+FUNCTION i600_chk_sny()
+
+   LET g_cnt = 0
+   SELECT 1 INTO g_cnt FROM zta_file
+    WHERE zta02 LIKE '%test'
+      AND zta02 = g_dbs
+      AND zta07 = 'S'
+      AND zta01 = 'bma_file'
+
+   IF g_cnt = 1 THEN
+      LET g_errno='cbm-018'
+      CALL cl_err('','cbm-018',1)
+   END IF
+
+END FUNCTION
+##---- 20240515 add by momo (E)
