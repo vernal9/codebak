@@ -83,6 +83,7 @@
 # Modify.........: NO:2202107544 20220210 By momo 增加顯示請購員
 # Modify.........: No:2207258542 20220725 By momo 版本料號資訊重覆修正
 # Modify.........: No:23070058   20230810 By momo aimi108 PR01 類別，固定顯示
+# Modify.........: NO:24060001   20240603 By momo 客戶直接取代料號提醒cbmi605
 
 DATABASE ds
 
@@ -199,6 +200,7 @@ MAIN
               "ta_pml03.pml_file.ta_pml03,",    #add by ruby 17/12/15 增加主供應商
               "ta_pml05.pml_file.ta_pml05,",    #add by ruby 17/12/15 增加幣別
               "pml31.pml_file.pml31,",          #add by ruby 17/12/15 增加未稅單價
+              "pml88.pml_file.pml88,",          #未稅價 20240222 by momo
               "pml88t.pml_file.pml88t,",        #含稅價 20181222
               "pmc031.pmc_file.pmc03,",         #add by ruby 17/12/15 增加主供應商簡稱
               "pml12.pml_file.pml12,",          #add by ruby 18/03/01 增加專案代號
@@ -573,6 +575,7 @@ FUNCTION apmr903()
                            ta_pml03  LIKE pml_file.ta_pml03,      #add by ruby 17/12/15 增加主供應商
                            ta_pml05  LIKE pml_file.ta_pml05,      #add by ruby 17/12/15 增加幣別
                            pml31     LIKE pml_file.pml31,         #add by ruby 17/12/15 增加未稅單價
+                           pml88     LIKE pml_file.pml88,         #未稅價 20240222 by momo
                            pml88t    LIKE pml_file.pml88t,        #增加含稅價 20181222
                            pmc031    LIKE pmc_file.pmc03,         #add by ruby 17/12/15 增加主供應商簡稱
                            pml12     LIKE pml_file.pml12,         #add by ruby 18/03/01 增加專案代號
@@ -716,7 +719,7 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
                #M001 171120 By TSD.Nic -----(S)
                #"        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?,?) "  #No.TQC-740151 add ?  #FUN-910012 加3個 #TQC-C10039 ADD 1? #MOD-DC0123 add ,?
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ",
-               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?) " #M003 171121 By TSD.Nic add 4?       #add by ruby 17/12/15 4? #add by ruby 2? 2018/01/12 #add by ruby 1? 2018/03/01 #20180813 add 1? #20180827 add 1? #20180925 add 2? #20181222 add 1? #20200527 add 1?
+               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?) " #M003 171121 By TSD.Nic add 4?       #add by ruby 17/12/15 4? #add by ruby 2? 2018/01/12 #add by ruby 1? 2018/03/01 #20180813 add 1? #20180827 add 1? #20180925 add 2? #20181222 add 1? #20200527 add 1?
                #M001 171120 By TSD.Nic -----(E)
    PREPARE insert_prep FROM g_sql
    IF STATUS THEN
@@ -773,11 +776,14 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
    LET tm.wc = tm.wc CLIPPED,cl_get_extra_cond('pmkuser', 'pmkgrup')
  
    LET l_sql = "SELECT pmk01,'',pmk04,pmk13,gem02,pmc081,",
-               "       pmc091,pma02,pmk41,pnz02,pme031,pme032,pmk11,gec02,", #FUN-930113
+              #"       pmc091,pma02,pmk41,pnz02,pme031,pme032,pmk11,gec02,", #FUN-930113 #20240219 mark
+               "       pmc091,pma02,pmk41,'',pme031,pme032,pmk11,gec02,", #FUN-930113   #20240219 remove pnz02
                #M001 171120 By TSD.Nic -----(S)
                #"       pmk22,pml02,pml04,pml07,pml20,pml18,pml33,pml34,pml35,",  #No.TQC-640132
                "        pmk22,pmkud01,pml02,",                                                       #20180813 add pmkud01
-               "       ta_pml01,ta_pml02,ta_pml03,ta_pml05,pml31,pml20*pml31t,pmc03,pml12,pml04,pml07,pml20,pml18,pml33,pml34,pml35,",      #add by ruby 增加主供應商/幣別/未稅單價/主供應商簡稱  #add by ruby ta_pml02 2018/01/12 #add by ruby pml12 2018/03/01 #20181222 add pml88t
+               "       ta_pml01,ta_pml02,ta_pml03,ta_pml05,pml31,",
+               "       pml88,",                                                                      #20240222 add
+               "       pml20*pml31t,pmc03,pml12,pml04,pml07,pml20,pml18,pml33,pml34,pml35,",      #add by ruby 增加主供應商/幣別/未稅單價/主供應商簡稱  #add by ruby ta_pml02 2018/01/12 #add by ruby pml12 2018/03/01 #20181222 add pml88t
                #M001 171120 By TSD.Nic -----(E)
                "       pml15,pml14,pml041,pml41",   
               #"       ,pml80,pml82,pml83,pml85,pml86,pmk21",    #No.TQC-610127 add  #No.FUN-710082   #FUN-D10004 mark
@@ -791,8 +797,8 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
 	" LEFT OUTER JOIN pma_file ON pma01 = pmk20 ",
 	" LEFT OUTER JOIN gec_file ON gec01 = pmk21 AND gec011='1' ",
 	" LEFT OUTER JOIN gem_file ON gem01 = pmk13 ",
-	" LEFT OUTER JOIN oah_file ON oah01 = pmk41 ",
-        " LEFT OUTER JOIN pnz_file ON pnz01 = pmk41 ",                          #TQC-9A0187 Add
+       #" LEFT OUTER JOIN oah_file ON oah01 = pmk41 ",                          #20240219 mark
+       #" LEFT OUTER JOIN pnz_file ON pnz01 = pmk41 ",                          #TQC-9A0187 Add #20240219 mark
 	" WHERE pmkacti='Y' AND ",tm.wc
    LET l_sql = l_sql CLIPPED," ORDER BY pmk01,pml02"   #No.FUN-710082  
    display "l_sql:",l_sql CLIPPED
@@ -937,8 +943,10 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
                   " WHERE sfa03 = '",sr4.img01,"'",
                   "   AND sfb01 = sfa01",
                   "   AND sfb04 <='7'",
-                  "   AND sfb87!='X'",
+                  "   AND sfb87 !='X'",
+                 #"   AND sfa05 > sfa06 ",     #20240219 
                   "   AND sfb02 != '15'"
+      #display "l_sql_sfa:",l_sql CLIPPED
       PREPARE r903_sum_pre FROM l_sql
       DECLARE r903_sum CURSOR FOR r903_sum_pre
       FOREACH r903_sum INTO lr_sfa.*
@@ -947,6 +955,7 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
                          lr_sfa.sfa12,lr_sfa.sfa27,
                          lr_sfa.sfa012,lr_sfa.sfa013)
               RETURNING l_short_qty
+         #display "l_short_qty:",l_short_qty
          IF cl_null(l_short_qty) THEN LET l_short_qty = 0 END IF
          IF (lr_sfa.sfa05 > (lr_sfa.sfa06 + lr_sfa.sfa065 - lr_sfa.sfa063 ) OR l_short_qty > 0) THEN
               LET l_sfa_q1_2 =(lr_sfa.sfa05 - lr_sfa.sfa06 - lr_sfa.sfa065 +    lr_sfa.sfa063 - lr_sfa.sfa062 ) * lr_sfa.sfa13
@@ -954,6 +963,7 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
                   LET l_sfa_q1_2 = 0
               END IF
               LET l_sfa_q1= l_sfa_q1 + l_sfa_q1_2
+         #display "l_sfa_q1:",l_sfa_q1
          END IF
       END FOREACH
 
@@ -1218,6 +1228,17 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
       FOREACH pmo_cur3 INTO l_pmo05,l_pmo06
          EXECUTE insert_prep2 USING sr.pmk01,sr.pml02,'1',l_pmo05,l_pmo06
       END FOREACH
+     #客戶直接取代不需購買 cbmi605 20240603(S)
+     DECLARE tc_bmd_cur1 CURSOR FOR
+       SELECT '1','【不要買】'||tc_bmdnote FROM tc_bmd_file,oea_file
+        WHERE tc_bmd01 = sr.pml04
+          AND tc_bmd08 = oea03
+          AND tc_bmd02 = '3'
+          AND oea01=SUBSTR(sr.ta_pml01,1,15)
+      FOREACH tc_bmd_cur1 INTO l_pmo05,l_pmo06
+         EXECUTE insert_prep2 USING sr.pmk01,sr.pml02,'1',l_pmo05,l_pmo06
+      END FOREACH
+     #客戶直接取代不需購買 cbmi605 20240603(E)
  
       SELECT ima906 INTO l_ima906 FROM ima_file WHERE ima01=sr.pml04
       LET l_str2 = ""
@@ -1267,7 +1288,7 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
           WHERE ima01=sr.pml04 AND ima02 <> sr.pml041                    #20180508                              
       END IF                                                             #20180508
       LET l_pmk09 = ''    #MOD-860194
-      SELECT pmk09 INTO l_pmk09 FROM pmk_file WHERE pmk01 = sr.pmk01   #MOD-860194
+      #SELECT pmk09 INTO l_pmk09 FROM pmk_file WHERE pmk01 = sr.pmk01   #MOD-860194 #20240219 mark
  
       IF cl_null(l_pml123) THEN LET l_pml123 = ' ' END IF            #FUN-D10004 add
       DECLARE pmh_cur CURSOR FOR
@@ -1281,12 +1302,12 @@ DEFINE l_gen02_pmk12 LIKE gen_file.gen02        #20220210 請購人
             AND pmh23 = ' '                                             #No.CHI-960033
             AND pmhacti = 'Y'                                           #CHI-910021
           ORDER BY pmh05 ASC,pmh06 DESC,aaa ASC #MOD-580143
-      FOR g_cnt=1 TO 10
-         LET x1[g_cnt]='' 
-         LET x2[g_cnt]='' 
-         LET x3[g_cnt]=''
-         LET x4[g_cnt]=NULL #MOD-580143
-      END FOR
+      #FOR g_cnt=1 TO 10                        #20240219 mark
+      #   LET x1[g_cnt]=''                      #20240219 mark
+      #   LET x2[g_cnt]=''                      #20240219 mark
+      #   LET x3[g_cnt]=''                      #20240219 mark
+      #   LET x4[g_cnt]=NULL #MOD-580143        #20240219 mark
+      #END FOR                                  #20240219 mark
       LET g_cnt=1
       LET i=1
       FOREACH pmh_cur INTO l_pmh01,x1[g_cnt],x2[g_cnt],x3[g_cnt],x4[g_cnt] #MOD-580143 add x4[g_cnt]
