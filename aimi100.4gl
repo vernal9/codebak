@@ -516,6 +516,8 @@
 # Modify.........:               20220114 By momo ta_ima05、ta_ima07 使用動態下拉選單cooi001設定
 # Modify.........: No:22090046   20220930 By momo 分群碼提醒
 # Modify.........: No:23020020   20230223 By momo 存在PO狀況下，不可修改品名ima02、規格ima021
+# Modify.........: NO:23060015   20230609 By momo 調整 smaud03 DWG相關文件是否新增
+# Modify.........: No:23120022   20231218 By momo 增加PDF、DWG直接下載功能
 
 IMPORT os # No.FUN-B10061
 
@@ -1332,13 +1334,6 @@ FUNCTION i100_menu()
                CALL i100_carry()
             END IF
  
-         ON ACTION download
-            LET g_action_choice = "download"
-            IF cl_chk_act_auth() THEN
-               #CALL i100_download()                                   #20191112
-               CALL ccl_open(g_ima.ima01)                              #20191112
-            END IF
- 
          ON ACTION qry_carry_history
             LET g_action_choice = "qry_carry_history"
             IF cl_chk_act_auth() THEN
@@ -1358,6 +1353,22 @@ FUNCTION i100_menu()
                   CALL cl_err('',-400,0)
                END IF
             END IF
+
+         ##--- 20231218 modify by momo PDF/DWG直接下載 (S)  
+         ON ACTION item_pdf
+            LET g_action_choice = "item_pdf"
+            IF cl_chk_act_auth() THEN
+               #CALL i100_download()                                    #20191112
+               #CALL ccl_open(g_ima.ima01)                              #20191112 #20231218 mark
+               CALL ccl_download(g_ima.ima01,'pdf')                     #20231218 modify
+            END IF
+
+         ON ACTION item_dwg
+            LET g_action_choice = "item_dwg"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_ima.ima01,'dwg') 
+            END IF
+         ##--- 20231218 modify by momo PDF/DWG直接下載 (E)  
  
       ON ACTION related_document
          LET g_action_choice="related_document"
@@ -1658,7 +1669,7 @@ FUNCTION i100_a_file()
 　　　　　　　　　　　END IF
                ##---新增 dwg
                SELECT smaud03 INTO l_smaud03 FROM sma_file
-               　　IF NOT cl_null(l_smaud03) THEN
+               　　IF NOT cl_null(l_smaud03) THEN                                 #20230609 modify
                　　　LET l_gca.gca01 = "ima01" || "=" || g_ima.ima01 CLIPPED
                　　　LET l_gca.gca02 = ' '
                　　　LET l_gca.gca03 = ' '
@@ -8825,14 +8836,20 @@ FUNCTION i100_bp(p_ud)
          LET g_action_choice = "carry"
          EXIT DISPLAY
  
-      ON ACTION download
-         LET g_action_choice = "download"
-         EXIT DISPLAY
- 
       ON ACTION qry_carry_history
          LET g_action_choice = "qry_carry_history"
          EXIT DISPLAY
  
+      ##--- 20231218 add (S)
+      ON ACTION item_pdf
+         LET g_action_choice = "item_pdf"
+         EXIT DISPLAY
+      
+      ON ACTION item_dwg
+         LET g_action_choice = "item_dwg"
+         EXIT DISPLAY
+      ##--- 20231218 add (E)
+
       ON ACTION related_document
          LET g_action_choice="related_document"
          EXIT DISPLAY
@@ -9214,12 +9231,21 @@ FUNCTION i100_b_menu()
                CALL i100_carry()
             END IF
  
-        WHEN "download"
+        ##---- 20231218 modify by momo PDF/DWG 直接下載 (S)
+        WHEN "item_pdf"
             IF cl_chk_act_auth() THEN
-               #CALL i100_download()        #20191112 mark
-               CALL ccl_open(g_ima.ima01)   #20191112
+               #CALL i100_download()                   #20191112 mark
+               #CALL ccl_open(g_ima.ima01)             #20191112 #20231218 mark
+               CALL ccl_download(g_ima.ima01,'pdf')    #20231218 modify
+            END IF
+
+        WHEN "item_dwg"
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_ima.ima01,'dwg')
             END IF
  
+        ##---- 20231218 modify by momo PDF/DWG 直接下載 (E)
+
         WHEN "qry_carry_history"
             IF cl_chk_act_auth() THEN
                IF NOT cl_null(g_ima.ima01) THEN   #No.FUN-830090

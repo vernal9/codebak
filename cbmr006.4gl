@@ -11,8 +11,9 @@ DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
  
    DEFINE tm  RECORD		             	# Print condition RECORD
-       	        wc 	    LIKE type_file.chr1000, 
-                more	LIKE type_file.chr1     
+       	        wc 	    LIKE type_file.chr1000,
+                choice      LIKE type_file.chr1,
+                more	    LIKE type_file.chr1     
               END RECORD
  
 DEFINE   g_cnt          LIKE type_file.num10   
@@ -91,6 +92,7 @@ DEFINE p_row,p_col    LIKE type_file.num5,
  
    CALL cl_opmsg('p')
    INITIALIZE tm.* TO NULL			# Default condition
+   LET tm.choice = 'T'
    LET tm.more = 'N'
    LET g_pdate = g_today
    LET g_rlang = g_lang
@@ -162,7 +164,7 @@ DEFINE p_row,p_col    LIKE type_file.num5,
    DISPLAY BY NAME tm.more  # Condition
  
 #UI
-   INPUT BY NAME tm.more
+   INPUT BY NAME tm.choice,tm.more
       WITHOUT DEFAULTS
  
         
@@ -267,16 +269,20 @@ FUNCTION cbmr006()
           END RECORD
  
      SELECT zo02 INTO g_company FROM zo_file WHERE zo01 = g_rlang
- 
-  
-     LET tm.wc = tm.wc CLIPPED,cl_get_extra_cond('bmjuser', 'bmjgrup')
    
-   
-     LET l_sql = "SELECT distinct '','','',bmb03,'',0,0,'' ",
-                 " FROM bmb_file,ima_file ",
-                 " WHERE bmb01=ima01 AND imaacti='Y' AND bmb05 IS NULL",
-                 " START WITH bmb05 IS NULL AND ",tm.wc,
-                 "CONNECT BY PRIOR bmb03 = bmb01 AND bmb05 IS NULL"
+     IF tm.choice = 'T' THEN 
+        LET l_sql = "SELECT distinct '','','',bmb03,'',0,0,'' ",
+                    " FROM bmb_file,ima_file ",
+                    " WHERE bmb01=ima01 AND imaacti='Y' AND bmb05 IS NULL",
+                    " START WITH bmb05 IS NULL AND ",tm.wc,
+                    "CONNECT BY bmb03 = PRIOR bmb01 AND bmb05 IS NULL"
+     ELSE
+        LET l_sql = "SELECT distinct '','','',bmb03,'',0,0,'' ",
+                    " FROM bmb_file,ima_file ",
+                    " WHERE bmb01=ima01 AND imaacti='Y' AND bmb05 IS NULL",
+                    " START WITH bmb05 IS NULL AND ",tm.wc,
+                    "CONNECT BY PRIOR bmb03 = bmb01 AND bmb05 IS NULL"
+     END If
     
  
      PREPARE r006_prepare1 FROM l_sql
@@ -295,12 +301,21 @@ FUNCTION cbmr006()
        END IF
 
        ##----依元件查找，有被使用的型號 （S）
-       LET l_sql = "SELECT distinct bmb01,ima02,ima021,ima1007,level,SYS_CONNECT_BY_PATH(bmb01,'/') AS PartPath ",
-                   " FROM bma_file,bmb_file,ima_file ",
-                   " WHERE bma01=bmb01 AND bmaacti='Y' AND bmb01=ima01 AND bmb05 IS NULL ",
-                   " START WITH bmb03='",sr.bmb03,"' AND bmb05 IS NULL AND bmaacti='Y' ",
-                   " CONNECT BY bmb03 = PRIOR bmb01 AND bmb05 IS NULL AND bmaacti='Y' ",
-                   " ORDER BY 6 "
+       IF tm.choice = 'T' THEN 
+          LET l_sql = "SELECT distinct bmb01,ima02,ima021,ima1007,level,SYS_CONNECT_BY_PATH(bmb01,'/') AS PartPath ",
+                      " FROM bma_file,bmb_file,ima_file ",
+                      " WHERE bma01=bmb01 AND bmaacti='Y' AND bmb01=ima01 AND bmb05 IS NULL ",
+                      " START WITH bmb03='",sr.bmb03,"' AND bmb05 IS NULL AND bmaacti='Y' ",
+                      " CONNECT BY bmb03 = PRIOR bmb01 AND bmb05 IS NULL AND bmaacti='Y' ",
+                      " ORDER BY 6 "
+       ELSE
+          LET l_sql = "SELECT distinct bmb01,ima02,ima021,ima1007,level,SYS_CONNECT_BY_PATH(bmb01,'/') AS PartPath ",
+                      " FROM bma_file,bmb_file,ima_file ",
+                      " WHERE bma01=bmb01 AND bmaacti='Y' AND bmb01=ima01 AND bmb05 IS NULL ",
+                      " START WITH bmb03='",sr.bmb03,"' AND bmb05 IS NULL AND bmaacti='Y' ",
+                      " CONNECT BY PRIOR bmb03 = bmb01 AND bmb05 IS NULL AND bmaacti='Y' ",
+                      " ORDER BY 6 "
+       END IF
        PREPARE r006_prepare11 FROM l_sql
        DECLARE r006_ima1007 CURSOR FOR r006_prepare11
        FOREACH r006_ima1007 INTO sr.bmb01,sr.ima02,sr.ima021,sr.ima1007,sr.level2,sr.path2
