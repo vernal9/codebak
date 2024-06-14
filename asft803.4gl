@@ -6053,6 +6053,19 @@ DEFINE
              NEXT FIELD sna26a
           END IF    
       #CHI-E10004-End-Add
+          ##---- 20240614 add by momo (S)群組時檢核是否已有發料記錄 
+          IF g_sna[l_ac].sna26a = '5' THEN
+             SELECT sfa06 INTO l_cnt
+               FROM sfa_file
+              WHERE sfa01 = g_snb.snb01
+                AND sfa06 > 0
+                AND sfa03 = g_sna[l_ac].sna03b
+             IF l_cnt > 0 THEN
+                CALL cl_err(g_sna[l_ac].sna03b,'csf-022',1)
+                NEXT FIELD sna26a
+             END IF
+          END IF
+          ##---- 20240614 add by momo (E)群組時檢核是否已有發料記錄 
          
         #--->單位需存在于單位檔中
         AFTER FIELD sna12a
