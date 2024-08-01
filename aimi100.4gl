@@ -4175,7 +4175,7 @@ FUNCTION i100_copy()
                         WHERE ima01 = l_newno
          CALL i100_u()
          CALL i100_copy_finish(l_newno,l_oldno)
-         CALL i100_a_file()    #20180308
+         #CALL i100_a_file()    #20180308  #20240801
       END IF
       ##---- 20201012 add by momo (S)
       IF l_ima.ima06 = 'E0000' OR l_ima.ima06='F0000' THEN
@@ -8155,6 +8155,8 @@ FUNCTION i100_copy_insert(l_ima,l_newno)
        ROLLBACK WORK
        RETURN FALSE
     ELSE
+      LET g_ima.ima01 = l_ima.ima01  #20240801
+      CALL i100_a_file()            #20240801 相關文件搬移
 #TQC-C20275 ----- add ----- begin
       DECLARE imac_cur CURSOR FOR
        SELECT * FROM imac_file WHERE imac01=g_ima.ima01
