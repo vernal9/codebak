@@ -27,15 +27,16 @@ DEFINE
         ima1007   LIKE ima_file.ima1007,    #其他分群碼-型號
         ima10     LIKE ima_file.ima10,      #其他分群碼二-馬達功率
         ima11     LIKE ima_file.ima11,      #其他分群碼二-馬達規格
-        ta_ima02  LIKE ima_file.ta_ima02,   #
-        ta_ima07  LIKE ima_file.ta_ima07,   #
-        ta_ima03  LIKE ima_file.ta_ima03,   #
-        ta_ima04  LIKE ima_file.ta_ima04,   #
-        ta_ima05  LIKE ima_file.ta_ima05,   #
-        ta_ima06  LIKE ima_file.ta_ima06,   #
-        imaud07   LIKE ima_file.imaud07,    #
-        ta_ima08  LIKE ima_file.ta_ima08,   #
-        ta_ima01  LIKE ima_file.ta_ima01,   #
+        ta_ima02  LIKE ima_file.ta_ima02,   #軸數
+        ta_ima07  LIKE ima_file.ta_ima07,   #馬達方向
+        ta_ima03  LIKE ima_file.ta_ima03,   #外徑+導程
+        ta_ima04  LIKE ima_file.ta_ima04,   #行程
+        ta_ima05  LIKE ima_file.ta_ima05,   #帶控制
+        ta_ima06  LIKE ima_file.ta_ima06,   #代工
+        imaud07   LIKE ima_file.imaud07,    #含控制線長(米)
+        ta_ima08  LIKE ima_file.ta_ima08,   #是否特注
+        ta_ima01  LIKE ima_file.ta_ima01,   #免備料品
+        imaud08   LIKE ima_file.imaud08,    #素材長度
         imauser   LIKE ima_file.imauser,    #資料所有者  
         gen02     LIKE gen_file.gen02,      #姓名 
         ima901    LIKE ima_file.ima901,     #建檔日
@@ -62,6 +63,7 @@ DEFINE
         imaud07   LIKE ima_file.imaud07,    #
         ta_ima08  LIKE ima_file.ta_ima08,   #
         ta_ima01  LIKE ima_file.ta_ima01,   #
+        imaud08   LIKE ima_file.imaud08,    #素材長度
         imauser   LIKE ima_file.imauser,    #資料所有者  
         gen02     LIKE gen_file.gen02,      #姓名 
         ima901    LIKE ima_file.ima901,     #建檔日
@@ -109,10 +111,6 @@ MAIN
    CALL cl_ui_init()
  
  
-    IF NOT cl_null(g_argv1) THEN
-       LET g_wc2 =g_wc2 CLIPPED, "  ima06 ='",g_argv1 CLIPPED,"' " 
-    END IF
- 
    CALL i100_b_fill(g_wc2)
  
    CALL i100_menu()
@@ -127,13 +125,15 @@ FUNCTION i100_menu()
    WHILE TRUE
       CALL i100_bp("G")
       CASE g_action_choice
-         #WHEN "query" 
-         #   IF cl_chk_act_auth() THEN
-         #      CALL i100_q()
-         #   END IF
          WHEN "detail"
             IF cl_chk_act_auth() THEN
                CALL i100_b()
+            ELSE
+               LET g_action_choice = NULL
+            END IF
+         WHEN "confirm"
+            IF cl_chk_act_auth() THEN
+               CALL i100_batch_confirm()
             ELSE
                LET g_action_choice = NULL
             END IF
@@ -154,11 +154,6 @@ FUNCTION i100_menu()
  
 END FUNCTION
  
-FUNCTION i100_q()
- 
-   CALL i100_b_askkey()
- 
-END FUNCTION
  
 FUNCTION i100_b()
    DEFINE l_ac_t          LIKE type_file.num5,     
@@ -179,7 +174,7 @@ FUNCTION i100_b()
                      
    LET g_forupd_sql = " SELECT ima01,ima02,ima021 ",   
                       "        FROM ima_file ",  
-                      "  WHERE ima01= ? AND ima02= ? AND ima021=?  FOR UPDATE "
+                      "  WHERE ima01= ?  FOR UPDATE "
  
    LET g_forupd_sql = cl_forupd_sql(g_forupd_sql)
    DECLARE i100_bcl CURSOR FROM g_forupd_sql      # LOCK CURSOR
@@ -205,7 +200,7 @@ FUNCTION i100_b()
             BEGIN WORK
             LET p_cmd = 'u'
             LET g_ima_t.* = g_ima[l_ac].*  #BACKUP
-            OPEN i100_bcl USING g_ima_t.ima01,g_ima_t.ima02,g_ima_t.ima021
+            OPEN i100_bcl USING g_ima_t.ima01
             IF STATUS THEN
                CALL cl_err("OPEN i100_bcl:", STATUS, 1)
                LET l_lock_sw = "Y"
@@ -236,6 +231,7 @@ FUNCTION i100_b()
                          imaud07 = g_ima[l_ac].imaud07,
                          ta_ima08 = g_ima[l_ac].ta_ima08,
                          ta_ima01 = g_ima[l_ac].ta_ima01,
+                         imaud08 = g_ima[l_ac].imaud08,
                          imauser = g_ima[l_ac].imauser
                    WHERE ima01 = g_ima_t.ima01
                      
@@ -255,7 +251,6 @@ FUNCTION i100_b()
          LET p_cmd = 'a'
          INITIALIZE g_ima[l_ac].* TO NULL      
          INITIALIZE d_ima.* TO NULL
-         CALL i100_default()
          LET g_ima_t.* = g_ima[l_ac].*         #新輸入資料
          CALL cl_show_fld_cont()  
          NEXT FIELD ima01
@@ -280,35 +275,42 @@ FUNCTION i100_b()
          END IF
 
       AFTER FIELD ima01
-         IF cl_null(g_ima[l_ac].ima01) THEN
-            NEXT FIELD ima01
-         ELSE
-            LET l_cnt = 0
-            SELECT 1 INTO l_cnt FROM ima_file
-             WHERE ima01= g_ima[l_ac].ima01
-            IF l_cnt = 1 THEN
-               CALL cl_err(g_ima[l_ac].ima01,'aim-023',1)
-               NEXT FIELD ima01
+         IF NOT cl_null(g_ima[l_ac].ima01) THEN
+            IF p_cmd='a' THEN
+               LET l_cnt = 0
+               SELECT 1 INTO l_cnt FROM ima_file
+                WHERE ima01= g_ima[l_ac].ima01
+               IF l_cnt = 1 THEN
+                  CALL cl_err(g_ima[l_ac].ima01,'aim-023',1)
+                  NEXT FIELD ima01
+               END IF
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima01
 
       AFTER FIELD ima02
          IF cl_null(g_ima[l_ac].ima02) THEN
             NEXT FIELD ima02
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima02
 
       AFTER FIELD ima021
-         IF NOT cl_null(g_ima[l_ac].ima021) THEN
+         IF cl_null(g_ima[l_ac].ima021) THEN
+            NEXT FIELD ima021
+         END IF
+         IF NOT cl_null(g_ima[l_ac].ima021)  THEN
             LET l_cnt = 0
             SELECT 1 INTO l_cnt FROM ima_file
              WHERE ima02 = g_ima[l_ac].ima02
                AND ima021= g_ima[l_ac].ima021
+               AND ima01 <> g_ima[l_ac].ima01
                AND rownum = 1
             IF l_cnt = 1 THEN
                CALL cl_err('','aom-753',1)
                NEXT FIELD ima02
             END IF
-          END IF
+         END IF
+         DISPLAY BY NAME g_ima[l_ac].ima021
 
       AFTER FIELD ima06
         IF cl_null(g_ima[l_ac].ima06) THEN
@@ -324,6 +326,7 @@ FUNCTION i100_b()
               NEXT FIELD ima06
            END IF
         END IF
+        DISPLAY BY NAME g_ima[l_ac].ima06
 
       AFTER FIELD ima08
          IF cl_null(g_ima[l_ac].ima08) THEN
@@ -333,6 +336,7 @@ FUNCTION i100_b()
                NEXT FIELD ima08
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima08
 
       AFTER FIELD ima25
          IF cl_null(g_ima[l_ac].ima25) THEN
@@ -340,12 +344,13 @@ FUNCTION i100_b()
          ELSE
             LET l_cnt = 0
             SELECT 1 INTO l_cnt FROM gfe_file
-             WHERE gfea01 = g_ima[l_ac].ima25
+             WHERE gfe01 = g_ima[l_ac].ima25
                AND gfeacti='Y'
             IF l_cnt <> 1 THEN
                NEXT FIELD ima25
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima25
 
       AFTER FIELD ima131
          IF cl_null(g_ima[l_ac].ima131) THEN
@@ -359,6 +364,7 @@ FUNCTION i100_b()
                NEXT FIELD ima131
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima131
 
       AFTER FIELD ima09
          IF NOT cl_null(g_ima[l_ac].ima09) THEN
@@ -370,6 +376,7 @@ FUNCTION i100_b()
                NEXT FIELD ima09
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima09
 
       AFTER FIELD ima10
          IF NOT cl_null(g_ima[l_ac].ima10) THEN
@@ -381,6 +388,7 @@ FUNCTION i100_b()
                NEXT FIELD ima10
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima10
 
       AFTER FIELD ima11
          IF NOT cl_null(g_ima[l_ac].ima11) THEN
@@ -392,6 +400,7 @@ FUNCTION i100_b()
                NEXT FIELD ima11
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ima11
 
       AFTER FIELD ta_ima02
          IF cl_null(g_ima[l_ac].ta_ima02) THEN
@@ -401,6 +410,7 @@ FUNCTION i100_b()
                NEXT FIELD ta_ima02
             END IF
          END IF
+         DISPLAY BY NAME g_ima[l_ac].ta_ima02
 
       AFTER FIELD ta_ima05
          IF NOT cl_null(g_ima[l_ac].ta_ima05) THEN
@@ -413,6 +423,7 @@ FUNCTION i100_b()
                NEXT FIELD ta_ima05
             END IF
          END IF  
+         DISPLAY BY NAME g_ima[l_ac].ta_ima05
 
       AFTER FIELD ta_ima07
          IF NOT cl_null(g_ima[l_ac].ta_ima07) THEN
@@ -425,6 +436,7 @@ FUNCTION i100_b()
                NEXT FIELD ta_ima07
             END IF
          END IF 
+         DISPLAY BY NAME g_ima[l_ac].ta_ima07
  
       BEFORE DELETE                            #是否取消單身
          IF g_ima_t.ima01 IS NOT NULL THEN
@@ -443,6 +455,12 @@ FUNCTION i100_b()
                CALL cl_err3("del","ima_file",g_ima_t.ima01,"",SQLCA.sqlcode,"","",1) 
                ROLLBACK WORK
                CANCEL DELETE
+            ##---- 20240801 相關文件刪除
+            LET g_doc.column1 = "ima01"
+            LET g_doc.value1 = g_ima_t.ima01
+            CALL cl_del_doc() 
+            DELETE FROM imc_file WHERE imc01= g_ima_t.ima01 #品名規格額外說明
+            
             END IF
             LET g_rec_b=g_rec_b-1
             DISPLAY g_rec_b TO FORMONLY.cn2  
@@ -463,11 +481,30 @@ FUNCTION i100_b()
             LET g_ima[l_ac].* = g_ima_t.*
          ELSE
             UPDATE ima_file SET ima01=g_ima[l_ac].ima01,
-                                   ima02=g_ima[l_ac].ima02,
-                                   imauser = g_user,
-                                   imadate = g_today                           
+                                ima02=g_ima[l_ac].ima02,
+                                imaoriu = g_user,
+                                imadate = g_today,                           
+                                ima021 = g_ima[l_ac].ima021,
+                                ima06 = g_ima[l_ac].ima06,
+                                ima08 = g_ima[l_ac].ima08,
+                                ima25 = g_ima[l_ac].ima25,
+                                ima131 = g_ima[l_ac].ima131,
+                                ima09 = g_ima[l_ac].ima09,
+                                ima1007 = g_ima[l_ac].ima1007,
+                                ima10 = g_ima[l_ac].ima10,
+                                ima11 = g_ima[l_ac].ima11,
+                                ta_ima02 = g_ima[l_ac].ta_ima02,
+                                ta_ima07 = g_ima[l_ac].ta_ima07,
+                                ta_ima03 = g_ima[l_ac].ta_ima03,
+                                ta_ima04 = g_ima[l_ac].ta_ima04,
+                                ta_ima05 = g_ima[l_ac].ta_ima05,
+                                ta_ima06 = g_ima[l_ac].ta_ima06,
+                                imaud07 = g_ima[l_ac].imaud07,
+                                ta_ima08 = g_ima[l_ac].ta_ima08,
+                                ta_ima01 = g_ima[l_ac].ta_ima01,
+                                imaud08 = g_ima[l_ac].imaud08,
+                                imauser = g_ima[l_ac].imauser
              WHERE ima01 = g_ima_t.ima01
-               AND ima02 = g_ima_t.ima02
                
             IF SQLCA.sqlcode THEN
                CALL cl_err3("upd","ima_file",g_ima_t.ima01,g_ima_t.ima02,SQLCA.sqlcode,"","",1)  
@@ -638,7 +675,7 @@ FUNCTION i100_b_fill(p_wc2)              #BODY FILL UP
  
    LET g_sql = "SELECT ima01,ima02,ima021,ima06,ima08,ima25,ima131,ima09,ima1007,ima10,ima11, ",   
                "       ta_ima02,ta_ima07,ta_ima03,ta_ima04,ta_ima05,ta_ima06,imaud07,ta_ima08,ta_ima01,",
-               "       imauser,gen02,ima901,imaoriu",
+               "       imaud08,imauser,gen02,ima901,imaoriu",
                "  FROM ima_file,gen_file ",                                        
                " WHERE imauser=gen01 AND ", p_wc2 CLIPPED,                     #單身
                " ORDER BY ima01 "
@@ -696,9 +733,9 @@ FUNCTION i100_bp(p_ud)
          CALL cl_set_head_visible("","AUTO")                                                                                        
 #No.FUN-6B0030-----End------------------     
  
-      #ON ACTION query
-      #   LET g_action_choice="query"
-      #   EXIT DISPLAY
+      ON ACTION confirm
+         LET g_action_choice="confirm"
+         EXIT DISPLAY
 
       ON ACTION detail
          LET g_action_choice="detail"
@@ -781,6 +818,7 @@ DEFINE l_cnt        LIKE type_file.num5
    LET d_ima.ta_ima07 = g_ima[l_ac].ta_ima07
    LET d_ima.ta_ima08 = g_ima[l_ac].ta_ima08
    LET d_ima.imaud07 = g_ima[l_ac].imaud07
+   LET d_ima.imaud08 = g_ima[l_ac].imaud08
    LET d_ima.imauser = g_ima[l_ac].imauser
    
    INSERT INTO ima_file VALUES(d_ima.*)       # DISK WRITE
@@ -800,6 +838,7 @@ DEFINE l_cnt        LIKE type_file.num5
        END IF 
       ##- 固定備註---- (E)
    END IF
+   CALL i100_a_file()
    RETURN TRUE
 END FUNCTION
 
@@ -859,7 +898,6 @@ FUNCTION i100_default()
    LET d_ima.ima70 = 'N'
    LET d_ima.ima73 = NULL #最近入庫日期    
    LET d_ima.ima74 = NULL #最近出庫日期       
-   LET d_ima.ima71 = 0
    LET d_ima.ima72 = 0
    LET d_ima.ima721 = 0 
    LET d_ima.ima75 = ''
@@ -1105,5 +1143,120 @@ FUNCTION i100_set_rel_ima06()
       END IF 
    END IF 
    
+END FUNCTION
 
+FUNCTION i100_batch_confirm()
+  DEFINE l_i,l_n        LIKE type_file.num5
+
+  LET l_n = 0
+  LET g_success = 'N'
+  FOR l_i = 1 TO g_rec_b
+      CALL i100sub_y_chk(g_ima[l_i].ima01)
+      IF g_success = 'Y' THEN 
+         BEGIN WORK
+         CALL i100sub_y_upd(g_ima[l_i].ima01)
+         IF g_success = 'Y' THEN
+            COMMIT WORK
+         END IF
+      END IF
+  END FOR
+  CALL cl_err('','afa-116',1)
+  CALL i100_b_fill("1=2")
+END FUNCTION
+
+##----- 新增料件pdf 與 dwg 圖檔資訊
+FUNCTION i100_a_file()
+   DEFINE l_gca     RECORD LIKE gca_file.*
+   DEFINE l_gcb     RECORD LIKE gcb_file.*
+   DEFINE l_smaud02 LIKE sma_file.smaud02   #PDF路徑
+   DEFINE l_smaud03 LIKE sma_file.smaud03   #DWG路徑
+   
+   ##---新增 pdf
+   SELECT smaud02 INTO l_smaud02 FROM sma_file
+   IF NOT cl_null(l_smaud02) THEN
+      LET l_gca.gca01 = "ima01" || "=" || d_ima.ima01 CLIPPED
+      LET l_gca.gca02 = ' '
+      LET l_gca.gca03 = ' '
+      LET l_gca.gca04 = ' '
+      LET l_gca.gca05 = ' '
+      LET l_gca.gca06 = 1
+      LET l_gca.gca07 = "URL-pdf" || d_ima.ima01  CLIPPED
+      LET l_gca.gca08 = "URL"
+      LET l_gca.gca09 = "01"
+      LET l_gca.gca10 = "001"
+      LET l_gca.gca11 = "Y"
+      LET l_gca.gca12 = d_ima.imauser
+      LET l_gca.gca13 = d_ima.imagrup
+      LET l_gca.gca14 = g_today
+               
+      INSERT INTO gca_file VALUES(l_gca.*)
+      IF STATUS THEN
+         CALL cl_err3("ins","gca_file",d_ima.ima01,"",SQLCA.sqlcode,"","",1)  
+      END IF              　　 
+      LET l_gcb.gcb01 = l_gca.gca07
+      LET l_gcb.gcb02 = l_gca.gca08
+      LET l_gcb.gcb05 = d_ima.ima01 CLIPPED || "-PDF"
+      LET l_gcb.gcb10 = l_smaud02 || d_ima.ima01 || ".pdf"  
+      LET l_gcb.gcb03 = "01"
+      LET l_gcb.gcb04 = "001"
+      LET l_gcb.gcb11 = "O"
+      LET l_gcb.gcb12 = "U"
+      LET l_gcb.gcb13 = g_user CLIPPED
+      LET l_gcb.gcb14 = g_grup CLIPPED
+      LET l_gcb.gcb15 = g_today CLIPPED
+      INSERT INTO gcb_file(gcb01,gcb02,gcb03,gcb04,gcb05,gcb10,
+                           gcb11,gcb12,gcb13,gcb14,gcb15,gcb16)
+           VALUES (l_gcb.gcb01,l_gcb.gcb02,l_gcb.gcb03,l_gcb.gcb04,l_gcb.gcb05,
+                   l_gcb.gcb10,
+                   l_gcb.gcb11,l_gcb.gcb12,l_gcb.gcb13,l_gcb.gcb14,l_gcb.gcb15,
+                   l_gcb.gcb16)
+      IF STATUS THEN
+         CALL cl_err3("ins","gcb_file",d_ima.ima01,"",SQLCA.sqlcode,"","",1)  
+      END IF  
+　 END IF
+   ##---新增 dwg
+      SELECT smaud03 INTO l_smaud03 FROM sma_file
+      IF NOT cl_null(l_smaud03) THEN                              
+         LET l_gca.gca01 = "ima01" || "=" || d_ima.ima01 CLIPPED
+         LET l_gca.gca02 = ' '
+         LET l_gca.gca03 = ' '
+         LET l_gca.gca04 = ' '
+         LET l_gca.gca05 = ' '
+         LET l_gca.gca06 = 2
+         LET l_gca.gca07 = "URL-dwg" || d_ima.ima01 CLIPPED
+         LET l_gca.gca08 = "URL"
+         LET l_gca.gca09 = "01"
+         LET l_gca.gca10 = "001"
+         LET l_gca.gca11 = "Y"
+         LET l_gca.gca12 = d_ima.imauser
+         LET l_gca.gca13 = d_ima.imagrup
+         LET l_gca.gca14 = g_today
+               
+         INSERT INTO gca_file VALUES(l_gca.*)
+         IF STATUS THEN
+            CALL cl_err3("ins","gca_file",d_ima.ima01,"",SQLCA.sqlcode,"","",1)  
+         END IF              　　 
+               
+         LET l_gcb.gcb01 = l_gca.gca07
+         LET l_gcb.gcb02 = l_gca.gca08
+         LET l_gcb.gcb05 = d_ima.ima01 CLIPPED || "-DWG"
+         LET l_gcb.gcb10 = l_smaud03 || d_ima.ima01 || ".dwg"  
+         LET l_gcb.gcb03 = "01"
+         LET l_gcb.gcb04 = "001"
+         LET l_gcb.gcb11 = "O"
+         LET l_gcb.gcb12 = "U"
+         LET l_gcb.gcb13 = g_user CLIPPED
+         LET l_gcb.gcb14 = g_grup CLIPPED
+         LET l_gcb.gcb15 = g_today CLIPPED
+         INSERT INTO gcb_file(gcb01,gcb02,gcb03,gcb04,gcb05,gcb10,
+                              gcb11,gcb12,gcb13,gcb14,gcb15,gcb16)
+              VALUES (l_gcb.gcb01,l_gcb.gcb02,l_gcb.gcb03,l_gcb.gcb04,l_gcb.gcb05,
+                      l_gcb.gcb10,
+                      l_gcb.gcb11,l_gcb.gcb12,l_gcb.gcb13,l_gcb.gcb14,l_gcb.gcb15,
+                      l_gcb.gcb16)
+          IF STATUS THEN
+             CALL cl_err3("ins","gcb_file",d_ima.ima01,"",SQLCA.sqlcode,"","",1)  
+          END IF  
+　　  END IF
+              
 END FUNCTION
