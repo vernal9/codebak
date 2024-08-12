@@ -309,6 +309,7 @@
 # Modify.........: NO:22100036   20221024 By momo 調整 COUNT 判斷
 # Modify.........: No:22110033   20221124 By momo 單身追加【作業編號[bmy09]】欄位
 # Modify.........: NO:23010028   20230207 By momo 單頭增加 ta_bmx03 ECN原因輸入
+# Modify.........: NO:24080019   20240814 By momo 單頭備註調整顯示
 
 DATABASE ds
  
@@ -1853,7 +1854,10 @@ FUNCTION i720_show()
        SELECT * FROM bmg_file WHERE bmg01=g_bmx.bmx01 ORDER BY 2
     LET g_msg=NULL
     FOREACH i720_show_c INTO l_bmg.*
-       LET g_msg=g_msg CLIPPED,l_bmg.bmg03
+      SELECT tc_dic05 INTO l_bmg.ta_bmg01 FROM tc_dic_file                        #20240814 抓說明
+        WHERE tc_dic01='abmi701' AND tc_dic04=l_bmg.ta_bmg01                      #20240814
+       #LET g_msg=g_msg CLIPPED,l_bmg.bmg03                                       #20240814 mark
+        LET g_msg=g_msg CLIPPED,l_bmg.bmg02," :",l_bmg.ta_bmg01,"_",l_bmg.bmg03,"\n"   #20240814 增加換行符
     END FOREACH
     DISPLAY g_msg TO bmg03_display
 
@@ -10608,13 +10612,22 @@ FUNCTION i720_chkinsitm()
  
 END FUNCTION
 FUNCTION i720_ef()
- 
+ DEFINE l_cnt    LIKE type_file.num5                      #20240808
     #CALL i720_y_chk()          #CALL 原確認的 check 段   #FUN-580161 #FUN-AC0060 mark
      CALL i720sub_y_chk(g_bmx.bmx01)                                  #FUN-AC0060 add
      IF g_success = "N" THEN
          RETURN
      END IF
  
+    ##---- 20240809 (S)
+    LET l_cnt = 0
+    SELECT COUNT(*) INTO l_cnt FROM bmy_file
+     WHERE bmy01=g_bmx.bmx01
+    IF l_cnt > 100 THEN
+       LET g_bmy=''
+    END IF
+    ##---- 20240809 (E)
+
      CALL aws_condition()      #判斷送簽資料
      IF g_success = 'N' THEN
          RETURN
@@ -10624,13 +10637,14 @@ FUNCTION i720_ef()
 # 傳入參數: (1)單頭資料, (2-6)單身資料
 # 回傳值  : 0 開單失敗; 1 開單成功
 ##########
+
   IF aws_efcli2(base.TypeInfo.create(g_bmx),base.TypeInfo.create(g_bmy),'','','','') THEN
      LET g_success='Y'
-    #LET g_bmx.bmx09='S'  #FUN-F10019 mark
-    #FUN-F10019 add(S)
-    #重新更新狀態碼顯示
+     #LET g_bmx.bmx09='S'  #FUN-F10019 mark
+     #FUN-F10019 add(S)
+     #重新更新狀態碼顯示
      SELECT bmx09 INTO g_bmx.bmx09 FROM bmx_file WHERE bmx01 = g_bmx.bmx01
-    #FUN-F10019 add(E)
+     #FUN-F10019 add(E)
      DISPLAY BY NAME g_bmx.bmx09
   ELSE
      LET g_success='N'
@@ -10691,11 +10705,7 @@ FUNCTION i720_set_no_entry(p_cmd)
    END IF
 
    ##--- 20230207 add by momo (S) ta_bmx03 卡必填
-   IF g_plant[1,2] = 'NM' THEN
-      CALL cl_set_comp_required("ta_bmx03",TRUE)
-   ELSE
-      CALL cl_set_comp_required("ta_bmx03",FALSE)
-   END IF
+   CALL cl_set_comp_required("ta_bmx03",TRUE)
    ##--- 20230207 add by momo (E)
  
 END FUNCTION

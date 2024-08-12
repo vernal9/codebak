@@ -300,6 +300,8 @@
 #                                                 停產卡控由強制更改為提示
 # Modify.........: No:22110032   20221123 By momo 單身增加 bmy09作業編號，可直接維護
 # Modify.........: No:23020008   20230208 By momo 增加 ECN變更原因欄位
+# Modify.........: No:23080026   20230901 By momo 當設定料件停產，依aooi602 設定進行更新判斷
+# Modify.........: NO:24080018   20240814 By momo 調整備註欄位顯示 
 
 DATABASE ds
  
@@ -2119,7 +2121,10 @@ FUNCTION i710_bmg03()
     LET g_msg=NULL
  
     FOREACH i710_show_c INTO l_bmg.*
-       LET g_msg=g_msg CLIPPED,l_bmg.bmg03
+      SELECT tc_dic05 INTO l_bmg.ta_bmg01 FROM tc_dic_file                          #20240814 增加說明
+        WHERE tc_dic01='abmi701' AND tc_dic04=l_bmg.ta_bmg01                        #20240814
+       #LET g_msg=g_msg CLIPPED,l_bmg.bmg03                                         #20240814 mark
+       LET g_msg=g_msg CLIPPED,l_bmg.bmg02," :",l_bmg.ta_bmg01,"_",l_bmg.bmg03,"\n" #20240814 重組
     END FOREACH
  
     DISPLAY g_msg TO bmg03_display
@@ -6522,21 +6527,21 @@ DEFINE l_ima140   LIKE ima_file.ima140
    IF s_shut(0) THEN RETURN END IF
 
    ##--- 20201023 add by momo - ECN 單據確 需依生效日依序執行(S) 
-   IF g_plant = 'KS' THEN
-      LET l_cnt = 0
-      SELECT COUNT(*) INTO l_cnt
-        FROM bmx_file
-       WHERE bmx07 < g_bmx.bmx07 AND bmx04='N'
-      IF l_cnt > 0 THEN
-         CALL cl_err('','cbm-009',1)
-         LET g_success = 'N'
-         RETURN
-      END IF
-   END IF
+   #IF g_plant = 'KS' THEN
+   #   LET l_cnt = 0
+   #   SELECT COUNT(*) INTO l_cnt
+   #     FROM bmx_file
+   #    WHERE bmx07 < g_bmx.bmx07 AND bmx04='N'
+   #   IF l_cnt > 0 THEN
+   #      CALL cl_err('','cbm-009',1)
+   #      LET g_success = 'N'
+   #      RETURN
+   #   END IF
+   #END IF
    ##--- 20201023 add by momo - ECN 單據確 需依生效日依序執行(E)
 
-   ##--- 20201223 add by momo (S) TY 生效日小於確認日時，將生效日改為確認日
-   IF g_plant[1,2] = 'TY' AND g_bmx.bmx07 < g_today THEN
+   ##--- 20201223 add by momo (S)  生效日小於確認日時，將生效日改為確認日
+   IF g_bmx.bmx07 < g_today THEN
       UPDATE bmx_file SET bmx07 = g_today WHERE bmx01 = g_bmx.bmx01
    END IF
    ##--- 20201223 add by momo (E)
@@ -7019,6 +7024,7 @@ END FUNCTION
 FUNCTION i710_s()
 DEFINE   l_sql      STRING 
 DEFINE   l_bmd07    LIKE bmd_file.bmd07  #CHI-C20060
+DEFINE   l_azw06    LIKE azw_file.azw06  #20230901 多營運中心更新使用
 
    IF g_argv1='1' THEN   #CHI-CA0035 mod g_argv3->g_argv1
       IF b_bmy.bmy03 MATCHES '[1345]' THEN   
@@ -7080,10 +7086,23 @@ DEFINE   l_bmd07    LIKE bmd_file.bmd07  #CHI-C20060
 
       ##------ 20201208 add by momo (S)
         IF b_bmy.bmy03 MATCHES '[14]' AND b_bmy.bmy38='Y' THEN
+           ##---- 20230901 add by momo (S)多營運中心同步停產
+           DECLARE i710sub_multupd_ima140 CURSOR FOR
+             SELECT azw06 FROM gew_file,azw_file WHERE gew04=azw01 AND gew01 = g_plant AND gew02='2'
+             FOREACH i710sub_multupd_ima140 INTO l_azw06
+               IF NOT cl_null(l_azw06) THEN
+                  CALL s_dbstring(l_azw06) RETURNING l_azw06
+                  LET g_sql = "UPDATE ",l_azw06 CLIPPED,"ima_file",
+                              "  SET ima140 = '",b_bmy.bmy38,"', ima1401 = '",g_bmx.bmx07,"' ",
+                              " WHERE ima01 = '",b_bmy.bmy05,"'"
+                  PREPARE i710sub_mulupd_ima140 FROM g_sql
+                  EXECUTE i710sub_mulupd_ima140
+               END IF
+             END FOREACH
+           ##---- 20230901 add by momo (E)多營運中心同步停產
            UPDATE ima_file
               SET ima140 = b_bmy.bmy38, ima1401 = g_bmx.bmx07
             WHERE ima01 =  b_bmy.bmy05
-             #AND ima140='N'
            IF SQLCA.SQLERRD[3]=0 THEN
               LET g_showmsg = g_bmx.bmx01,'upd ima:'
               CALL s_errmsg('ima140',b_bmy.bmy05,g_showmsg,'aap-161',1)
@@ -9674,11 +9693,21 @@ FUNCTION i710_d_i_set_no_entry()
 END FUNCTION
  
 FUNCTION i710_ef()
- 
-     CALL i710_y_chk()          #CALL 原確認的 check 段   #FUN-580120
+   DEFINE l_cnt    LIKE type_file.num5                    #20240809 
+
+     CALL i710_y_chk()           #CALL 原確認的 check 段   #FUN-580120
      IF g_success = "N" THEN
          RETURN
      END IF
+
+     ##---- 20240809 (S) 判斷筆數
+     LET l_cnt = 0
+     SELECT count(*) INTO l_cnt FROM bmz_file WHERE bmz01 =  g_bmx.bmx01
+     IF l_cnt > 100 THEN LET g_bmz = '' END IF
+     LET l_cnt = 0
+     SELECT count(*) INTO l_cnt FROM bmy_file WHERE bmy01 =  g_bmx.bmx01
+     IF l_cnt > 100 THEN LET g_bmy = '' END IF
+     ##---- 20240809 (E) 判斷筆數 
  
      CALL aws_condition()      #判斷送簽資料
      IF g_success = 'N' THEN
@@ -12363,11 +12392,7 @@ DEFINE   p_cmd  LIKE type_file.chr1
     END IF
 
    ##--- 20230208 add by momo (S) ta_bmx03 卡必填
-   IF g_plant[1,2] = 'NM' THEN
-      CALL cl_set_comp_required("ta_bmx03",TRUE)
-   ELSE
-      CALL cl_set_comp_required("ta_bmx03",FALSE)
-   END IF
+   CALL cl_set_comp_required("ta_bmx03",TRUE)
    ##--- 20230208 add by momo (E)
 
 END FUNCTION
