@@ -6,6 +6,8 @@
 # Modify.........: No.2206228331 20220627 add by momo 增加研發訂單狀態 tc_oga07
 # Modify.........: No.22110030   20221122 add by momo 訂單變更訂單狀態功能調整
 # Modify.........: NO.23050027   20230523 add by momo 增加跨庫功能 cl_get_target_table
+# Modify.........: No.23100015   20231013 modify by momo tc_oga07 = '2', tc_oga06 時間欄位不可為空
+# Modify.........: No.24080020   20240815 modify by momo 增加 狀態4：不需處理
 
 DATABASE ds
  
@@ -70,6 +72,7 @@ DEFINE   g_no_ask      LIKE type_file.num5
 DEFINE   seconds       SMALLINT
 DEFINE   l_cmd         LIKE type_file.chr1000
 DEFINE   plant_visible   LIKE type_file.chr1
+DEFINE   p_s             LIKE type_file.chr1    #20240815 狀態更新
  
 MAIN
    OPTIONS                                #改變一些系統預設值
@@ -222,6 +225,13 @@ FUNCTION p411_menu()
                  IF cl_chk_act_auth() THEN
                     CALL p411_b()
                  END IF
+
+           ##--- 20240815 (S)
+           WHEN "no_handling"
+                IF cl_chk_act_auth() THEN
+                   CALL p411_b_handling()
+                END IF
+           ##--- 20240815 (E)
 
            WHEN "query" 
             IF cl_chk_act_auth() THEN
@@ -418,7 +428,7 @@ FUNCTION p411_b_fill(p_wc2)
            IF cl_null(g_oeb[g_cnt].packing) THEN
               IF g_oeb[g_cnt].oea08='2' THEN                   #國外
                  SELECT '2.C-木箱' INTO g_oeb[g_cnt].packing 
-                   FROM ima_file
+                   FROM ty.ima_file
                   WHERE ima01 = g_oeb[g_cnt].oeb04
                     AND (ima06 ='00200' OR ta_ima02 > 1)
                     AND ((ta_ima08 = 'N' AND ima021 LIKE '%-C')
@@ -426,7 +436,7 @@ FUNCTION p411_b_fill(p_wc2)
               END IF
               IF g_oeb[g_cnt].oea08='1' THEN                   #國內
                  SELECT '2.C-木棧板' INTO g_oeb[g_cnt].packing
-                   FROM ima_file
+                   FROM ty.ima_file
                   WHERE ima01 = g_oeb[g_cnt].oeb04
                     AND (ima06 ='00200' OR ta_ima02 > 1)
                     AND ((ta_ima08 = 'N' AND ima021 LIKE '%-C')
@@ -447,7 +457,7 @@ FUNCTION p411_b_fill(p_wc2)
            IF cl_null(g_oeb[g_cnt].packing) THEN
               IF g_oeb[g_cnt].oea08='1' THEN                   #國內
                  SELECT '4.單軸' INTO g_oeb[g_cnt].packing
-                   FROM ima_file
+                   FROM ty.ima_file
                   WHERE ima01 = g_oeb[g_cnt].oeb04
                     AND (ima06 ='00200' OR ta_ima02 > 1)
                     AND ((ta_ima08 = 'N' AND ima021 LIKE '%-K')
@@ -576,7 +586,8 @@ FUNCTION p411_bp(p_ud)
         ON ACTION exportstatus
            LET g_action_choice="exportstatus"
            EXIT DISPLAY
-        ##---- 20220627 add by momo (E)         
+        ##---- 20220627 add by momo (E)    
+
  
         ON ACTION detail
            LET g_action_choice="detail"
@@ -588,6 +599,13 @@ FUNCTION p411_bp(p_ud)
            LET g_action_choice="plant"   #20230531
            EXIT DISPLAY                  #20230531
  
+        ##---- 20240815 (S)
+        ON ACTION no_handling
+           LET g_action_choice="no_handling"
+           LET l_ac = 1
+           EXIT DISPLAY
+        ##---- 20240815 (E)
+
         ON ACTION query       
            LET plant_visible = 'N' #20230531
            LET g_action_choice="query" 
@@ -681,6 +699,12 @@ FUNCTION p411_b()
               CALL cl_err(g_oeb[l_ac].oeb04,'abm-096',0)
               RETURN
            END IF
+
+           ##---- 20231013 add by momo (S) 需有日期才可維護
+           IF cl_null(g_oeb[l_ac].tc_oga06) THEN
+              RETURN
+           END IF
+           ##---- 20231013 add by momo (E) 需有日期才可維護
       
 
         AFTER FIELD tc_ogauser
@@ -708,17 +732,18 @@ FUNCTION p411_b()
             LET INT_FLAG = 0
             EXIT INPUT
          END IF
-         IF NOT cl_null(g_oeb[l_ac].tc_ogauser) THEN
-            LET g_sql = "INSERT INTO ",cl_get_target_table(g_plant_new,'tc_oga_file'),
-                        "           (tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07) ",
-                        "  VALUES('R','",g_oeb[l_ac].oeb01,"', '",g_oeb[l_ac].oeb03,"',1,0, ",
-                        "         '",g_oeb[l_ac].tc_oga05,"','",g_oeb[l_ac].tc_oga06,"', ",
-                        "         '",g_oeb[l_ac].tc_ogauser,"','2') "
-            CALL cl_replace_sqldb(g_sql) RETURNING g_sql
-            CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
-            PREPARE ins_tc_oga2 FROM g_sql
-            EXECUTE ins_tc_oga2 
-            IF SQLCA.sqlcode THEN
+         IF NOT cl_null(g_oeb[l_ac].tc_ogauser) AND NOT cl_null(g_oeb[l_ac].tc_oga06) THEN #20231013 add tc_oga06 判斷
+            ##--- 20231013 需匯出才可押上完成日，故此處不需INSERT (S)
+            #LET g_sql = "INSERT INTO ",cl_get_target_table(g_plant_new,'tc_oga_file'),
+            #            "           (tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07) ",
+            #            "  VALUES('R','",g_oeb[l_ac].oeb01,"', '",g_oeb[l_ac].oeb03,"',1,0, ",
+            #            "         '",g_oeb[l_ac].tc_oga05,"','",g_oeb[l_ac].tc_oga06,"', ",
+            #            "         '",g_oeb[l_ac].tc_ogauser,"','2') "
+            #CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+            #CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+            #PREPARE ins_tc_oga2 FROM g_sql
+            #EXECUTE ins_tc_oga2 
+            #IF SQLCA.sqlcode THEN
                LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'tc_oga_file'), 
                            "   SET tc_ogauser = '",g_oeb[l_ac].tc_ogauser,"', ",
                            "       tc_oga05   = '",g_oeb[l_ac].tc_oga05,"', ",
@@ -733,12 +758,13 @@ FUNCTION p411_b()
                IF SQLCA.sqlcode THEN
                   CALL cl_err3("upd","tc_oga_file",g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03,SQLCA.sqlcode,"","",1)
                END IF
-            ELSE
+            #ELSE
                COMMIT WORK
-               MESSAGE 'INSERT O.K'
+               MESSAGE 'UPDATE O.K'
                LET g_rec_b=g_rec_b+1
                DISPLAY g_rec_b TO FORMONLY.cn2
-            END IF 
+            #END IF 
+            ##---- 20231013 modify (E)
          END IF
 
         AFTER ROW
@@ -789,7 +815,7 @@ FUNCTION p411_b()
          CALL p411_sel_all("N")
 
       ON ACTION batch_update
-         CALL p411_batch_update()
+         CALL p411_batch_update('2')
          CALL p411_b_fill(g_wc2)
  
     END INPUT
@@ -804,14 +830,15 @@ FUNCTION p411_set_no_entry()
 
 END FUNCTION
 
-FUNCTION p411_batch_update()
-   DEFINE  l_i       LIKE type_file.num5
+FUNCTION p411_batch_update(p_s)
+   DEFINE  l_i      LIKE type_file.num5
    DEFINE l_msg1    LIKE type_file.chr1000
+   DEFINE p_s       LIKE type_file.chr1      #狀態 4：不需處理 2：已完成
   
    BEGIN WORK
      FOR l_i = 1 TO g_cnt
          ##---- 20220713 add by momo (S)
-         IF cl_null(g_oeb[l_i].bma05) OR g_oeb[l_i].tc_oga07 <> '1' THEN
+         IF g_oeb[l_i].tc_oga07 <> '1' THEN
             LET  g_oeb[l_i].choice = 'N'
             CONTINUE FOR
          END IF
@@ -824,7 +851,8 @@ FUNCTION p411_batch_update()
                      "   SET tc_ogauser = '",g_user,"', ",
                      "       tc_oga05 = '",g_today,"' , ",
                      "       tc_oga06 = '",g_oeb[l_i].tc_oga06,"', ",
-                     "       tc_oga07 ='2' ",
+                    #"       tc_oga07 ='2' ",                                    #20240815
+                     "       tc_oga07 = '",p_s,"' ",                             #20240815
                      " WHERE tc_oga01 = ? AND tc_oga02 = ? AND tc_oga00='R' "
          CALL cl_replace_sqldb(g_sql) RETURNING g_sql
          CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
@@ -852,3 +880,113 @@ FUNCTION p411_sel_all(p_value)
   END FOR
 
 END FUNCTION
+
+#----- 20240815 (S) 無需處理
+FUNCTION p411_b_handling()
+    DEFINE lc_qbe_sn      LIKE gbm_file.gbm01  
+    DEFINE l_ac,l_sl	   LIKE type_file.num5,      
+           l_sn1,l_sn2     LIKE type_file.num5,      
+           l_cnt           LIKE type_file.num5
+ 
+    CALL cl_opmsg('b')
+    CALL SET_COUNT(g_rec_b)   #告訴I.單身筆數
+    INPUT ARRAY g_oeb WITHOUT DEFAULTS FROM s_oeb.* 
+          ATTRIBUTE(COUNT=g_rec_b,MAXCOUNT=g_max_rec,UNBUFFERED,
+                    INSERT ROW=FALSE,DELETE ROW=FALSE,APPEND ROW=FALSE)
+        BEFORE INPUT
+            LET g_before_input_done = FALSE
+            CALL p411_set_entry()
+            CALL p411_set_no_entry()
+            LET g_before_input_done = TRUE
+            
+        BEFORE ROW
+            LET l_ac = ARR_CURR()
+            DISPLAY l_ac TO FORMONLY.cn3
+            LET l_sl = SCR_LINE()
+             CALL cl_qbe_display_condition(lc_qbe_sn)
+
+        AFTER FIELD choice
+          IF g_oeb[l_ac].tc_oga07<>'1' THEN
+             LET g_oeb[l_ac].choice = 'N'
+             DISPLAY 'N' TO choice
+          END IF   
+         
+
+        AFTER FIELD tc_ogauser
+           IF NOT cl_null(g_oeb[l_ac].tc_ogauser) THEN
+              SELECT COUNT(*) INTO l_cnt
+                FROM zx_file
+               WHERE zx01 = g_oeb[l_ac].tc_ogauser
+                 AND zxacti = 'Y'
+              IF cl_null(l_cnt) THEN LET l_cnt = 0 END IF
+              IF l_cnt = 0 THEN
+                 NEXT FIELD tc_ogauser
+              END IF
+              DISPLAY BY NAME g_oeb[l_ac].tc_ogauser        
+              IF cl_null(g_oeb[l_ac].tc_oga07) OR g_oeb[l_ac].tc_oga07='1' THEN
+                 LET g_oeb[l_ac].tc_oga05=g_today
+                 LET g_oeb[l_ac].tc_oga06=TIME
+                 DISPLAY BY NAME g_oeb[l_ac].tc_oga05      
+                 DISPLAY BY NAME g_oeb[l_ac].tc_oga06  
+              END IF     
+           END IF
+           
+        ON ROW CHANGE
+         IF INT_FLAG THEN
+            CALL cl_err('',9001,0)
+            LET INT_FLAG = 0
+            EXIT INPUT
+         END IF
+         IF NOT cl_null(g_oeb[l_ac].tc_ogauser) AND NOT cl_null(g_oeb[l_ac].tc_oga06) THEN #20231013 add tc_oga06 判斷
+         
+               LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'tc_oga_file'), 
+                           "   SET tc_ogauser = '",g_oeb[l_ac].tc_ogauser,"', ",
+                           "       tc_oga05   = '",g_oeb[l_ac].tc_oga05,"', ",
+                           "       tc_oga06   = '",g_oeb[l_ac].tc_oga06,"', ",
+                           "       tc_oga07   = '4' ",
+                           " WHERE tc_oga01 = ? ",
+                           " AND tc_oga02 = ? AND tc_oga00='R' "
+               CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+               CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+               PREPARE upd_tc_oga21 FROM g_sql
+               EXECUTE upd_tc_oga21 USING g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03
+               IF SQLCA.sqlcode THEN
+                  CALL cl_err3("upd","tc_oga_file",g_oeb[l_ac].oeb01,g_oeb[l_ac].oeb03,SQLCA.sqlcode,"","",1)
+               END IF
+
+               COMMIT WORK
+               MESSAGE 'UPDATE O.K'
+               LET g_rec_b=g_rec_b+1
+               DISPLAY g_rec_b TO FORMONLY.cn2
+
+         END IF
+
+        AFTER ROW
+         IF INT_FLAG THEN
+            CALL cl_err('',9001,0)
+            LET INT_FLAG = 0
+            EXIT INPUT
+         END IF
+
+        ON ACTION controls                             
+         CALL cl_set_head_visible("","AUTO")           
+ 
+
+ 
+        ON ACTION CONTROLG
+            CALL cl_cmdask()
+ 
+
+       ON IDLE g_idle_seconds
+          CALL cl_on_idle()
+          CONTINUE INPUT
+  
+ 
+      ON ACTION accept
+         CALL p411_batch_update('4')
+         CALL p411_b_fill(g_wc2)
+         EXIT INPUT
+ 
+    END INPUT
+END FUNCTION
+#----- 20240815 (E) 無需處理
