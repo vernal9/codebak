@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{9d9e04ae-0000-4000-a1d2-c702707f2ee5}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{0f4694e5-0000-4000-b00d-46fdcd744659}" where="">
+    <RecordField colName="ima01" fieldIdRef="1" fieldType="TABLE_COLUMN" name="ima_file.ima01" sqlTabName="ima_file" sqlType="VARCHAR" table_alias_name="" uid="{013ca1ba-0000-4000-a6f0-2942f4e99936}"/>
+    <RecordField colName="ima35" fieldIdRef="8" fieldType="NON_DATABASE" name="ima35" sqlTabName="ima_file" sqlType="CHAR" table_alias_name="ima_fil" uid="{bd27634c-0000-4000-a878-511a3e228b8a}"/>
+    <RecordField colName="ima36" fieldIdRef="9" fieldType="NON_DATABASE" name="ima36" sqlTabName="ima_file" sqlType="CHAR" table_alias_name="" uid="{aec7d772-0000-4000-b9c0-aa9fe13f1006}"/>
+    <RecordField colName="ima36" fieldIdRef="3" fieldType="NON_DATABASE" name="lot" sqlTabName="ima_file" sqlType="CHAR" table_alias_name="" uid="{0caf37de-9cf8-4cb6-950e-27760529293c}"/>
+    <RecordField colName="ima73" fieldIdRef="11" fieldType="NON_DATABASE" name="ima73" sqlTabName="ima_file" sqlType="DATE" table_alias_name="" uid="{c0343772-0000-4000-bd8e-173fde953026}"/>
+    <RecordField colName="" fieldIdRef="10" fieldType="NON_DATABASE" name="more" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{91fc82ab-0000-4000-96fc-188c1493e4e5}"/>
+    <RecordField colName="a" defaultValue="1" fieldIdRef="2" fieldType="NON_DATABASE" name="paper" sqlTabName="zzw_file" sqlType="INTEGER" table_alias_name="tm" uid="{91d303a5-76c2-4fc8-9209-496dd515c0a4}"/>
+    <RecordField colName="tlf905" fieldIdRef="4" fieldType="TABLE_COLUMN" name="tlf_file.tlf905" sqlTabName="tlf_file" sqlType="VARCHAR" table_alias_name="" uid="{8d9b24d4-0cc0-4a63-a2c9-a71080631cac}"/>
+  </Record>
+  <Form gridHeight="21" gridWidth="85" name="Form" text="Form">
+    <VBox gridHeight="18" gridWidth="54" name="VBox1" posX="2" posY="0">
+      <Grid gridHeight="14" gridWidth="54" name="Grid1" posX="0" posY="1">
+        <Group gridHeight="4" gridWidth="50" name="Group1" posX="3" posY="1" text="QBE">
+          <Label posX="2" posY="1" text="Item No."/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima01" columnCount="" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="26" image="zoom" name="ima_file.ima01" posX="17" posY="1" rowCount="" sqlTabName="ima_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" title="formonly.ButtonEdit1" widget="ButtonEdit"/>
+          <Label posX="2" posY="2" text="tlf905"/>
+          <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tlf905" columnCount="" fieldId="4" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="26" name="tlf_file.tlf905" posX="17" posY="2" rowCount="" sqlTabName="tlf_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="8" table_alias_name="" title="Edit1" widget="Edit"/>
+        </Group>
+        <Group gridHeight="7" gridWidth="49" name="Group2" posX="3" posY="5" text="Input">
+          <Label posX="1" posY="1" text="ima35"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima35" columnCount="" fieldId="8" fieldType="NON_DATABASE" gridHeight="1" gridWidth="15" image="zoom" lstrcomment="false" lstrtitle="false" name="ima35" notNull="false" picture="" posX="21" posY="1" required="false" rowCount="" sqlTabName="ima_file" sqlType="CHAR" stepX="" stepY="" tabIndex="2" table_alias_name="ima_fil" widget="ButtonEdit"/>
+          <Label posX="1" posY="2" text="ima36"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima36" columnCount="" fieldId="9" fieldType="NON_DATABASE" gridHeight="1" gridWidth="15" image="zoom" lstrcomment="false" lstrtitle="false" name="ima36" notNull="false" posX="21" posY="2" required="false" rowCount="" sqlTabName="ima_file" sqlType="CHAR" stepX="" stepY="" tabIndex="3" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="1" posY="3" text="lot"/>
+          <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima36" columnCount="" fieldId="3" fieldType="NON_DATABASE" gridHeight="1" gridWidth="15" lstrcomment="false" lstrtitle="false" name="lot" notNull="false" posX="21" posY="3" required="false" rowCount="" sqlTabName="ima_file" sqlType="CHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" widget="Edit"/>
+          <Label posX="1" posY="4" text="ima73"/>
+          <DateEdit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima73" columnCount="" fieldId="11" fieldType="NON_DATABASE" gridHeight="1" gridWidth="17" lstrcomment="false" lstrtitle="false" name="ima73" notNull="false" posX="21" posY="4" required="false" rowCount="" sqlTabName="ima_file" sqlType="DATE" stepX="" stepY="" tabIndex="5" table_alias_name="" widget="DateEdit"/>
+          <Label posX="1" posY="5" text="paper"/>
+          <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="a" columnCount="" defaultValue="1" fieldId="2" fieldType="NON_DATABASE" gridHeight="1" gridWidth="15" lstrcomment="false" lstrtitle="false" name="paper" notNull="true" posX="21" posY="5" required="true" rowCount="" sqlTabName="zzw_file" sqlType="INTEGER" stepX="" stepY="" tabIndex="6" table_alias_name="tm" widget="Edit"/>
+        </Group>
+      </Grid>
+      <Grid gridHeight="2" gridWidth="54" lstrcomment="false" name="gr5042" posX="0" posY="15">
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="10" fieldType="NON_DATABASE" gridHeight="1" gridWidth="42" lstrcomment="false" lstrtext="false" lstrtitle="false" name="more" notNull="true" posX="2" posY="0" required="true" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" text="Other codition to print" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewBjADAAMwA0ADMANwA3ADIALQAwADAAMAAwAC0ANAAwADAAMAAtAGIAZAA4AGUALQAxADcAMwBmAGQAZQA5ADUAMwAwADIANgB9QCQAAAAAAABAX0AAAAAAAD9QYk3S8an8AQAAAEwAewA5ADEAZAAzADAAMwBhADUALQA3ADYAYwAyAC0ANABmAGMAOAAtADkAMgAwADkALQA0ADkANgBkAGQANQAxADUAYwAwAGEANAB9QCQAAAAAAABAZSAAAAAAAAAAAAAAAAAAAQAAAEwAewAwAGYANAA2ADkANABlADUALQAwADAAMAAwAC0ANAAwADAAMAAtAGIAMAAwAGQALQA0ADYAZgBkAGMAZAA3ADQANAA2ADUAOQB9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAEwAewBiAGQAMgA3ADYAMwA0AGMALQAwADAAMAAwAC0ANAAwADAAMAAtAGEAOAA3ADgALQA1ADEAMQBhADMAZQAyADIAOABiADgAYQB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewAwAGMAYQBmADMANwBkAGUALQA5AGMAZgA4AC0ANABjAGIANgAtADkANQAwAGUALQAyADcANwA2ADAANQAyADkAMgA5ADMAYwB9QCQAAAAAAABAWcAAAAAAAD9gYk3S8an8AQAAAEwAewA4AGQAOQBiADIANABkADQALQAwAGMAYwAwAC0ANABhADYAMwAtAGEAMgBjADkALQBhADcAMQAwADgAMAA2ADMAMQBjAGEAYwB9QCQAAAAAAABAZ+AAAAAAAAAAAAAAAAAAAQAAAEwAewAwADEAMwBjAGEAMQBiAGEALQAwADAAMAAwAC0ANAAwADAAMAAtAGEANgBmADAALQAyADkANAAyAGYANABlADkAOQA5ADMANgB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewA5ADEAZgBjADgAMgBhAGIALQAwADAAMAAwAC0ANAAwADAAMAAtADkANgBmAGMALQAxADgAOABjADEANAA5ADMAZQA0AGUANQB9QCQAAAAAAABAYmAAAAAAAAAAAAAAAAAAAQAAAEwAewBhAGUAYwA3AGQANwA3ADIALQAwADAAMAAwAC0ANAAwADAAMAAtAGIAOQBjADAALQBhAGEAOQBmAGUAMQAzAGYAMQAwADAANgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>
