@@ -825,7 +825,7 @@ DEFINE
 			  SELECT ima01 INTO g_tc_mpn[l_ac].tc_mpn06
 			    FROM ima_file
 			  WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
-                            AND imaacti='Y'
+                            #AND imaacti='Y'                             #20240823 mark 輸入時不卡控，執行INSERT才可判斷正確 
                             ORDER BY ima01
                            
 			  #依客戶規格取得廠內料號、規格
@@ -1187,10 +1187,14 @@ DEFINE
 						     AND g_tc_mpn[g_cnt].tc_mpn11='N' THEN
                    IF g_tc_mpn[g_cnt].tc_mpn04='N' THEN
                       SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
-                        FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn05
+                        FROM ima_file
+                       WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn05
+                         AND imaacti='Y' AND ima130='1'            #20240823   
                    ELSE
                       SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
-                        FROM ima_file WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn13
+                        FROM ima_file 
+                       WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn13
+                         AND imaacti='Y' AND ima130='1'            #20240823   
                    END IF
 
                       UPDATE tc_mpn_file SET tc_mpn06 = g_tc_mpn[g_cnt].tc_mpn06,
