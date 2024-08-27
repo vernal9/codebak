@@ -11,9 +11,8 @@ GLOBALS "../../../tiptop/config/top.global"
 
 DEFINE tm  RECORD                # Print condition RECORD
               wc      STRING,    
-              choice      LIKE ima_file.ima35,   #選擇張數列印方式
-              paper       LIKE type_file.num5,   #列印張數
-              more        LIKE type_file.chr1    # Input more condition(Y/N)
+              paper       LIKE type_file.num5,    #列印張數
+              i_vendor    LIKE type_file.chr10    # Input more condition(Y/N)
               END RECORD 
 DEFINE   g_i             LIKE type_file.num5    #count/index for any purpose        
 DEFINE   g_head1         STRING
@@ -21,6 +20,20 @@ DEFINE   g_sql           STRING
 DEFINE   g_str           STRING
 DEFINE   l_table         STRING 
 DEFINE   l_cnt           LIKE type_file.num5
+DEFINE   g_pmn           DYNAMIC ARRAY OF RECORD
+                         choice   LIKE type_file.chr1,
+                         pmn01    LIKE pmn_file.pmn01,
+                         pmn02    LIKE pmn_file.pmn02,
+                         pmn04    LIKE pmn_file.pmn04,
+                         pmn041   LIKE pmn_file.pmn041,
+                         ima021   LIKE ima_file.ima021,
+                         pmn56    LIKE pmn_file.pmn56,
+                         pmn33    LIKE pmn_file.pmn33,
+                         pmn20    LIKE pmn_file.pmn20,
+                         vendor   LIKE pmm_file.pmm09
+                         END RECORD
+DEFINE   g_cnt           LIKE type_file.num10 
+DEFINE   l_ac            LIKE type_file.num5
 
 MAIN
    OPTIONS
@@ -38,10 +51,10 @@ MAIN
    END IF
 
    LET g_sql = "pmn04.pmn_file.pmn04,",      #料號
-               "pmn041.pmn_file.pmn041,",    #品名 
                "ima021.ima_file.ima021,",    #規格 
                "pmn56.pmn_file.pmn56,",      #批號
-               "pmn33.pmn_file.pmn33"        #交貨日
+               "pmn33.pmn_file.pmn33,",      #交貨日
+               "vendor.pmm_file.pmm09"       #供應商代號
 
     
    LET l_table = cl_prt_temptable('cpmr009',g_sql) CLIPPED
@@ -68,11 +81,7 @@ MAIN
    LET g_rep_clas = ARG_VAL(9)
    LET g_template = ARG_VAL(10)
    LET g_rpt_name = ARG_VAL(11)  
-
-   IF cl_null(g_bgjob) OR g_bgjob = 'N'        # If background job sw is off
-      THEN CALL cpmr009_tm(0,0)                # Input print condition
-      ELSE CALL cpmr009()                      # Read data and create out-file
-   END IF
+   CALL cpmr009_tm(0,0)
    CALL cl_used(g_prog,g_time,2) RETURNING g_time 
 END MAIN
 
@@ -83,6 +92,7 @@ FUNCTION cpmr009_tm(p_row,p_col)
           l_cmd          LIKE type_file.chr1000
  
    LET p_row = 6 LET p_col = 16
+   CLEAR FORM
  
    OPEN WINDOW cpmr009_w AT p_row,p_col WITH FORM "cpm/42f/cpmr009" 
        ATTRIBUTE (STYLE = g_win_style CLIPPED)
@@ -91,8 +101,6 @@ FUNCTION cpmr009_tm(p_row,p_col)
  
    CALL cl_opmsg('p')
    INITIALIZE tm.* TO NULL            # Default condition
-   LET tm.choice = 'Y' 
-   LET tm.more = 'N'
    LET g_pdate = g_today
    LET g_rlang = g_lang
    LET g_bgjob = 'N'
@@ -100,7 +108,7 @@ FUNCTION cpmr009_tm(p_row,p_col)
    LET tm.wc = ' 1=1'
 
    WHILE TRUE
-      CONSTRUCT BY NAME tm.wc ON pmm01,pmm09,pmm04,pmn33
+      CONSTRUCT BY NAME tm.wc ON pmm01,pmm09,pmn04,pmm04,pmn33
 
          BEFORE CONSTRUCT
             CALL cl_qbe_init()
@@ -126,6 +134,13 @@ FUNCTION cpmr009_tm(p_row,p_col)
                   CALL cl_create_qry() RETURNING g_qryparam.multiret
                   DISPLAY g_qryparam.multiret TO pmm09
                   NEXT FIELD pmm09
+               WHEN INFIELD(pmn04)
+                  CALL cl_init_qry_var()
+                  LET g_qryparam.form = "q_pmn041"
+                  LET g_qryparam.state = "c"
+                  CALL cl_create_qry() RETURNING g_qryparam.multiret
+                  DISPLAY g_qryparam.multiret TO pmn041
+                  NEXT FIELD pmn041
             END CASE
             
          ON IDLE g_idle_seconds
@@ -167,35 +182,13 @@ FUNCTION cpmr009_tm(p_row,p_col)
       END IF
 
       
-      DISPLAY BY NAME tm.choice,tm.paper,tm.more
+      DISPLAY BY NAME tm.paper,tm.i_vendor
       
-      INPUT BY NAME tm.choice,tm.paper,tm.more  WITHOUT DEFAULTS
+      INPUT BY NAME tm.paper,tm.i_vendor  WITHOUT DEFAULTS
 
          BEFORE INPUT
             CALL cl_qbe_display_condition(lc_qbe_sn)
-            CALL cl_set_comp_entry("paper",FALSE)
          
-
-         AFTER FIELD choice
-            IF tm.choice='N' THEN
-               CALL cl_set_comp_entry("paper",TRUE)
-               LET tm.paper=1
-               NEXT FIELD paper
-            END IF
-
-         BEFORE FIELD paper
-            IF tm.choice='Y' THEN
-               CALL cl_set_comp_entry("paper",FALSE)
-            END IF
-            
-         AFTER FIELD more
-            IF tm.more = 'Y'
-               THEN CALL cl_repcon(0,0,g_pdate,g_towhom,g_rlang,
-                                g_bgjob,g_time,g_prtway,g_copies)
-                      RETURNING g_pdate,g_towhom,g_rlang,
-                                g_bgjob,g_time,g_prtway,g_copies
-            END IF
-           
          ON ACTION CONTROLR
             CALL cl_show_req_fields()
             
@@ -254,6 +247,7 @@ FUNCTION cpmr009_tm(p_row,p_col)
          EXIT PROGRAM
       END IF
       CALL cl_wait()
+      CALL r009_p1()
       CALL cpmr009()
       ERROR ""
    END WHILE
@@ -264,54 +258,123 @@ FUNCTION cpmr009()
    DEFINE l_name    LIKE type_file.chr20,         # External(Disk) file name        
           l_sql     STRING,                       # RDSQL STATEMENT                 
           l_chr     LIKE type_file.chr1,       
-          l_za05    LIKE type_file.chr1000,
           l_sum     LIKE type_file.num5,    
-          sr        RECORD 
-                    pmn04   LIKE pmn_file.pmn04,  
-                    pmn041  LIKE pmn_file.pmn041,
-                    ima021  LIKE ima_file.ima021,
-                    pmn56   LIKE pmn_file.pmn56, 
-                    pmn33   LIKE pmn_file.pmn33,
-                    pmn20   LIKE pmn_file.pmn20
-                    END RECORD
+          l_i       LIKE type_file.num5   
     
     SELECT zo02 INTO g_company FROM zo_file WHERE zo01 = g_rlang
 
     CALL cl_del_data(l_table)
-    INITIALIZE sr.* TO NULL
 
-    LET tm.wc = tm.wc CLIPPED,cl_get_extra_cond('pmmuser', 'pmmgrup')
+    FOR l_i = 1 TO g_cnt
+        IF g_pmn[l_i].choice='N' THEN
+           CONTINUE FOR
+        END IF
+        FOR l_sum=1 TO g_pmn[l_i].pmn20
+            EXECUTE insert_prep  USING  
+                    g_pmn[l_i].pmn04,g_pmn[l_i].ima021,
+                    g_pmn[l_i].pmn56,g_pmn[l_i].pmn33,g_pmn[l_i].vendor
+          END FOR
+    END FOR
 
-    LET l_sql = " SELECT pmn04,pmn041,ima021,pmn56,pmn33,pmn20 ", 
-                "   FROM pmm_file,pmn_file ",
-                "   LEFT JOIN ima_file ON ima01=pmn04 ",
-                " WHERE pmm01=pmn01 AND ",tm.wc CLIPPED
+    LET l_sql = "SELECT * FROM ",g_cr_db_str CLIPPED,l_table CLIPPED
+    LET g_str = tm.wc
+       
+    CALL cl_prt_cs3('cpmr009','cpmr009',l_sql,g_str)  
 
-    PREPARE cpmr009_prepare1 FROM l_sql
-    IF SQLCA.sqlcode != 0 THEN
-       CALL cl_err('prepare:',SQLCA.sqlcode,1) 
-       CALL cl_used(g_prog,g_time,2) RETURNING g_time 
-       EXIT PROGRAM
-    END IF
-    DECLARE cpmr009_curs1 CURSOR FOR cpmr009_prepare1
+END FUNCTION
 
-    FOREACH cpmr009_curs1 INTO sr.*
-      IF SQLCA.sqlcode != 0 THEN
-         CALL cl_err('foreach:',SQLCA.sqlcode,1)
+FUNCTION r009_p1()
+   DEFINE l_exit LIKE type_file.chr1
+   DEFINE l_sql STRING
+
+   LET tm.wc = tm.wc CLIPPED,cl_get_extra_cond('pmmuser', 'pmmgrup')
+   LET l_sql = "SELECT 'N',pmn01,pmn02,pmn04,pmn041,ima021,pmn56,pmn33,pmn20,' ' ",
+               "  FROM pmm_file,pmn_file ",
+               "  LEFT JOIN ima_file ON ima01=pmn04 ",
+               " WHERE pmm01=pmn01 AND pmm18='Y' ",
+               "   AND pmn04 NOT LIKE 'MISC%' AND ",tm.wc CLIPPED,
+               " ORDER BY pmn33"
+
+   PREPARE r009p1_prepare FROM l_sql
+   IF SQLCA.SQLCODE THEN
+      CALL cl_err('PREPARE:',SQLCA.SQLCODE,1) 
+      CALL cl_used(g_prog,g_time,2) RETURNING g_time     
+      EXIT PROGRAM
+   END IF 
+
+   DECLARE r009p1_curs CURSOR FOR r009p1_prepare
+  
+   CALL g_pmn.clear()
+   LET g_cnt = 1
+   FOREACH r009p1_curs INTO g_pmn[g_cnt].*
+      IF SQLCA.sqlcode THEN                                  #有問題
+         CALL cl_err('FOREACH:',SQLCA.sqlcode,1) EXIT FOREACH
+      END IF
+      LET g_pmn[g_cnt].vendor = tm.i_vendor
+      IF NOT cl_null(tm.paper) THEN
+         LET g_pmn[g_cnt].pmn20 = tm.paper
+      END IF
+      LET g_cnt = g_cnt + 1                                  #累加筆數 
+      
+      IF g_cnt > g_max_rec THEN
+         CALL cl_err('',9035,0)
          EXIT FOREACH
       END IF
-      IF tm.choice='Y' THEN LET tm.paper=sr.pmn20 END IF  #採購數量
-
-      FOR l_sum=1 TO tm.paper
-     
-         EXECUTE  insert_prep  USING  
-            sr.pmn04,sr.pmn041,sr.ima021,sr.pmn56,sr.pmn33
-       END FOR
-    
    END FOREACH
-   LET l_sql = "SELECT * FROM ",g_cr_db_str CLIPPED,l_table CLIPPED
-   LET g_str = tm.wc
-       
-      CALL cl_prt_cs3('cpmr009','cpmr009',l_sql,g_str)  
+
+   CALL g_pmn.deleteElement(g_cnt)    
+   LET g_cnt = g_cnt - 1                                     #正確總筆數
+   #筆數為零則跳出訊息並RETURN
+   IF g_cnt = 0 THEN 
+      CALL cl_err('','agl-118',1) 
+      LET INT_FLAG = 1 
+      RETURN
+   END IF
+   CALL SET_COUNT(g_cnt)                                     #告之DISPALY ARRAY
+   WHILE TRUE
+     LET l_exit = 'y'
+     INPUT ARRAY g_pmn WITHOUT DEFAULTS FROM s_pmn.*         #顯示並進行選擇
+       ATTRIBUTE(COUNT=g_cnt,MAXCOUNT=g_max_rec,UNBUFFERED,
+                 INSERT ROW = FALSE,DELETE ROW = FALSE,APPEND ROW= FALSE)
+
+       BEFORE ROW
+           LET l_ac = ARR_CURR()
+
+       AFTER FIELD choice
+           IF g_pmn[l_ac].choice NOT MATCHES '[YN]' THEN
+              NEXT FIELD choice
+           END IF 
+
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE INPUT
+
+      ON ACTION select_all
+         CALL r009_sel_all("Y")
+
+      ON ACTION select_non
+         CALL r009_sel_all("N")
+
+      ON ACTION exporttoexcel
+         CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_pmn),'','')
+
+      END INPUT
+      IF INT_FLAG THEN 
+         CALL g_pmn.clear()
+         LET INT_FLAG=0
+         CALL cpmr009_tm(0,0) 
+      END IF   #使用者中斷
+      IF l_exit = 'y' THEN EXIT WHILE END IF
+  END WHILE
+
+END FUNCTION
+
+FUNCTION r009_sel_all(p_value)
+  DEFINE p_value      LIKE type_file.chr1
+  DEFINE l_i          LIKE type_file.num10
+
+  FOR l_i = 1 TO g_pmn.getLength()
+     LET g_pmn[l_i].choice = p_value
+  END FOR
 
 END FUNCTION
