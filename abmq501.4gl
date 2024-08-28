@@ -47,6 +47,7 @@
 # Modify.........: No.MOD-E70144 14/08/01 By Alberti 修正 下階展料單位換算有問題 
 # Modify.........: No.23080014   20230828 By momo abmq501 查詢功能調整 
 # Modify.........: No.23090031   20230928 By momo 增加替代料件資訊
+# Modify.........: No.24080029   20240828 By momo 增加 PDF 下載 ACTION
 
 DATABASE ds
  
@@ -108,8 +109,12 @@ DEFINE   g_row_count   LIKE type_file.num10   #No.FUN-680096 INTEGER
 DEFINE   g_curs_index  LIKE type_file.num10   #No.FUN-680096 INTEGER
 DEFINE   g_jump        LIKE type_file.num10   #No.FUN-680096 INTEGER
 DEFINE   mi_no_ask     LIKE type_file.num5    #No.FUN-680096 SMALLINT
-DEFINE  lc_qbe_sn      LIKE gbm_file.gbm01    #No.FUN-580031  HCN
+DEFINE   lc_qbe_sn     LIKE gbm_file.gbm01    #No.FUN-580031  HCN
 DEFINE   g_seq         LIKE type_file.num5    #No.MOD-750093 add   
+DEFINE   l_cmd         STRING
+DEFINE   l_sl          LIKE type_file.num5
+DEFINE   l_cnt3        LIKE type_file.num5
+DEFINE   g_ac2         LIKE type_file.num5    #20240828保留當前行數
  
 MAIN
       DEFINE  # l_time LIKE type_file.chr8           #No.FUN-6A0060
@@ -424,6 +429,29 @@ FUNCTION q501_menu()
             IF cl_chk_act_auth() THEN
               CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_bmb),'','')
             END IF
+         #--- 20231002
+         WHEN "abmi6041"
+            IF cl_chk_act_auth() THEN
+               LET l_sl = ARR_CURR()
+               LET l_cmd = "abmi6041 '",g_bmb[l_sl].bmb03,"'"
+               CALL cl_cmdrun_wait(l_cmd)
+            END IF
+         #--- 20240828 --- (S)
+         WHEN "item_pdf"        #主件PDF
+            IF cl_chk_act_auth() THEN
+               CALL ccl_download(g_bma.bma01,'pdf')
+            END IF
+         WHEN "bmb03_pdf"       #元件PDF
+            IF cl_chk_act_auth() THEN
+              # LET l_sl = ARR_CURR()
+               CALL ccl_download(g_bmb[l_sl].bmb03,'pdf')
+            END IF
+         WHEN "bmd04_pdf"       #取代料PDF
+            IF cl_chk_act_auth() THEN
+             #  LET l_sl = ARR_CURR()
+               CALL ccl_download(g_bmb[l_sl].bmd04,'pdf')
+            END IF
+         #--- 20240828 --- (E)
       END CASE
    END WHILE
 END FUNCTION
@@ -770,9 +798,21 @@ FUNCTION q501_b_fill()              #BODY FILL UP
         FROM bmd_file,ima_file
       WHERE bmd04 = ima01
         AND bmd01 = g_bmb[g_cnt].bmb03
+        AND (bmd08 = g_bma.bma01 OR bmd08 = 'ALL')
         AND bmd06 IS NULL
         AND bmdacti = 'Y'
         AND rownum = 1
+
+      LET l_cnt3 =0
+      SELECT COUNT(*) INTO l_cnt3
+        FROM bmd_file
+       WHERE bmd01 = g_bmb[g_cnt].bmb03
+         AND (bmd08 = g_bma.bma01 OR bmd08 = 'ALL')
+         AND bmd06 IS NULL
+         AND bmdacti = 'Y' 
+      IF l_cnt3 > 1 THEN
+         LET g_bmb[g_cnt].ima02_c = g_bmb[g_cnt].ima02_c,'(多)'
+      END IF
       ##---- 20230928 (E) ------
       LET g_cnt = g_cnt + 1
       IF g_cnt > g_max_rec THEN
@@ -806,10 +846,17 @@ FUNCTION q501_bp(p_ud)
       BEFORE DISPLAY
          CALL cl_navigator_setting( g_curs_index, g_row_count )
  
-     #BEFORE ROW
-         #LET l_ac = ARR_CURR()
-      CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
-         #LET l_sl = SCR_LINE()
+     BEFORE ROW                                 #20240828 remark
+         #LET l_ac = ARR_CURR()                
+         LET l_sl = ARR_CURR()                  #20240828 remark
+         ##---- 20240828 ---(S)
+         IF g_ac2 > 0 THEN
+            CALL fgl_set_arr_curr(g_ac2)
+            LET l_sl=g_ac2
+            LET g_ac2=0
+         END IF
+         ##---- 20240828 ---(E)
+         CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
  
       ##########################################################################
       # Standard 4ad ACTION
@@ -821,7 +868,7 @@ FUNCTION q501_bp(p_ud)
          CALL q501_fetch('F')
          CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+              CALL fgl_set_arr_curr(1)  ######add in 040505
            END IF
            ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
  
@@ -890,6 +937,27 @@ FUNCTION q501_bp(p_ud)
       ON ACTION exporttoexcel #FUN-4B0003
          LET g_action_choice = 'exporttoexcel'
          EXIT DISPLAY
+
+      ##--- 增加快速串聯
+      ON ACTION abmi6041    
+         LET g_action_choice = 'abmi6041'
+         EXIT DISPLAY
+
+      ##--- 20240828 ---(S)
+      ON ACTION item_pdf 
+         LET g_action_choice = 'item_pdf'
+         EXIT DISPLAY
+
+      ON ACTION bmb03_pdf
+         LET g_action_choice = 'bmb03_pdf'
+         LET g_ac2 = l_sl
+         EXIT DISPLAY
+
+      ON ACTION bmd04_pdf
+         LET g_action_choice = 'bmd04_pdf'
+         LET g_ac2 = l_sl
+         EXIT DISPLAY
+      ##--- 20240828 ---(E)
  
       ON IDLE g_idle_seconds
          CALL cl_on_idle()
