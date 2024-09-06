@@ -127,6 +127,12 @@ FUNCTION i100_menu()
       CASE g_action_choice
          WHEN "detail"
             IF cl_chk_act_auth() THEN
+               #---- 卡控是否可新增料號 (S)
+               IF NOT s_dc_ud_flag('1',g_plant,g_plant,'a') THEN                                                                          
+                  CALL cl_err(g_plant,'aoo-078',1)                                                                                        
+                  EXIT WHILE
+               END IF 
+               #---- 卡控是否可新增料號 (E)
                CALL i100_b()
             ELSE
                LET g_action_choice = NULL
@@ -455,13 +461,13 @@ FUNCTION i100_b()
                CALL cl_err3("del","ima_file",g_ima_t.ima01,"",SQLCA.sqlcode,"","",1) 
                ROLLBACK WORK
                CANCEL DELETE
+            END IF
             ##---- 20240801 相關文件刪除
             LET g_doc.column1 = "ima01"
             LET g_doc.value1 = g_ima_t.ima01
             CALL cl_del_doc() 
             DELETE FROM imc_file WHERE imc01= g_ima_t.ima01 #品名規格額外說明
             
-            END IF
             LET g_rec_b=g_rec_b-1
             DISPLAY g_rec_b TO FORMONLY.cn2  
             COMMIT WORK
