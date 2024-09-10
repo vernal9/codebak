@@ -11,6 +11,7 @@
 # Modify.........: No:23060010   20230606 By momo abm-017 卡控調整 
 # Modify.........: No:23070027   20230718 By momo 增加QBE與atp_qty顯示
 # Modify.........: No:23100001   20231012 By momo 增加bmb06、bmb07 欄位顯示
+# Modify.........: No:24090011   20240910 By momo 增加批次失效ACTION
 
 DATABASE ds
  
@@ -330,6 +331,7 @@ END FUNCTION
  
 FUNCTION i610_menu()                         #中文的MENU
    DEFINE   l_cmd  LIKE type_file.chr50      #No.FUN-680096 VARCHAR(50)
+   DEFINE   l_flag LIKE type_file.chr1       #20240910
 
    WHILE TRUE
       ##---- 20190709 資料清單 (S)
@@ -432,6 +434,23 @@ FUNCTION i610_menu()                         #中文的MENU
                CALL cl_cmdrun(g_cmd)
             END IF
          ##---- 20210416 add by momo (E)
+
+         ##---- 20240910 add by momo (S)
+         WHEN "allinvalid" #整批無效
+            IF cl_chk_act_auth() THEN
+               CALL ui.Interface.refresh()
+               IF cl_sure(21,21) THEN
+                  CALL cl_wait()
+                  LET g_success = 'Y'
+                  CALL i610_allinvalid()
+                  IF g_success = 'Y' THEN
+                     CALL cl_end2(1) RETURNING l_flag        #批次作业正确结束
+                  ELSE
+                     CALL cl_end2(2) RETURNING l_flag        #批次作業失敗
+                  END IF
+             END IF 
+            END IF
+         ##---- 20240910 add by momo (E)
 
          WHEN "exporttoexcel" #FUN-4B0003
             IF cl_chk_act_auth() THEN
@@ -1001,7 +1020,9 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
     CALL cl_opmsg('b')
  
     LET g_forupd_sql =
-       "SELECT boa01,'','','',boa02,boa03,'','',boa04,boa05,boa06,boa07,ta_boadate,ta_boamodu,boa08 ", 
+       "SELECT boa01,'','','',boa02,boa03,'','',",
+       "       0,0,",                                                  #20240408
+       "       boa04,boa05,boa06,boa07,ta_boadate,ta_boamodu,boa08 ", 
        "  FROM boa_file ",
        "  WHERE boa01= ? ",
        "   AND boa02= ? ",
@@ -1893,14 +1914,20 @@ FUNCTION i610_bp(p_ud)
          EXIT DIALOG
 
       ##---- 20210416 add by momo (S) 
-        ON ACTION carry
-           LET g_action_choice="carry"
-           EXIT DIALOG
+      ON ACTION carry
+         LET g_action_choice="carry"
+         EXIT DIALOG
 
-        ON ACTION qry_carry_history
-           LET g_action_choice = "qry_carry_history"
-           EXIT DIALOG
-     ##---- 20210416 add by momo (E)
+      ON ACTION qry_carry_history
+         LET g_action_choice = "qry_carry_history"
+         EXIT DIALOG
+
+     ##---- 20210416 add by momo (E) 整批無效
+     ON ACTION allinvalid
+        LET g_action_choice="allinvalid"
+        EXIT DIALOG
+     ##---- 20240910 add by momo (E)
+     
  
  
       ON ACTION controls                           #No.FUN-6B0033             
@@ -2251,3 +2278,42 @@ FUNCTION i610_carry()
    CALL s_showmsg()
 
 END FUNCTION
+
+#---20240910 ---整批無效 (S)
+FUNCTION i610_allinvalid()
+  DEFINE p_value      LIKE type_file.chr1
+  DEFINE l_i          LIKE type_file.num10
+
+  BEGIN WORK
+     FOR l_i = 1 TO g_boa.getLength()
+        LET g_boa_t.* = g_boa[l_i].*            #BACKUP
+        IF NOT cl_null(g_boa[l_i].boa07) THEN
+           CONTINUE FOR
+        END IF
+        LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'boa_file'),
+                    "   SET boa07 = '",g_today,"' ,",
+                    "       ta_boadate = '",g_today,"' ,",
+                    "       ta_boamodu = '",g_user,"' ",
+                    " WHERE boa01 = ? ",
+                    "   AND boa02 = ? ",
+                    "   AND boa03 = ? ",
+                    "   AND boa04 = ? ",
+                    "   AND boa05 = ? "
+        CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+        CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+        PREPARE upd_boa07 FROM g_sql
+        EXECUTE upd_boa07 USING g_boa_t.boa01,g_boa_t.boa02,g_boa_t.boa03,g_boa_t.boa04,g_boa_t.boa05
+        IF SQLCA.SQLCODE OR SQLCA.SQLERRD[3] = 0 THEN
+           LET g_success = 'N'
+           CALL cl_err('upd boa_file',SQLCA.SQLCODE,1)
+           EXIT FOR
+           ROLLBACK WORK
+        ELSE
+           CALL cs_updbmb16(g_boa_t.boa01,g_boa_t.boa03,'S')
+           COMMIT WORK   
+        END IF
+  END FOR
+
+  CALL i610_b_fill(g_wc)
+END FUNCTION
+#---20240910 ---整批無效 (E)
