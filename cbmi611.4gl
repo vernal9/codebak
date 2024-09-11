@@ -405,7 +405,7 @@ END FUNCTION
  
 FUNCTION i611_menu()                         #中文的MENU
    DEFINE   l_cmd   LIKE type_file.chr50     #No.FUN-680096 VARCHAR(50)
- 
+   DEFINE   l_flag LIKE type_file.chr1       #20240911 
  
  
    WHILE TRUE
@@ -481,6 +481,23 @@ FUNCTION i611_menu()                         #中文的MENU
                CALL cl_cmdrun(g_cmd)
             END IF
          ##---- 20210416 add by momo (E)
+         ##---- 20240911 add by momo (S)
+         WHEN "allinvalid" #整批無效
+            IF cl_chk_act_auth() THEN
+               CALL ui.Interface.refresh()
+               IF cl_sure(21,21) THEN
+                  CALL cl_wait()
+                  LET g_success = 'Y'
+                  CALL i611_allinvalid()
+                  IF g_success = 'Y' THEN
+                     CALL cl_end2(1) RETURNING l_flag        #批次作业正确结束
+                  ELSE
+                     CALL cl_end2(2) RETURNING l_flag        #批次作業失敗
+                  END IF
+             END IF 
+            END IF
+         ##---- 20240911 add by momo (E)
+
       END CASE
    END WHILE
 END FUNCTION
@@ -1550,6 +1567,12 @@ FUNCTION i611_bp(p_ud)
          LET g_action_choice = "qry_carry_history"
          EXIT DISPLAY
       ##---- 20210414 add by momo (E)
+
+      ##---- 20240911 by momo 批次無效  (S)
+      ON ACTION allinvalid
+         LET g_action_choice="allinvalid"
+         EXIT DISPLAY
+      ##---- 20240911 by momo 批次無效  (E)
  
       # No.FUN-530067 --start--
       AFTER DISPLAY
@@ -1944,4 +1967,41 @@ FUNCTION i611_carry()
 
 END FUNCTION
 
+#---20240911 ---批次無效 (S)
+FUNCTION i611_allinvalid()
+  DEFINE p_value      LIKE type_file.chr1
+  DEFINE l_i          LIKE type_file.num10
 
+  BEGIN WORK
+     FOR l_i = 1 TO g_bob.getLength()
+        LET g_bob_t.* = g_bob[l_i].*            #BACKUP
+        IF NOT cl_null(g_bob[l_i].bob11) THEN
+           CONTINUE FOR
+        END IF
+        LET g_sql = "UPDATE ",cl_get_target_table(g_plant_new,'bob_file'),
+                    "   SET bob11 = '",g_today,"' ,",
+                    "       ta_bobdate = '",g_today,"' ,",
+                    "       ta_bobmodu = '",g_user,"' ",
+                    " WHERE bob01 = ? ",
+                    "   AND bob02 = ? ",
+                    "   AND bob03 = ? ",
+                    "   AND bob04 = ? ",
+                    "   AND bob05 = ? ",
+                    "   AND bob06 = ? "
+        CALL cl_replace_sqldb(g_sql) RETURNING g_sql
+        CALL cl_parse_qry_sql(g_sql,g_plant_new) RETURNING g_sql
+        PREPARE upd_bob11 FROM g_sql
+        EXECUTE upd_bob11 USING g_bob_t.bob01,g_bob_t.bob02,g_bob_t.bob03,g_bob_t.bob04,g_bob_t.bob05,g_bob_t.bob06
+        IF SQLCA.SQLCODE OR SQLCA.SQLERRD[3] = 0 THEN
+           LET g_success = 'N'
+           CALL cl_err('upd boa_file',SQLCA.SQLCODE,1)
+           EXIT FOR
+           ROLLBACK WORK
+        ELSE
+           COMMIT WORK   
+        END IF
+  END FOR
+
+  CALL i611_b_fill(g_wc)
+END FUNCTION
+#---20240911 ---批次無效 (E)
