@@ -106,6 +106,18 @@ DEFINE l_ima140    LIKE ima_file.ima140
    #END IF
    ##--- 20201023 add by momo - ECN 單據確 需依生效日依序執行(E)
 
+   ##----- 20180517 by momo (S) 檢核是否有存在元件群組取替代
+         LET l_cnt = 0
+         SELECT COUNT(*) INTO l_cnt FROM boa_file
+           WHERE boa01= b_bmy.bmy14 AND boa03=b_bmy.bmy05
+         AND (boa07 IS NULL OR boa07 > g_today)
+         IF l_cnt > 0 THEN
+            CALL s_errmsg('bmx01',b_bmy.bmy05,b_bmy.bmy14,'cbm-003',1)   #20240508 modify
+            LET g_success='N'
+            RETURN                                                      #20240508
+         END IF
+   ##----- 20180517 by momo (E)
+
    ##--- 20230317 modify by momo 不分營運中心
    ##--- 20201223 add by momo (S) 生效日不可小於當日
    #IF g_plant[1,2] = 'TY' AND g_bmx.bmx07 < g_today THEN
