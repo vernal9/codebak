@@ -308,6 +308,8 @@
 # Modify.........: No:23040041   20230504 By momo     增加顯示 ta_sfb01 訂單單號序號
 # Modify.........: No:23060011   20230612 By momo     asf-307 / asf-308 調整為只提醒不強制卡控
 # Modify.........: NO:24010051   20240201 By momo     增加資料清單功能
+# Modify.........: No:24060016   20240614 By momo     替代碼為 5 群組時增加檢核是否存在發料
+# Modify.........: No:20240918   20240918 By momo     增加 訂單單號序號變更
 
 DATABASE ds
 
@@ -1982,8 +1984,33 @@ DEFINE l_min_pmn43  LIKE pmn_file.pmn43    #MOD-E20126 add
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD snbud02
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+        ##---- 20240918 modify by momo (S)
+        BEFORE FIELD snbud03
+           IF g_sfb.sfb09 > 0 THEN
+              CALL cl_set_comp_entry("snbud03",FALSE)
+           ELSE
+              CALL cl_set_comp_entry("snbud03",TRUE)
+           END IF    
+    
         AFTER FIELD snbud03
-           IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           #IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           IF g_sfb.sfb09 > 0 THEN
+              LET g_snb.snbud03 = ''
+              CALL cl_err(g_sfb.sfb09,'aic-197',1)
+              NEXT FIELD snb01
+           ELSE
+              LET l_cnt = 0
+              SELECT 1 INTO l_cnt FROM oeb_file,oea_file
+               WHERE oea01=oeb01
+                 AND oeb01 = SUBSTR(g_snb.snbud03,1,15)
+                 AND LPAD(oeb03,3,'0') = SUBSTR(g_snb.snbud03,16,18)
+                 AND oeaconf = 'Y'
+              IF l_cnt = 0 THEN
+                 CALL cl_err(g_snb.snbud03,'abx-053',1)
+                 NEXT FIELD snbud03
+              END IF
+           END IF
+         ##---- 20240918 modify by momo (E)
         AFTER FIELD snbud04
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD snbud05
@@ -4977,7 +5004,7 @@ DEFINE l_t1         LIKE snb_file.snb01 #MOD-E70162 add
         DISPLAY BY NAME g_snb.snbmksg          #FUN-920208 add
         DISPLAY g_sfb.sfb09  TO FORMONLY.sfb09
         DISPLAY l_sfb02_d    TO FORMONLY.sfb02_d
-        DISPLAY g_sfb.ta_sfb01  TO FORMONLY.ta_sfb01  #20230504
+       #DISPLAY g_sfb.ta_sfb01  TO FORMONLY.ta_sfb01  #20230504
     END IF
     IF p_cmd = 'a' OR p_cmd = 'u' THEN
        LET g_snb.snb08b = g_sfb.sfb08
@@ -4986,8 +5013,10 @@ DEFINE l_t1         LIKE snb_file.snb01 #MOD-E70162 add
        LET g_snb.snb15b = g_sfb.sfb15
        LET g_snb.snb16b = g_sfb.sfb16 #FUN-A10134 add
        LET g_snb.snb82b = g_sfb.sfb82
+       LET g_snb.snbud02 = g_sfb.ta_sfb01 #20240918
       #DISPLAY BY NAME g_snb.snb08b,g_snb.snb13b,g_snb.snb15b,g_snb.snb82b                           #FUN-A10134 mark
        DISPLAY BY NAME g_snb.snb08b,g_snb.snb13b,g_snb.snb14b,g_snb.snb15b,g_snb.snb16b,g_snb.snb82b #FUN-A10134 add
+       DISPLAY BY NAME g_snb.snbud02
     END IF
 END FUNCTION
 
@@ -9977,6 +10006,12 @@ FUNCTION t803_g2() #單頭變更
              IF NOT cl_null(g_snb.snb82a) THEN
                 LET l_sfb.sfb82  = g_snb.snb82a
              END IF
+
+             ##--- 20240918 add (S)訂單單號序號變更
+             IF NOT cl_null(g_snb.snbud03) THEN
+                LET l_sfb.ta_sfb01  = g_snb.snbud03
+             END IF
+             ##--- 20240918 add (E)
 
              UPDATE sfb_file SET * = l_sfb.*
               WHERE sfb01 = l_sfb.sfb01
