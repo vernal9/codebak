@@ -29,7 +29,7 @@
 # Modify.........: No:FUN-DA0124 13/11/04 By yihsuan 增加共用變數g_data_keyvalue給值
 # Modify.........: No:FUN-F50016 15/06/22 By jwlin 解決新增、複製後記錄key問題
 # Modify.........: No:24010023   20240116 By momo 增加類別 (cooi001)
-
+# Modify.........: No:24100037   20241104 By momo 增加異動日期記錄ta_bmg02
 
 DATABASE ds
  
@@ -43,12 +43,14 @@ DEFINE
     g_bmg           DYNAMIC ARRAY OF RECORD   #程式變數(Program Variables)
         ta_bmg01    LIKE bmg_file.ta_bmg01,   #類別 20240116
         bmg02       LIKE bmg_file.bmg02,      #行序
-        bmg03       LIKE bmg_file.bmg03       #說明
+        bmg03       LIKE bmg_file.bmg03,      #說明
+        ta_bmg02    LIKE bmg_file.ta_bmg02    #異動日 20241104
                     END RECORD,
     g_bmg_t         RECORD                    #程式變數 (舊值)
         ta_bmg01    LIKE bmg_file.ta_bmg01,   #類別 20240116
         bmg02       LIKE bmg_file.bmg02,      #行序
-        bmg03       LIKE bmg_file.bmg03       #說明
+        bmg03       LIKE bmg_file.bmg03,      #說明
+        ta_bmg02    LIKE bmg_file.ta_bmg02    #異動日 20241104
                     END RECORD,
     g_wc,g_wc2,g_sql    STRING,    #TQC-630166
     g_flag          LIKE type_file.chr1,      #No.FUN-680096 VARCHAR(1)
@@ -210,11 +212,11 @@ FUNCTION i701_cs()
     ELSE LET g_wc2 = " 1=1"
     END IF
     IF g_wc2 = " 1=1" THEN			# 若單身未輸入條件
-       LET g_sql = "SELECT  bmx01,bmx02 FROM bmx_file ", #TQC-870018
+       LET g_sql = "SELECT  bmx01,bmx02,bmx09 FROM bmx_file ", #TQC-870018 #20241104
                    " WHERE ", g_wc CLIPPED,
                    " ORDER BY 1"
      ELSE					# 若單身有輸入條件
-       LET g_sql = "SELECT UNIQUE  bmx01, bmx02 ",#TQC-870018
+       LET g_sql = "SELECT UNIQUE  bmx01, bmx02,bmx09 ",#TQC-870018 #20241104
                    "  FROM bmx_file, bmg_file ",
                    " WHERE bmx01 = bmg01 ",
                    "   AND ", g_wc CLIPPED, " AND ",g_wc2 CLIPPED,
@@ -409,6 +411,7 @@ FUNCTION i701_show()
     LET g_data_keyvalue = g_bmx.bmx01      #No:FUN-F50016
     DISPLAY BY NAME                              # 顯示單頭值
         g_bmx.bmx01,g_bmx.bmx02,
+        g_bmx.bmx09,                             #20241104
         g_bmx.bmxuser,g_bmx.bmxgrup,
         g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
     IF g_bmx.bmx04 = 'X' THEN
@@ -437,12 +440,13 @@ DEFINE
     IF g_bmx.bmx01 IS NULL OR g_bmx.bmx01 = ' '
     THEN RETURN
     END IF
+    IF g_bmx.bmx09='S' THEN RETURN END IF          #20241104
  
     CALL cl_opmsg('b')
  
  
     LET g_forupd_sql =
-     "  SELECT ta_bmg01,bmg02,bmg03 ",             #20240116
+     "  SELECT ta_bmg01,bmg02,bmg03,ta_bmg02 ",    #20240116 #20241104
      "    FROM bmg_file ",
      "    WHERE bmg01= ? ",
      "     AND bmg02= ? ",
@@ -476,8 +480,8 @@ DEFINE
                #CKP
                LET p_cmd='u'
                LET g_bmg_t.* = g_bmg[l_ac].*  #BACKUP
-                LET p_cmd='u'
-                BEGIN WORK
+               LET p_cmd='u'
+               BEGIN WORK
                
                #TQC-920056--Begin--# 
                OPEN i701_cl USING g_bmx.bmx01
@@ -521,9 +525,11 @@ DEFINE
                CANCEL INSERT
             END IF
             INSERT INTO bmg_file(ta_bmg01,                    #20240116
+                                 ta_bmg02,                    #20241104
                                  bmg01,bmg02,
                                  bmg03,bmgplant,bmglegal)     #FUN-980001 add plant & legal 
             VALUES(g_bmg[l_ac].ta_bmg01,                      #20240116
+                   g_today,                                   #20241104
                    g_bmx.bmx01,
                    g_bmg[l_ac].bmg02,g_bmg[l_ac].bmg03,g_plant,g_legal) #FUN-980001 add plant & legal 
             IF SQLCA.sqlcode THEN
@@ -549,12 +555,17 @@ DEFINE
             CALL cl_show_fld_cont()     #FUN-550037(smin)
             #NEXT FIELD bmg02                     #20240116 mark
             NEXT FIELD ta_bmg01                   #20240116 
+        
+        ##---- 20241104 (S)-------
+        BEFORE FIELD bmg03
+           IF g_bmx.bmx09='1' AND p_cmd<>'a' THEN 
+              CALL cl_err('','abm-880',1)
+              RETURN 
+           END IF   
+        ##---- 20241104 (E)-------
 
         ##---- 20240116
         AFTER FIELD ta_bmg01
-           IF p_cmd = 'a' THEN
-              IF cl_null(g_bmg[l_ac].ta_bmg01) THEN NEXT FIELD ta_bmg01 END IF
-           END IF
            IF g_bmg[l_ac].bmg02 < g_bmg[l_ac].ta_bmg01 THEN
               LET g_bmg[l_ac].bmg02 = g_bmg[l_ac].ta_bmg01
            END IF
@@ -578,6 +589,9 @@ DEFINE
             ##---- 20240116 add (E) 
  
         AFTER FIELD bmg02                        #check 序號是否重複
+           IF p_cmd = 'a' THEN
+              IF cl_null(g_bmg[l_ac].ta_bmg01) THEN NEXT FIELD ta_bmg01 END IF
+           END IF
             IF NOT cl_null(g_bmg[l_ac].bmg02) THEN
                 IF g_bmg[l_ac].bmg02 != g_bmg_t.bmg02 OR
                    g_bmg_t.bmg02 IS NULL THEN
@@ -596,6 +610,12 @@ DEFINE
             DISPLAY BY NAME g_bmg[l_ac].bmg02  #20240118
  
         BEFORE DELETE                            #是否取消單身
+            ##---- 20241104 (S)-------
+            IF g_bmx.bmx09='1' THEN 
+               CALL cl_err('','abm-880',1)
+               RETURN 
+            END IF   
+            ##---- 20241104 (E)-------
             IF g_bmg_t.bmg02 > 0 AND
                g_bmg_t.bmg02 IS NOT NULL THEN
                 IF NOT cl_delb(0,0) THEN
@@ -629,6 +649,15 @@ DEFINE
                ROLLBACK WORK
                EXIT INPUT
             END IF
+
+            ##---- 20241104 (S)-------
+            IF g_bmx.bmx09='1' THEN 
+               CALL cl_err('','abm-880',1)
+               EXIT INPUT
+               RETURN 
+            END IF   
+            ##---- 20241104 (E)-------
+
             IF l_lock_sw = 'Y' THEN
                 CALL cl_err(g_bmg[l_ac].bmg02,-263,1)
                 LET g_bmg[l_ac].* = g_bmg_t.*
@@ -636,7 +665,8 @@ DEFINE
                UPDATE bmg_file SET
                   ta_bmg01 = g_bmg[l_ac].ta_bmg01,   #20240116
                      bmg02 = g_bmg[l_ac].bmg02,
-                     bmg03 = g_bmg[l_ac].bmg03
+                     bmg03 = g_bmg[l_ac].bmg03,
+                  ta_bmg02 = g_today                 #20241104
                 WHERE bmg01=g_bmx.bmx01
                   AND bmg02=g_bmg_t.bmg02
                IF SQLCA.sqlcode THEN
@@ -764,7 +794,7 @@ DEFINE
     l_flag     LIKE type_file.chr1     #No.FUN-680096 VARCHAR(1)
  
     LET g_sql =
-        "SELECT ta_bmg01,bmg02,bmg03",           #20240116
+        "SELECT ta_bmg01,bmg02,bmg03,ta_bmg02 ",           #20240116 #20241104
         " FROM bmg_file",
         " WHERE bmg01 ='",g_bmx.bmx01,"' AND ",  #單頭-1
         p_wc2 CLIPPED,                     #單身
