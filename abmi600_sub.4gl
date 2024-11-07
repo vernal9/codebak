@@ -729,7 +729,7 @@ FUNCTION i600sub_chk_bmb03(p_bma01,p_bma06)
          AND bmb05 IS NULL
          AND bmb03 = l_bmb03
       GROUP BY bmb03,bmb09
-      HAVING count(bmb03)>2
+      HAVING count(bmb03)>=2
       IF l_cnt > 0 THEN
          CALL s_errmsg('bmb03',l_bmb03,'i600:','cbm-017',1)
          LET g_success = 'N'

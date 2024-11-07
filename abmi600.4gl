@@ -13279,7 +13279,8 @@ FUNCTION i600_excel_ins()
       LET l_msg = ''
       LET l_str = 'bma01,bma06'
       LET l_msg = g_bma_c.bma01,"/",g_bma_c.bma06
-      IF tm2.auto_check = 'Y' THEN
+      #IF tm2.auto_check = 'Y' THEN                          #20241021 mark
+      IF tm2.auto_check = 'Y' AND g_totsuccess='Y' THEN      #20241021 modify
          LET g_gui_type = 0
          LET g_bgjob = 'Y'
          LET g_bgerr = TRUE
