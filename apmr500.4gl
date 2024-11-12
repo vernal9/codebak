@@ -57,6 +57,8 @@
 # Modify.........: No:22090057   20221005 By momo 查詢條件增加 pmn56、pmn41
 # Modify.........: NO:23020025   20230222 By momo 排序增加 pmn33 交貨日
 # Modify.........: No:23040027   20230503 By momo QBE增加交貨日 pmn33
+# Modify.........: NO:23090004   20230908 By momo 調整 pmn44 抓取為 pmn31*pmm42
+# Modify.........: NO:24070036   20240729 By momo QBE 增加 ima06 料件分群碼
 
 DATABASE ds
  
@@ -150,6 +152,7 @@ MAIN
                "pmn87.pmn_file.pmn87,",
                "qqq.pmn_file.pmn20,",
                "pmn31.pmn_file.pmn31,",
+               "pmn31t.pmn_file.pmn31t,",    #含稅單價 20240729
                "g_pmn.pmn_file.pmn31,",
                "pmn44.pmn_file.pmn44,",
                "amt.pmn_file.pmn20,",
@@ -159,7 +162,10 @@ MAIN
                "pmn56.pmn_file.pmn56,",     #批號 20190812
                "pmn41.pmn_file.pmn41,",     #工單單號 20200406
                "ged02.ged_file.ged02,",     #運送方式 210222 add by ruby
-               "sfb06.sfb_file.sfb06,",
+               "sfb06.sfb_file.sfb06,",     #製程編號
+               "sfb04.type_file.chr20,",    #工單狀態 20241112
+               "pmk13.pmk_file.pmk13,",     #請購部門 20240729
+               "gem02.gem_file.gem02,",     #請購部門 20240729
                "azi03.azi_file.azi03,",
                "azi04.azi_file.azi04"     
  
@@ -167,7 +173,8 @@ MAIN
    IF l_table = -1 THEN EXIT PROGRAM END IF                                     
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,              
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ",          
-               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ) "                 #20180502 add  #20190812 add  #20191203 add 2?  #20200406 add 2? #210222 add 1? by ruby
+               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ", #20180502 add  #20190812 add  #20191203 add 2?  #20200406 add 2? #210222 add 1? by ruby
+               "        ?,?,?,? ) "                                    #20240729 add 2? #20241112 add 1?
    PREPARE insert_prep FROM g_sql                                               
    IF STATUS THEN                                                               
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM                         
@@ -260,7 +267,8 @@ FUNCTION r500_tm(p_row,p_col)
 WHILE TRUE
    CONSTRUCT BY NAME tm.wc ON pmm01,pmm04,pmm09,pmm12,pmn04,pmn24,ima43, #20191216
                               pmn41,pmn56,                               #20221005
-                              pmn33                                      #20230503 
+                              pmn33,                                     #20230503 
+                              ima06                                      #20240729
      #CHI-AA0017 add --start--
      ON ACTION CONTROLP
         CASE WHEN INFIELD(pmn04) #料件編號
@@ -271,53 +279,61 @@ WHILE TRUE
      	      DISPLAY g_qryparam.multiret TO pmn04
      	      NEXT FIELD pmn04
      #--TQC-CC0078--add---star---
-              WHEN INFIELD(pmm01)
+            WHEN INFIELD(pmm01)
               CALL cl_init_qry_var()
               LET g_qryparam.state= "c"
               LET g_qryparam.form = "q_pmm011"
               CALL cl_create_qry() RETURNING g_qryparam.multiret
               DISPLAY g_qryparam.multiret TO pmm01
               NEXT FIELD pmm01
-              WHEN INFIELD(pmm09)
+            WHEN INFIELD(pmm09)
               CALL cl_init_qry_var()
               LET g_qryparam.state= "c"
               LET g_qryparam.form = "q_pmm091"
               CALL cl_create_qry() RETURNING g_qryparam.multiret
               DISPLAY g_qryparam.multiret TO pmm09
               NEXT FIELD pmm09
-              WHEN INFIELD(pmm12)
+            WHEN INFIELD(pmm12)
               CALL cl_init_qry_var()
               LET g_qryparam.state= "c"
               LET g_qryparam.form = "q_pmm121"
               CALL cl_create_qry() RETURNING g_qryparam.multiret
               DISPLAY g_qryparam.multiret TO pmm12
               NEXT FIELD pmm12
-              WHEN INFIELD(pmn24)
+            WHEN INFIELD(pmn24)
               CALL cl_init_qry_var()
               LET g_qryparam.state= "c"
               LET g_qryparam.form = "q_pmn24"
               CALL cl_create_qry() RETURNING g_qryparam.multiret
               DISPLAY g_qryparam.multiret TO pmn24
               NEXT FIELD pmn24
-              ##--- 20191216 預設採購員(S)
-              WHEN INFIELD(ima43)
-                   CALL cl_init_qry_var()
-                   LET g_qryparam.state= "c"
-                   LET g_qryparam.form = "q_gen"
-                   CALL cl_create_qry() RETURNING g_qryparam.multiret
-                   DISPLAY g_qryparam.multiret TO ima43
-                   NEXT FIELD ima43
-              ##--- 20191216 預設採購員(E)
-              ##--- 20221005 By momo (S)
-              #工單
-              WHEN INFIELD(pmn41)
-                   CALL cl_init_qry_var()
-                   LET g_qryparam.state= "c"
-                   LET g_qryparam.form = "q_sfb7"
-                   CALL cl_create_qry() RETURNING g_qryparam.multiret
-                   DISPLAY g_qryparam.multiret TO pmn41
-                   NEXT FIELD pmn41
-              ##--- 20221005 By momo (E)
+            ##--- 20191216 預設採購員(S)
+            WHEN INFIELD(ima43)
+              CALL cl_init_qry_var()
+              LET g_qryparam.state= "c"
+              LET g_qryparam.form = "q_gen"
+              CALL cl_create_qry() RETURNING g_qryparam.multiret
+              DISPLAY g_qryparam.multiret TO ima43
+              NEXT FIELD ima43
+            ##--- 20191216 預設採購員(E)
+            ##--- 20240729 料件分群碼(S)
+            WHEN INFIELD(ima06)
+              CALL cl_init_qry_var()
+              LET g_qryparam.state= "c"
+              LET g_qryparam.form = "q_imz"
+              CALL cl_create_qry() RETURNING g_qryparam.multiret
+              DISPLAY g_qryparam.multiret TO ima06
+              NEXT FIELD ima06
+            ##--- 20240729 By momo (E)
+            #--工單
+            WHEN INFIELD(pmn41)
+               CALL cl_init_qry_var()
+               LET g_qryparam.state= "c"
+               LET g_qryparam.form = "q_sfb7"
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+               DISPLAY g_qryparam.multiret TO pmn41
+               NEXT FIELD pmn41
+            ##--- 20221005 By momo (E)
      #--TQC-CC0078--add---end---
         OTHERWISE EXIT CASE
         END CASE
@@ -564,7 +580,8 @@ FUNCTION r500()
                                   pmn20 LIKE pmn_file.pmn20,	# 訂購量
                                   pmn51 LIKE pmn_file.pmn51,	# 在驗量 20180502
                                   pmn50 LIKE pmn_file.pmn50,	# 收貨量
-                                  pmn31 LIKE pmn_file.pmn31,	# 單價
+                                  pmn31 LIKE pmn_file.pmn31,	# 未稅單價
+                                  pmn31t LIKE pmn_file.pmn31t,	# 含稅單價
                                   g_pmn LIKE pmn_file.pmn31,    #MOD-530190#金額(單價*訂購量)
                                   pmn14 LIKE pmn_file.pmn14,	# 部份交貨
                                   pmn15 LIKE pmn_file.pmn15,	# 提前交貨
@@ -623,6 +640,7 @@ FUNCTION r500()
            l_s2          LIKE type_file.chr1,    #FUN-680136 VARCHAR(1) 
            l_s3          LIKE type_file.chr1,    #FUN-680136 VARCHAR(1) 
            l_pmn31       LIKE pmn_file.pmn31,
+           l_pmn31t      LIKE pmn_file.pmn31t,   #未稅單價 20240729
            l_pmn20       LIKE pmn_file.pmn20,   #MOD-530190
            l_pmn201      LIKE pmn_file.pmn20,   #MOD-530190
            l_pmn202      LIKE pmn_file.pmn20,   #MOD-530190
@@ -664,6 +682,9 @@ FUNCTION r500()
     DEFINE  l_sfb06   LIKE sfb_file.sfb06    #製程編號 20200406
     DEFINE  l_pmm16   LIKE pmm_file.pmm16    #運送方式210222 add by ruby
     DEFINE  l_ged02   LIKE ged_file.ged02    #運送方式210222 add by ruby
+    DEFINE  l_gem02   LIKE gem_file.gem02    #請購部門 20240729
+    DEFINE  l_pmk13   LIKE pmk_file.pmk13    #請購部門 20240729
+    DEFINE  l_sfb04   LIKE type_file.chr20   #工單狀態 2024112
 
      CALL cl_del_data(l_table)                   #No.FUN-840047
      SELECT zz17,zz05 INTO g_len,g_zz05 FROM zz_file WHERE zz01 ='apmr500' #No.FUN-840047
@@ -677,11 +698,14 @@ FUNCTION r500()
                  "   pmn16,  pmm22,  pmm21,  pmn02,  ",            #MOD-C80151 pmm25 -> pmn16
                  "   pmn011, pmn04,  pmn041, pmn24,  pmn07,  pmn20,",
                  "   pmn51, ",                                     #20180502 add
-                 "   pmn50,  pmn31,  ' '  ,  pmn14,  pmn15,",
+                 "   pmn50,  pmn31,  ",
+                 "   pmn31t, ",                                    #20240729
+                 "   ' '  ,  pmn14,  pmn15,",
                 #"   pmn33,  pmn44 ,ima33, ima531,pmn55,pmn58,",   #MOD-C80147 add pmn58  #MOD-G10010 mark
                  "   pmn33,  ",
                  "   pmn56,  ",                                    #20190812 add
-                 "   pmn44 ,ima53, ima531,pmn55,pmn58,",                          #MOD-G10010 add 
+                 "   pmn31*pmm42, ",                               #20230908 本幣單價計算調整
+                 "   ima53, ima531,pmn55,pmn58,",                          #MOD-G10010 add 
                  "   '',pmn80,  pmn82, pmn83,pmn85,pmn86,pmn87,'','',pmn18,pmn41,pmm16,pmn43,pmn012,pmn123 ",  #No.FUN-580004 #CHI-8C0017 Add '','',pmn18,pmn41,pmn43  #FUN-A60027 add pmn012   #FUN-D10004 add ,pmn123 #210222 add pmm16 by ruby
                  " FROM pmm_file,pmn_file,",
                  "      pmc_file, ",                               #20201215 add
@@ -921,10 +945,33 @@ FUNCTION r500()
        GROUP BY ima27
        ##--- 20191203 庫存量-安全存量(E)
        
+       ##--- 20241112 工單狀態 (S)
        ##--- 20200406 工單製程編號 (S) 
-       SELECT sfb06 INTO l_sfb06 FROM sfb_file
+       SELECT sfb06,sfb04 INTO l_sfb06,l_sfb04 FROM sfb_file
         WHERE sfb01 = l_pmn41
        ##--- 20200406 工單製程編號 (E)
+       CASE l_sfb04
+            WHEN "1"
+                 LET l_sfb04 = "1:開立"
+            WHEN "2"
+                 LET l_sfb04 = "2:發放"
+            WHEN "3"
+                 LET l_sfb04 = "3:料表已列印"
+            WHEN "4"
+                 LET l_sfb04 = "4:發料"
+            WHEN "5"
+                 LET l_sfb04 = "5:WIP"
+            WHEN "7"
+                 LET l_sfb04 = "7:入庫"
+       END CASE
+       ##--- 20241112 工單狀態 (E)
+
+       ##--- 20240729 請購部門 (S)
+       SELECT gem01,gem02 INTO l_pmk13,l_gem02
+         FROM gem_file,pmk_file
+        WHERE gem01 = pmk13
+          AND pmk01 = sr.pmn24
+       ##--- 20240729 請購部門 (E)
 
        #210222 add by ruby --s--
        LET l_ged02=''
@@ -970,10 +1017,13 @@ FUNCTION r500()
                                  sr.pmn24,l_str4,sr.pmn07,sr.pmn86,
                                  l_print,sr.pmn20,sr.pmn51,                      #20180502 pmn51
                                  l_img10,                                        #20191203 add
-                                 sr.pmn87,sr.qqq,sr.pmn31,  
+                                 sr.pmn87,sr.qqq,sr.pmn31, 
+                                 sr.pmn31t,                                      #20240729 add 
                                  sr.g_pmn,sr.pmn44,sr.amt,sr.pmn14,sr.pmn15,
-                                 sr.pmn33,sr.pmn56,                 #20190812 add
-                                 l_pmn41,l_ged02,l_sfb06,                   #20200406    #210222 add l_ged02 by ruby
+                                 sr.pmn33,sr.pmn56,                              #20190812 add
+                                 l_pmn41,l_ged02,l_sfb06,                        #20200406    #210222 add l_ged02 by ruby
+                                 l_sfb04,                                        #20241112 
+                                 l_pmk13,l_gem02,                                #20240729
                                  t_azi03,t_azi04                   
      END FOREACH
 
