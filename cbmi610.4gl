@@ -1715,7 +1715,7 @@ DEFINE
        "  FROM boa_file LEFT JOIN ima_file b ",           
        "    ON boa_file.boa03 =b.ima01 ",          
        "  LEFT JOIN ima_file a ON a.ima01=boa01 ",       
-       "  LEFT JOIN bmb_file ON bmb01 = boa01 AND bmb03 = boa03 ",                #20231012                   
+       "  LEFT JOIN bmb_file ON bmb01 = boa01 AND bmb03 = boa03 AND bmb05 IS NULL ",      #20231012  #20240911 排除失效                 
        " WHERE (NVL(boa08,'N')='",g_boa08,"' ) ",
        "   AND ",p_wc CLIPPED 
  
