@@ -176,6 +176,9 @@
 # Modify.........: NO:1908083453 20190814 By momo 增加 pmkud03 預設值N
 # Modify.........: NO:23090030   20231004 By momo 增加訂單數量，並該數量與生產量勾稽，不同時跳出提示
 # Modify.........: NO:23100041   20231030 By momo 應生產量有誤，未考量退貨情況
+# Modify.........: No:24080053   20240904 By momo 調整可產生工單型態為5:再加工工單
+# Modify.........: No:24120001   20241206 By momo cxmp411 串聯產生功能調整
+
 
 DATABASE ds
  
@@ -385,8 +388,8 @@ FUNCTION p304_tm()
       RETURN
    END IF
    LET p_row = 2 
-   LET p_col = 4 
- 
+   LET p_col = 4
+
    IF s_industry('slk') THEN
      #FUN-D80022--add--str--
      IF g_sma.sma150 = 'Y' THEN 
@@ -527,9 +530,7 @@ FUNCTION p304_tm()
          DISPLAY BY NAME g_sfb.sfb81,tm.gem01 #FUN-670103 #FUN-650054 ,tm.wo_type
          DISPLAY BY NAME tm.mac_opt  #FUN-A80102
          DISPLAY l_gem02c TO gem02   #FUN-920088
-    
          INPUT BY NAME g_sfb.sfb81,tm.gem01,tm.mac_opt WITHOUT DEFAULTS  #FUN-670103 #FUN-650054 ,tm.wo_type #FUN-920088  #FUN-A80102
-    
            AFTER FIELD gem01
                IF NOT cl_null(tm.gem01) THEN
                   IF g_aaz.aaz90='Y' THEN
@@ -600,6 +601,8 @@ FUNCTION p304_tm()
     
             BEFORE CONSTRUCT 
                 CALL cl_qbe_init()
+
+            DISPLAY g_argv1 TO oea01    #20240903
        
             ON ACTION CONTROLP
                CASE
@@ -806,6 +809,7 @@ FUNCTION p304_fill_b_data(p_gem01)
    DEFINE   l_ima56          LIKE ima_file.ima56                   #CHI-DA0027 add
    DEFINE   l_smy72          LIKE smy_file.smy72                   #MOD-G60089 add
    DEFINE   l_bma05          LIKE bma_file.bma05                   #20190905 add
+   DEFINE   l_tc_oga07       LIKE tc_oga_file.tc_oga07             #20241206 研發訂單狀態
    #M001 180109 By TSD.Jin--start--
    DEFINE   l_ima            RECORD
                oeb_q         LIKE type_file.num15_3,
@@ -881,7 +885,8 @@ FUNCTION p304_fill_b_data(p_gem01)
                   "  AND EXISTS (SELECT * FROM bma_file WHERE bma01=oeb04 AND bma10='2')", #20190905 
                   "  AND oeb04 NOT LIKE 'MISC%' AND oeb04 NOT LIKE 'misc%' ",  #MOD-C30872
                  #"  AND (ima140 = 'N' ", l_str CLIPPED,   #MOD-D80184 add    #CHI-D90021 mark
-                  "  AND ima08<>'P' ",   #MOD-FA0074 add
+                  "  AND (ima08<>'P' ",   #MOD-FA0074 add
+                  "        OR ima08='P' AND exists (SELECT 1 FROM oeo_file WHERE oeo01=oeb01 AND oeo03=oeb03 ))",  #20240904 存在選配需組裝
                   "  AND ima911<>'Y' "  #FUN-640083
       END IF
  
@@ -1131,16 +1136,18 @@ FUNCTION p304_fill_b_data(p_gem01)
          #   LET new[g_i].sfb02 = '7'            #20180607 mark
          #   LET new[g_i].ven_no = l_ima54       #20180607 mark
          #ELSE                                   #20180607 mark
-            SELECT smy72 INTO l_smy72 FROM smy_file 
-             WHERE smyslip = new[g_i].new_no    
-            IF l_smy72 = '7' THEN
-               LET new[g_i].sfb02 = '7'
-            ELSE
-               LET new[g_i].sfb02 = '1'
-               IF s_industry('std') THEN
-                  LET new[g_i].ven_no = tm.gem01
-               END IF
-            END IF     
+         ##---- 20240904 mark (S) ----
+         #   SELECT smy72 INTO l_smy72 FROM smy_file 
+         #    WHERE smyslip = new[g_i].new_no    
+         #   IF l_smy72 = '7' THEN
+         #      LET new[g_i].sfb02 = '7'
+         #   ELSE
+         #      LET new[g_i].sfb02 = '1'
+         #      IF s_industry('std') THEN
+         #         LET new[g_i].ven_no = tm.gem01
+         #      END IF
+         #   END IF     
+         ##---- 20240904 mark (E) ----
          #END IF                                #20180607 mark
          #MOD-G60089 add end   --------------------------
          CALL s_umfchk(new[g_i].new_part,l_oeb05,l_ima55)
@@ -1251,6 +1258,21 @@ FUNCTION p304_fill_b_data(p_gem01)
              AND bma01=new[g_i].new_part
              AND bma05 IS NOT NULL
       ##---- 20180417 add by momo (E)
+      ##----20241206 add by momo (S)增加顯示研發訂單狀態
+      LET l_tc_oga07=''
+      SELECT tc_oga07 INTO l_tc_oga07
+        FROM tc_oga_file
+       WHERE tc_oga01 = new[g_i].oeb01
+         AND tc_oga02 = new[g_i].oeb03
+      IF NOT cl_null(l_tc_oga07) THEN
+         IF l_tc_oga07 NOT MATCHES "[24]" THEN
+            LET new[g_i].x = 'N'
+            LET new[g_i].ima02 = l_tc_oga07,'!-',new[g_i].ima02
+         ELSE
+            LET new[g_i].ima02 = '✔',new[g_i].ima02
+         END IF
+      END IF
+      ##----20241206 add by momo (E)
       #mark by plum 010130
       #LET new[g_i].b_date = new[g_i].e_date - g_ima.ima62 units day
          #FUN-710073---mod---str---
@@ -1291,13 +1313,22 @@ FUNCTION p304_fill_b_data(p_gem01)
          
          LET new[g_i].gem02c=l_gem02c  #FUN-670103
 
-         ##---- 20231004 add by mom (S)
+         ##---- 20240904 add by momo (S) 料件來源碼為P時，預設為重工工單
+         SELECT '5' INTO new[g_i].sfb02 
+           FROM ima_file
+         WHERE ima01 = new[g_i].new_part AND ima08='P'
+         IF new[g_i].sfb02='5' THEN
+            LET new[g_i].new_qty = new[g_i].oeb12
+         END IF
+         ##---- 20240904 add by momo (E) 
+
+         ##---- 20231004 add by mom0 (S)
          IF new[g_i].new_qty <> new[g_i].oeb12 THEN
             LET new_color[g_i].new_part = "GREEN REVERSE"
          ELSE
             LET new_color[g_i].new_part = ""
          END IF
-         ##---- 20231004 add by mom (E)
+         ##---- 20231004 add by momo (E)
          LET g_i=g_i+1
       END FOREACH
       CALL s_showmsg()    #FUN-920088
@@ -1784,12 +1815,14 @@ FUNCTION asfp304()
                 WHERE smyslip = new[i].new_no
                IF cl_null(l_smy72) THEN
                   LET l_smy72 = 1
-               ELSE
-                  IF l_smy72 NOT MATCHES '[17]' THEN
+               ELSE                                       
+                  IF l_smy72 NOT MATCHES '[157]' THEN     #20240903 modify  
                      LET l_smy72 = 1
                   END IF
-               END IF 
-               LET new[i].sfb02 = l_smy72
+               END IF
+               IF new[i].sfb02 <> '5' THEN                #20240904 add
+                  LET new[i].sfb02 = l_smy72
+               END IF                                     #20240904 add
                DISPLAY BY NAME new[i].sfb02
                #MOD-FB0042 add end   ----------------------------
                DISPLAY new[i].costcenter TO s_new[i].costcenter
