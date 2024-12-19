@@ -456,8 +456,9 @@ FUNCTION p920_p2()
            IF cl_null(l_ima91) OR l_ima91 = 0 THEN LET l_ima91 = 0 END IF
            CALL s_umfchk(l_pmn04,l_pmn07,l_ima25)
                 RETURNING g_sw,l_fac
-           IF g_sw THEN
-              CALL cl_err(l_pmn07,g_errno,0)
+           IF g_sw='1' THEN                  #20241219 modify 
+              #CALL cl_err(l_pmn07,g_errno,1)
+              CALL cl_err(l_pmn04,'ams-794',1)  #20241219
               LET g_success = 'N'
            END IF
            #LET l_pmn44 = l_pmn44 * l_fac   #要換算成庫存單位 #20180820 mark
