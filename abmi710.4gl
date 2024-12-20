@@ -302,6 +302,8 @@
 # Modify.........: No:23020008   20230208 By momo 增加 ECN變更原因欄位
 # Modify.........: No:23080026   20230901 By momo 當設定料件停產，依aooi602 設定進行更新判斷
 # Modify.........: NO:24080018   20240814 By momo 調整備註欄位顯示 
+# Modify.........: No:24080014   20240816 By momo ECN筆數過多，送簽時調整 不送單身資料，BPM表單直接抓取資料顯示即可
+# Modify.........: No:24110009   20241108 By momo 增加 cbmi604 檢核機制
 
 DATABASE ds
  
@@ -1418,7 +1420,14 @@ DEFINE l_cmd          STRING #No.FUN-820027  #20180820 modify
                CALL ui.Interface.refresh()                                                                                          
                CALL i710_carry()                                                                                                    
                ERROR ""      
-            END IF                                                                                                                  
+            END IF
+
+         ##---20241108 add (S)
+         WHEN "check_sub"
+            IF cl_chk_act_auth() THEN
+               CALL cs_check_ecn(g_bmx.bmx01)
+            END IF
+         ##---20241108 add (E)                                                                                                                  
                                                                                                                                     
          WHEN "download"                                                                                                            
             IF cl_chk_act_auth() THEN                                                                                               
@@ -1503,7 +1512,7 @@ DEFINE   li_result   LIKE type_file.num5      #No.FUN-680096 SMALLINT
         LET g_bmx.bmxdate=g_today
         LET g_bmx.bmxacti='Y'
         LET g_bmx.bmx09='0'   #--FUN-540045
-        LET g_bmx.bmx10=g_user  
+        #LET g_bmx.bmx10=g_user     #20240816 mark 申請人不等於填單人
         LET g_bmx.ta_bmx01 = 'N'    #M014 180202 By TSD.Andy
         IF NOT s_dc_ud_flag('3',g_bmx.bmx11,g_plant,'a') THEN                                                                           
            CALL cl_err(g_bmx.bmx11,'aoo-078',1)                                                                                         
@@ -2087,6 +2096,10 @@ DEFINE
 END FUNCTION
  
 FUNCTION i710_show()
+    DEFINE w     ui.Window                 #20241115 
+    DEFINE n     om.DomNode                #20241115
+    DEFINE l_cnt LIKE type_file.num5       #20241115
+
     LET g_bmx_t.* = g_bmx.*                #保存單頭舊值
     LET g_data_keyvalue = g_bmx.bmx01      #No:FUN-F50016
     DISPLAY BY NAME g_bmx.bmxoriu,g_bmx.bmxorig,
@@ -2095,6 +2108,7 @@ FUNCTION i710_show()
         g_bmx.ta_bmx03,                                             #20230208 add
         g_bmx.bmxuser,g_bmx.bmxgrup,g_bmx.bmxmodu,g_bmx.bmxdate,g_bmx.bmxacti
  
+
     CALL i710_bmg03() #01/08/13 mandy
     CALL i710_field_pic()   #FUN-540045
     CALL i710_bmx10('d')                      #FUN-630044  
@@ -4974,6 +4988,12 @@ FUNCTION i710_bp(p_ud)
          LET g_action_choice = "carry" 
          EXIT DIALOG  #FUN-D80022 DISPLAY -> DIALOG
 
+      ##---- 20241108 (S)
+      ON ACTION check_sub
+         LET g_action_choice = "check_sub"
+         EXIT DIALOG
+      ##---- 20241108 (E)
+
       ON ACTION download                      
          LET g_action_choice = "download"    
          EXIT DIALOG  #FUN-D80022 DISPLAY -> DIALOG
@@ -5258,7 +5278,13 @@ FUNCTION i710_bp1(p_ud)
              
       ON ACTION carry                                                                                                               
          LET g_action_choice = "carry"                                                                                              
-         EXIT DISPLAY                                                                                                               
+         EXIT DISPLAY       
+
+       ##---- 20241108 (S)
+      ON ACTION check_sub
+         LET g_action_choice = "check_sub"
+         EXIT DISPLAY
+      ##---- 20241108 (E)                                                                                                        
                                                                                                                                     
       ON ACTION download                                                                                                            
          LET g_action_choice = "download"                                                                                           
@@ -9694,20 +9720,12 @@ END FUNCTION
  
 FUNCTION i710_ef()
    DEFINE l_cnt    LIKE type_file.num5                    #20240809 
-
+  
+     CALL cs_check_ecn(g_bmx.bmx01)                                   #20241108 add
      CALL i710_y_chk()           #CALL 原確認的 check 段   #FUN-580120
      IF g_success = "N" THEN
          RETURN
      END IF
-
-     ##---- 20240809 (S) 判斷筆數
-     LET l_cnt = 0
-     SELECT count(*) INTO l_cnt FROM bmz_file WHERE bmz01 =  g_bmx.bmx01
-     IF l_cnt > 100 THEN LET g_bmz = '' END IF
-     LET l_cnt = 0
-     SELECT count(*) INTO l_cnt FROM bmy_file WHERE bmy01 =  g_bmx.bmx01
-     IF l_cnt > 100 THEN LET g_bmy = '' END IF
-     ##---- 20240809 (E) 判斷筆數 
  
      CALL aws_condition()      #判斷送簽資料
      IF g_success = 'N' THEN
@@ -9719,7 +9737,8 @@ FUNCTION i710_ef()
 # 回傳值  : 0 開單失敗; 1 開單成功
 ##########
  
- IF aws_efcli2(base.TypeInfo.create(g_bmx),base.TypeInfo.create(g_bmz),base.TypeInfo.create(g_bmy),'','','')
+#IF aws_efcli2(base.TypeInfo.create(g_bmx),base.TypeInfo.create(g_bmz),base.TypeInfo.create(g_bmy),'','','')   #20240816 mark
+ IF aws_efcli2(base.TypeInfo.create(g_bmx),'','','','','')                                                     #20240816 modify
  THEN
    LET g_success='Y'
   #LET g_bmx.bmx09='S' #FUN-F10019 mark
@@ -10074,6 +10093,8 @@ DEFINE l_count  LIKE type_file.num5
 DEFINE l_flag   LIKE type_file.chr1
 DEFINE l_sql    STRING
 DEFINE l_bmy02  LIKE bmy_file.bmy02
+DEFINE l_boa01  LIKE boa_file.boa01 #20241220
+DEFINE l_boa03  LIKE boa_file.boa03 #20241220
  
    LET l_flag= 'N'
    FOR i = 1 TO g_bmz.getLength()
@@ -10122,7 +10143,7 @@ DEFINE l_bmy02  LIKE bmy_file.bmy02
        END FOR
     END FOR
 
-    ##---- 20190123 add by momo(S)
+    ##---- 20190123 add by momo(S) 組成用量與底數空值檢核
     LET l_sql = "SELECT bmy02,COUNT(*) FROM bmx_file,bmy_file, ",
               "                             ima_file a,ima_file b ",
               " WHERE bmx01 = bmy01 ",
@@ -10144,6 +10165,23 @@ DEFINE l_bmy02  LIKE bmy_file.bmy02
 
    END FOREACH
    ##---- 20190123 add by momo(E)
+  
+   ##--- 20241220 add by momo (S)存在有效群組取替代
+   LET l_sql = " SELECT distinct boa01,boa03 FROM bmz_file,bmy_file,boa_file ", 
+               "  WHERE bmz01 = '",g_bmx.bmx01,"'",     #單號
+               "    AND bmz01 = bmy01 ",
+               "    AND boa01 = bmz02 AND boa03 = bmy05 ",
+               "    AND  (boa07 IS NULL OR boa07 > g_today) "
+
+   PREPARE i710_sel_boa_p1 FROM l_sql
+   DECLARE i710_sel_boa_c1 CURSOR FOR i710_sel_boa_p1
+   FOREACH i710_sel_boa_c1 INTO l_boa01,l_boa03
+      LET g_showmsg = l_boa01,'/',l_boa03                
+      CALL s_errmsg('bmy02',g_showmsg,'','cbm-003',1)
+      LET g_success = 'N'
+      EXIT FOREACH
+   END FOREACH
+   ##--- 20241220 add by momo (E)
 END FUNCTION
 #No:FUN-9C0077
 

@@ -310,6 +310,7 @@
 # Modify.........: No:22110033   20221124 By momo 單身追加【作業編號[bmy09]】欄位
 # Modify.........: NO:23010028   20230207 By momo 單頭增加 ta_bmx03 ECN原因輸入
 # Modify.........: NO:24080019   20240814 By momo 單頭備註調整顯示
+# Modify.........: No:24080015   20240816 By momo ECN筆數過多，送簽時調整 不送單身資料，BPM表單直接抓取資料顯示即可
 
 DATABASE ds
  
@@ -1325,7 +1326,7 @@ FUNCTION i720_a()
         LET g_bmx.bmxacti='Y'
         LET g_bmx.bmx09='0'   #--FUN-540045
         LET g_bmx.bmx50=g_argv1_str  #No.FUN-A60031 #FUN-AC0060(110705)  #CHI-CA0035 mod g_argv3->g_argv1
-        LET g_bmx.bmx10=g_user     
+        #LET g_bmx.bmx10=g_user      #20240816 mark 申請人不等於填單人
         IF NOT s_dc_ud_flag('3',g_bmx.bmx11,g_plant,'a') THEN                                                                           
            CALL cl_err(g_bmx.bmx11,'aoo-078',1)                                                                                         
            RETURN                                                                                                                       
@@ -10618,15 +10619,6 @@ FUNCTION i720_ef()
      IF g_success = "N" THEN
          RETURN
      END IF
- 
-    ##---- 20240809 (S)
-    LET l_cnt = 0
-    SELECT COUNT(*) INTO l_cnt FROM bmy_file
-     WHERE bmy01=g_bmx.bmx01
-    IF l_cnt > 100 THEN
-       LET g_bmy=''
-    END IF
-    ##---- 20240809 (E)
 
      CALL aws_condition()      #判斷送簽資料
      IF g_success = 'N' THEN
@@ -10638,7 +10630,8 @@ FUNCTION i720_ef()
 # 回傳值  : 0 開單失敗; 1 開單成功
 ##########
 
-  IF aws_efcli2(base.TypeInfo.create(g_bmx),base.TypeInfo.create(g_bmy),'','','','') THEN
+  #IF aws_efcli2(base.TypeInfo.create(g_bmx),base.TypeInfo.create(g_bmy),'','','','') THEN    #-20240816 mark
+  IF aws_efcli2(base.TypeInfo.create(g_bmx),'','','','','') THEN                              #-20240816 modify
      LET g_success='Y'
      #LET g_bmx.bmx09='S'  #FUN-F10019 mark
      #FUN-F10019 add(S)
