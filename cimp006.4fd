@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="" gstVersion="22800" name="Root" uid="{da3dc868-0000-4000-a421-00639147821a}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_ima" order="" uid="{d779b816-0000-4000-bb82-9b041372e746}" where="">
+    <RecordField colName="" fieldIdRef="19" name="choice" sqlTabName="" table_alias_name="" uid="{bf8a3501-0000-4000-9222-c0c180e4ad57}"/>
+    <RecordField colName="" fieldIdRef="20" name="ima01_b" sqlTabName="" table_alias_name="" uid="{9e02f0ba-0000-4000-bcdd-1e8966c0bb3a}"/>
+    <RecordField colName="" fieldIdRef="2" name="ima02_01" sqlTabName="" table_alias_name="" uid="{d61edcae-0000-4000-a6cc-e6ecd2e5d20f}"/>
+    <RecordField colName="" fieldIdRef="3" name="ima021_01" sqlTabName="" table_alias_name="" uid="{4ab214a5-0000-4000-9b35-47cbcbd95290}"/>
+    <RecordField colName="" fieldIdRef="6" name="atp_qty" sqlTabName="" table_alias_name="" uid="{88b4db44-edd7-4766-b239-3a41baf94c12}"/>
+    <RecordField colName="" fieldIdRef="8" name="unavl_stk" sqlTabName="" table_alias_name="" uid="{4b8bd6c3-c93a-4aee-a137-b4250b060f9c}"/>
+    <RecordField colName="" fieldIdRef="7" name="bom" sqlTabName="" table_alias_name="" uid="{5333ce33-d5db-4807-8a07-d55cbdf29f13}"/>
+    <RecordField colName="" fieldIdRef="10" name="mbom" sqlTabName="" table_alias_name="" uid="{0c2f5ce5-addf-4014-a7ad-51f1ef50cf0b}"/>
+    <RecordField colName="" fieldIdRef="11" name="other" sqlTabName="" table_alias_name="" uid="{b7f6514b-7e97-4a60-8d80-133d138fa276}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{f0cfc29d-0000-4000-80ff-29e10e13275a}" where="">
+    <RecordField colName="" fieldIdRef="1" fieldType="NON_DATABASE" name="ima01" sqlTabName="" table_alias_name="" uid="{07b95960-0000-4000-8112-26923fad8efb}"/>
+    <RecordField colName="" fieldIdRef="13" fieldType="NON_DATABASE" name="cn3" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{abd1041a-0000-4000-aed2-be2f6543577c}"/>
+    <RecordField colName="" fieldIdRef="4" fieldType="NON_DATABASE" name="ima02" sqlTabName="" sqlType="CHAR" table_alias_name="" uid="{af5a694c-78ad-4fff-b1f9-72411f693644}"/>
+    <RecordField colName="" fieldIdRef="5" fieldType="NON_DATABASE" name="ima021" sqlTabName="" sqlType="CHAR" table_alias_name="" uid="{be344e23-48fa-4b6f-8570-aa2e4165ef32}"/>
+    <RecordField colName="" defaultValue="" fieldIdRef="21" name="ima140" sqlTabName="" table_alias_name="" uid="{5eb7f14a-517e-4df9-bc99-476d16b00e16}"/>
+    <RecordField colName="" fieldIdRef="9" name="Nbom" sqlTabName="" table_alias_name="" uid="{65f6f861-d404-4ae4-a2df-61765991c6eb}"/>
+  </Record>
+  <Form gridHeight="26" gridWidth="246" name="cimp006" spacing="normal" text="cimp006">
+    <VBox gridHeight="26" gridWidth="244" name="VBox1" posX="0" posY="0">
+      <Folder gridHeight="10" gridWidth="244" lstrcomment="false" name="folder01" posX="0" posY="1">
+        <Page lstrtext="false" name="page01" text="Main">
+          <HBox gridHeight="7" gridWidth="104" name="HBox1" posX="0" posY="0">
+            <Grid gridHeight="7" gridWidth="100" lstrcomment="false" name="gr1072" posX="2" posY="0">
+              <Group gridHeight="6" gridWidth="52" lstrcomment="false" lstrtext="false" name="group01" posX="1" posY="0" text="QBE">
+                <Label posX="1" posY="1" text="Item"/>
+                <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="&lt;^P&gt; Qry Item" fieldId="1" fieldType="NON_DATABASE" gridHeight="1" gridWidth="30" image="zoom" lstrcomment="false" lstrtitle="false" name="ima01" posX="18" posY="1" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" widget="ButtonEdit"/>
+                <Label posX="1" posY="2" text="ima02"/>
+                <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="&lt;^P&gt; Qry Item" fieldId="4" fieldType="NON_DATABASE" gridHeight="1" gridWidth="30" lstrcomment="false" lstrtitle="false" name="ima02" posX="18" posY="2" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" widget="Edit"/>
+                <Label posX="1" posY="3" text="ima021"/>
+                <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="&lt;^P&gt; Qry Item" fieldId="5" fieldType="NON_DATABASE" gridHeight="1" gridWidth="30" lstrcomment="false" lstrtitle="false" name="ima021" posX="18" posY="3" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="8" table_alias_name="" widget="Edit"/>
+                <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" defaultValue="" fieldId="21" gridHeight="1" gridWidth="13" name="ima140" notNull="true" posX="1" posY="4" required="true" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="9" table_alias_name="" text="ima140" title="CheckBox1" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+              </Group>
+              <Group gridHeight="6" gridWidth="12" name="Group1" posX="57" posY="0" text="INPUT">
+                <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="9" gridHeight="1" gridWidth="10" name="Nbom" notNull="true" posX="1" posY="1" required="true" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="13" table_alias_name="" text="No Bom" title="CheckBox1" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+              </Group>
+            </Grid>
+          </HBox>
+        </Page>
+      </Folder>
+      <Table gridHeight="12" gridWidth="244" lstrcomment="false" name="s_bne" posX="0" posY="11" totalRows="10">
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="19" gridHeight="1" gridWidth="7" lstrcomment="false" lstrtext="false" lstrtitle="false" name="choice" notNull="true" posX="0" posY="0" required="true" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="choice" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="20" gridHeight="1" gridWidth="26" lstrcomment="false" lstrtitle="false" name="ima01_b" noEntry="true" posX="7" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="3" table_alias_name="" title="Mas.Item" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="2" gridHeight="1" gridWidth="22" lstrcomment="false" lstrtitle="false" name="ima02_01" noEntry="true" posX="33" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" title="Desc" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="3" gridHeight="1" gridWidth="23" lstrcomment="false" lstrtitle="false" name="ima021_01" noEntry="true" posX="55" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" title="Spec" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="6" gridHeight="1" gridWidth="12" name="atp_qty" noEntry="true" posX="78" posY="0" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="10" table_alias_name="" title="atp_qty" widget="Edit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="8" gridHeight="1" gridWidth="8" name="unavl_stk" noEntry="true" posX="90" posY="0" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="11" table_alias_name="" title="unavl_stk" widget="Edit"/>
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" colorCondition="%V%sY%=%C3" columnCount="" fieldId="7" gridHeight="1" gridWidth="8" name="bom" noEntry="true" posX="98" posY="0" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="12" table_alias_name="" text="" title="Component Exists" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" colorCondition="%V%sY%=%C3" columnCount="" fieldId="10" gridHeight="1" gridWidth="8" name="mbom" noEntry="true" notNull="false" posX="106" posY="0" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="14" table_alias_name="" text="" title="Master Exists" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="11" gridHeight="1" gridWidth="23" name="other" posX="114" posY="0" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="15" table_alias_name="" title="other" widget="Edit"/>
+      </Table>
+      <Grid gridHeight="2" gridWidth="244" lstrcomment="false" name="gr1074" posX="0" posY="23">
+        <HLine gridWidth="10" name="hl321" posX="2" posY="0"/>
+        <Label posX="12" posY="0" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="13" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn3" posX="18" posY="0" rowCount="" sqlTabName="" sqlType="SMALLINT" stepX="" stepY="" tabIndex="6" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl322" posX="26" posY="0"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[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]]>
+  </DiagramLayout>
+</ManagedForm>
