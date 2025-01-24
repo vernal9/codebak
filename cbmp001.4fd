@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="" gstVersion="22800" name="Root" uid="{dd3d1d95-0000-4000-987b-08a02dd0cccb}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{eb60ab0a-0000-4000-975e-2df5c6c0711a}" where="">
+    <RecordField colName="" fieldIdRef="2" fieldType="NON_DATABASE" name="azp01" sqlTabName="" table_alias_name="" uid="{f79a6b4e-0000-4000-92d5-f9b50e6da0b8}"/>
+    <RecordField colName="" fieldIdRef="1" fieldType="NON_DATABASE" name="ima01" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{dd0e6e1b-0000-4000-9cf9-4426b05d5091}"/>
+    <RecordField colName="" fieldIdRef="8" fieldType="NON_DATABASE" name="ima06" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{48534933-a339-4872-9056-64ada4043002}"/>
+    <RecordField colName="" fieldIdRef="3" fieldType="NON_DATABASE" name="ima09" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{901744ff-4816-4134-bcfb-367156ae3094}"/>
+    <RecordField colName="" fieldIdRef="4" fieldType="NON_DATABASE" name="ima1007" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{fd78346d-1b9d-4a3c-aafc-9938907e3ef8}"/>
+    <RecordField colName="" fieldIdRef="5" name="ta_ima08" sqlTabName="" table_alias_name="" uid="{428ca820-e05f-440e-ade0-ead6c277ab00}"/>
+    <RecordField colName="" fieldIdRef="7" fieldType="NON_DATABASE" name="bg" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{b6979c40-0000-4000-a209-c0ba585a57ee}"/>
+    <RecordField colName="" fieldIdRef="6" fieldType="NON_DATABASE" name="ta_ima06" sqlTabName="" sqlType="VARCHAR" table_alias_name="" uid="{9ca4eaf9-d3f3-4cac-90b3-73fdb7e865a3}"/>
+  </Record>
+  <Form gridHeight="15" gridWidth="55" name="cbmp001" spacing="normal" text="cbmp001">
+    <VBox gridHeight="15" gridWidth="54" name="VBox1" posX="0" posY="0">
+      <Grid gridHeight="11" gridWidth="54" lstrcomment="false" name="gr3308" posX="0" posY="1">
+        <Group gridHeight="10" gridWidth="48" lstrcomment="false" lstrtext="false" name="group01" posX="1" posY="0" text="QBE">
+          <Label posX="2" posY="1" text="Logistics Code"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" colorCondition="black" columnCount="" fieldId="2" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom.png" lstrcomment="false" name="azp01" posX="20" posY="1" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="2" posY="2" text="Item No."/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter Query Condition by QBE" fieldId="1" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="ima01" posX="20" posY="2" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="2" posY="3" text="ima06"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter Query Condition by QBE" fieldId="8" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="ima06" posX="20" posY="3" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="3" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="2" posY="4" text="ima09"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter Query Condition by QBE" fieldId="3" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="ima09" posX="20" posY="4" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="2" posY="5" text="ima1007"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter Query Condition by QBE" fieldId="4" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="ima1007" posX="20" posY="5" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" widget="ButtonEdit"/>
+          <Label posX="2" posY="6" text="ta_ima06"/>
+          <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" comment="Enter Query Condition by QBE" fieldId="6" fieldType="NON_DATABASE" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="ta_ima06" posX="20" posY="6" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="8" table_alias_name="" widget="ButtonEdit"/>
+          <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="5" gridHeight="1" gridWidth="14" name="ta_ima08" posX="2" posY="7" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="6" table_alias_name="" text="Not special" title="CheckBox1" widget="CheckBox"/>
+          <Label color="red" gridHeight="1" gridWidth="45" name="Label1" posX="1" posY="8" text="** 暴力「新增」 料件、BOM、製程，請謹慎使用"/>
+        </Group>
+      </Grid>
+      <Grid gridHeight="2" gridWidth="54" lstrcomment="false" name="gr3309" posX="0" posY="12">
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="7" fieldType="NON_DATABASE" gridHeight="1" gridWidth="41" lstrcomment="false" lstrtext="false" lstrtitle="false" name="bg" notNull="false" posX="1" posY="0" required="false" rowCount="" sqlTabName="" sqlType="VARCHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" text="background" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewBmADcAOQBhADYAYgA0AGUALQAwADAAMAAwAC0ANAAwADAAMAAtADkAMgBkADUALQBmADkAYgA1ADAAZQA2AGQAYQAwAGIAOAB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewBlAGIANgAwAGEAYgAwAGEALQAwADAAMAAwAC0ANAAwADAAMAAtADkANwA1AGUALQAyAGQAZgA1AGMANgBjADAANwAxADEAYQB9AAAAAAAAAAAAAAAAAAAAAD9QYk3S8an8AQAAAEwAewBmAGQANwA4ADMANAA2AGQALQAxAGIAOQBkAC0ANABhADMAYwAtAGEAYQBmAGMALQA5ADkAMwA4ADkAMAA3AGUAMwBlAGYAOAB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQAAAEwAewBiADYAOQA3ADkAYwA0ADAALQAwADAAMAAwAC0ANAAwADAAMAAtAGEAMgAwADkALQBjADAAYgBhADUAOAA1AGEANQA3AGUAZQB9QCQAAAAAAABAZSAAAAAAAAAAAAAAAAAAAQAAAEwAewA0ADgANQAzADQAOQAzADMALQBhADMAMwA5AC0ANAA4ADcAMgAtADkAMAA1ADYALQA2ADQAYQBkAGEANAAwADQAMwAwADAAMgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewA0ADIAOABjAGEAOAAyADAALQBlADAANQBmAC0ANAA0ADAAZQAtAGEAZABlADAALQBlAGEAZAA2AGMAMgA3ADcAYQBiADAAMAB9QCQAAAAAAABAYmAAAAAAAAAAAAAAAAAAAQAAAEwAewA5ADAAMQA3ADQANABmAGYALQA0ADgAMQA2AC0ANAAxADMANAAtAGIAYwBmAGIALQAzADYANwAxADUANgBhAGUAMwAwADkANAB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewBkAGQAMABlADYAZQAxAGIALQAwADAAMAAwAC0ANAAwADAAMAAtADkAYwBmADkALQA0ADQAMgA2AGIAMAA1AGQANQAwADkAMQB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewA5AGMAYQA0AGUAYQBmADkALQBkADMAZgAzAC0ANABjAGEAYwAtADkAMABiADMALQA3ADMAZgBkAGIANwBlADgANgA1AGEAMwB9QCQAAAAAAABAZ+AAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>
