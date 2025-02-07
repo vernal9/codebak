@@ -228,6 +228,10 @@ WHILE TRUE
   
       BEFORE CONSTRUCT
           CALL cl_qbe_init()
+
+      DISPLAY 'N' TO ta_ima06  #代工預設 N
+      DISPLAY 'N' TO ta_ima08  #特注預設 N
+
   
       ON ACTION CONTROLP
             IF INFIELD(ima01) THEN
@@ -317,9 +321,17 @@ WHILE TRUE
       EXIT PROGRAM
          
    END IF
+
+
+   IF LENGTH(tm.wc2) < 35 THEN
+      CALL cl_err('','abm-997',1)
+      CALL p001_tm()
+   END IF
+
    IF cl_null(tm.wc2) THEN
       LET tm.wc2 = " 1=1"
    END IF
+   
 
    INPUT BY NAME tm.more WITHOUT DEFAULTS
  
@@ -490,9 +502,9 @@ FUNCTION cbmp001()
 　　　　　　　 LET l_sql = "INSERT ",
 　　　　　　　　　　"/*+ ignore_row_on_dupkey_index(ima_file,ima_pk) */",
                     " INTO ",cl_get_target_table(l_plant,'ima_file'),
-                    " (SELECT distinct * FROM ima_file sou ",
+                    " (SELECT * FROM ima_file sou ",
                     "   WHERE EXISTS (SELECT 1 FROM ",cl_get_target_table(l_plant,'bmb_file'),
-                    "                   WHERE sou.ima01=bmb03 )",
+                    "                   WHERE sou.ima01=bmb03 OR sou.ima01=bmb01)",
                     "   AND NOT EXISTS (SELECT 1 FROM ",cl_get_target_table(l_plant,'ima_file'),
                     "                    dis WHERE sou.ima01=dis.ima01 ))"
                LET l_sql = l_sql CLIPPED
