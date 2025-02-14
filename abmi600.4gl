@@ -1622,6 +1622,7 @@ FUNCTION i600_menu()
                             CALL i600sub_y_upd(g_bma.bma01,g_bma.bma06)
                           IF g_success = 'Y' THEN
                               COMMIT WORK
+                              CALL cs_insboa(g_bma.bma01)               #20250213
                               CALL i600sub_refresh(g_bma.bma01,g_bma.bma06) RETURNING g_bma.*
                           ELSE
                               ROLLBACK WORK
@@ -1749,6 +1750,11 @@ FUNCTION i600_menu()
             #LET l_cmd = "abmi6042 '",g_bma.bma01,"'"
             LET l_cmd = "abmi6042 '",g_bma.bma01,"' '",g_bmb[l_ac].bmb03,"'"
             #CHI-C20058---end
+            ##-- 20250214 (S) ---
+            IF g_bmb[l_ac].bmb16 = '5' THEN
+               LET l_cmd = "abmi610 '",g_bma.bma01,"' "
+            END IF
+            ##-- 20250214 (E) ---
             CALL cl_cmdrun_wait(l_cmd)
             IF NOT (g_wc2 IS NULL) THEN
                CALL i600_b_fill(g_wc2)                 #單身
@@ -1779,6 +1785,7 @@ FUNCTION i600_menu()
                #LET g_bp_flag = "main"
                IF NOT i600sub_chk_bmb03(g_bma.bma01,g_bma.bma06) THEN
                END IF
+               CALL cs_insboa(g_bma.bma01)   #20250213
                ##----- 20210818 mark by momo(S)
             END IF
          #FUN-C30028---begin
@@ -2813,11 +2820,25 @@ END FUNCTION
 
 
 FUNCTION i600_x()
+    DEFINE l_n  LIKE type_file.num5  #20250109
+
     IF s_shut(0) THEN RETURN END IF
     IF g_bma.bma01 IS NULL THEN
         CALL cl_err("",-400,0)
         RETURN
     END IF
+    ##----- 20250109 (S)
+    LET l_n = 0
+    SELECT 1 INTO l_n FROM bma_file,bmb_file
+     WHERE bma01=bmb01
+       AND bmaacti='Y' AND bmb05 IS NULL
+       AND bmb03 = g_bma.bma01
+       AND ROWNUM = 1
+    IF l_n = 1 THEN
+       CALL cl_err('','aim-022',1)
+       RETURN
+    END IF
+    ##----- 20250109 (E)
   #MOD-AC0227---mark---start---
   ##MOD-A90182---add---start--
   # IF g_bma.bma10 = '2' THEN

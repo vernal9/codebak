@@ -41,7 +41,7 @@
 # Modify.........: No:2103316054 20210414 By momo 增加「資料拋轉」、「資料拋轉歷史」
 # Modify.........: No:2104156107 20210416 By momo 增加「複製」功能
 # Modify.........: NO:23070028   20230717 By momo 增加QBE與預計可用量
-
+# Modify........." No:23090014   20230921 By momo ACTION item_group 應開 abmi610 主件群組
 
 DATABASE ds
  
@@ -425,10 +425,11 @@ FUNCTION i611_menu()                         #中文的MENU
             EXIT WHILE
          WHEN "controlg"
             CALL cl_cmdask()
-       #@WHEN "元件群組"
+       #@WHEN "主件群組"
          WHEN "itm_group"
             IF cl_chk_act_auth() AND NOT cl_null(g_bob01) THEN
-               LET g_msg = "abmi611 '",g_bob01 CLIPPED,"' '",g_bob02 CLIPPED,"'"
+               #LET g_msg = "abmi611 '",g_bob01 CLIPPED,"' '",g_bob02 CLIPPED,"'"  #20230921 mark
+               LET g_msg = "abmi610 '",g_bob01 CLIPPED,"' '",g_bob02 CLIPPED,"'"   #20230921 modify
                CALL cl_cmdrun(g_msg)
             END IF
           WHEN "related_document"                  #MOD-470051

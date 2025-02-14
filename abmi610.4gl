@@ -49,6 +49,8 @@
 # Modify.........: No:23070024   20230713 By momo 卡控資料中心，新增狀態檢核
 # Modify.........: No:23070027   20230714 By momo 增加欄位查詢功能 
 # Modify.........: NO:23100001   20231006 By momo 增加顯示 bmb06、bmb07 欄位
+# Modify.........: NO:24110007   20241111 By momo boa01 依資料中心設定增加卡控
+# Modify.........: No:25020016   20250212 By momo 增加標準否ta_boa01欄位記錄與功能
 
 DATABASE ds
  
@@ -59,12 +61,13 @@ DEFINE                                     #模組變數(Module Variables)
     g_cnt2,g_cnt3   LIKE type_file.num5,   #No.FUN-680096 SMALLINT
     g_argv1         LIKE boa_file.boa01,   #上階主件 (假單頭)
     g_argv2         LIKE boa_file.boa02,   #元件群組
-    g_boa01         LIKE boa_file.boa01,   #類別代號 (假單頭)
+    g_boa01         LIKE boa_file.boa01,   #上階主件 (假單頭)
     g_boa02         LIKE boa_file.boa02,   #元件群組
-    g_boa08         LIKE boa_file.boa08,   #說明
-    g_ima02         LIKE ima_file.ima02,   #品名規格
-    g_ima021        LIKE ima_file.ima021,   #品名規格
-    g_ima05         LIKE ima_file.ima05,   #目前使用版本
+    g_boa08         LIKE boa_file.boa08,   #群組說明
+    g_ta_boa01      LIKE boa_file.ta_boa01,#標準否 20250212
+    g_ima02         LIKE ima_file.ima02,   #品名
+    g_ima021        LIKE ima_file.ima021,  #品名規格
+   #g_ima05         LIKE ima_file.ima05,   #目前使用版本 #20250212
     g_ima08         LIKE ima_file.ima08,   #來源碼
     g_ima25         LIKE ima_file.ima25,
     g_ima63         LIKE ima_file.ima63,
@@ -129,7 +132,8 @@ DEFINE   g_boa_1        DYNAMIC ARRAY OF RECORD
                            ima021_l    LIKE ima_file.ima021,
                            ima08_l     LIKE ima_file.ima08,
                            boa02_l     LIKE boa_file.boa02,
-                           boa08_1     LIKE boa_file.boa08
+                           boa08_1     LIKE boa_file.boa08,
+                           ta_boa01_1  LIKE boa_file.ta_boa01  #20250212
                                        END RECORD
 ##---- 20190709 資料清單 (E)
 
@@ -226,13 +230,16 @@ FUNCTION i610_curs()                         #QBE 查詢資料
    INITIALIZE g_boa01 TO NULL    #No.FUN-750051
    INITIALIZE g_boa02 TO NULL    #No.FUN-750051
    INITIALIZE g_boa08 TO NULL    #No.FUN-750051
+   INITIALIZE g_ta_boa01 TO NULL #20250212
            CONSTRUCT g_wc ON boa01,boa02,boa08,
+                             ta_boa01,                                            #20250212
                              a.ima02,a.ima021,                                    #20230714
                              boa03,
                              b.ima02,b.ima021,                                    #20230714
                              boa04,boa05,boa06,boa07,
                              ta_boadate,ta_boamodu                                #20230714
                         FROM boa01,boa02,boa08,
+                             ta_boa01,                                            #20250212
                              ima02,ima021,                                        #20230714
                              s_boa[1].boa03,
                              s_boa[1].ima02b,s_boa[1].ima021b,                    #20230714
@@ -325,7 +332,8 @@ FUNCTION i610_curs()                         #QBE 查詢資料
  
     LET g_wc = g_wc CLIPPED,cl_get_extra_cond('bmauser', 'bmagrup')         #MOD-G80103 add
    #LET g_sql= "SELECT UNIQUE boa01, boa02, boa08 FROM boa_file ",          #MOD-G80103 mark
-    LET g_sql= "SELECT UNIQUE boa01, boa02, boa08 FROM bma_file,boa_file ", #MOD-G80103 add
+    LET g_sql= "SELECT UNIQUE boa01, boa02, boa08, ta_boa01 ",              #MOD-G80103 add   #20250212
+               "  FROM bma_file,boa_file ",
                "  LEFT JOIN ima_file b ON boa03 = b.ima01 ",                #20230714
                "  LEFT JOIN ima_file a ON boa01 = a.ima01 ",                #20230714
                " WHERE ", g_wc CLIPPED,
@@ -352,6 +360,7 @@ END FUNCTION
  
 FUNCTION i610_menu()                         #中文的MENU
    DEFINE   l_cmd  LIKE type_file.chr50      #No.FUN-680096 VARCHAR(50)
+   DEFINE   l_cnt  LIKE type_file.num5       #20250212
  
    WHILE TRUE
       ##---- 20190709 資料清單 (S)
@@ -497,6 +506,7 @@ FUNCTION i610_a()                            #Add  輸入
     INITIALIZE g_boa01 LIKE boa_file.boa01   #預設值及將數值類變數清成零
     INITIALIZE g_boa02 LIKE boa_file.boa02
     INITIALIZE g_boa08 LIKE boa_file.boa08
+    INITIALIZE g_ta_boa01 LIKE boa_file.ta_boa01  #20250212
  
     CALL cl_opmsg('a')
  
@@ -534,7 +544,8 @@ FUNCTION i610_u()
  
 DEFINE l_boa01_t     LIKE boa_file.boa01,
        l_boa02_t     LIKE boa_file.boa02,
-       l_boa08_t     LIKE boa_file.boa08
+       l_boa08_t     LIKE boa_file.boa08,  
+       l_ta_boa01_t  LIKE boa_file.ta_boa01  #20250212 
  
     IF s_shut(0) THEN RETURN END IF
     IF g_boa01 IS NULL THEN CALL cl_err('',-400,0) RETURN END IF
@@ -544,12 +555,15 @@ DEFINE l_boa01_t     LIKE boa_file.boa01,
  
     CALL i610_show()
     WHILE TRUE
-        LET l_boa01_t = g_boa01 LET l_boa02_t = g_boa02
+        LET l_boa01_t = g_boa01 
+        LET l_ta_boa01_t = g_ta_boa01         #20250212
+        LET l_boa02_t = g_boa02
         LET l_boa08_t = g_boa08
         CALL i610_i("u")                      #欄位更改
         IF INT_FLAG THEN
            LET INT_FLAG = 0
            LET g_boa01 = l_boa01_t
+           LET g_ta_boa01 = l_ta_boa01_t      #20250212
            LET g_boa02 = l_boa02_t
            LET g_boa08 = l_boa08_t
            CALL i610_show()
@@ -559,16 +573,19 @@ DEFINE l_boa01_t     LIKE boa_file.boa01,
         END IF
  
         IF g_boa01 != l_boa01_t OR g_boa02 != l_boa02_t
+        OR ( g_ta_boa01 != l_ta_boa01_t)                    #20250212
         OR ( g_boa08 != l_boa08_t OR
            ( NOT cl_null(g_boa08) AND cl_null(l_boa08_t))) THEN
             IF g_chkey = "Y" THEN
                 UPDATE boa_file
                    SET boa01=g_boa01,
                        boa02=g_boa02,
-                       boa08=g_boa08
+                       boa08=g_boa08,
+                       ta_boa01 = g_ta_boa01               #20250212
                  WHERE boa01=l_boa01_t AND boa02=l_boa02_t
             ELSE
-                UPDATE boa_file SET boa08 = g_boa08
+                UPDATE boa_file SET boa08 = g_boa08,
+                                    ta_boa01 = g_ta_boa01  #20250212
                  WHERE boa01=l_boa01_t AND boa02=l_boa02_t
             END IF
             IF SQLCA.sqlcode OR SQLCA.sqlerrd[3] = 0 THEN
@@ -588,8 +605,8 @@ DEFINE
     p_cmd  LIKE type_file.chr1       #a:輸入 u:更改   #No.FUN-680096 VARCHAR(1)
  
     CALL cl_set_head_visible("","YES")           #No.FUN-6B0033
-    INPUT g_boa01,g_boa02,g_boa08 WITHOUT DEFAULTS
-        FROM boa01,boa02,boa08
+    INPUT g_boa01,g_ta_boa01,g_boa02,g_boa08 WITHOUT DEFAULTS   #20250212 modify
+        FROM boa01,ta_boa01,boa02,boa08                         #20250212 modify
  
         BEFORE INPUT
             LET g_before_input_done = FALSE
@@ -632,8 +649,16 @@ DEFINE
                     CALL cl_err("Serial:",g_errno,0)
                     NEXT FIELD boa02
                 END IF
+               NEXT FIELD boa08
             END IF
- 
+
+         ##---- 20241214 add (S)
+         AFTER FIELD boa08
+           IF cl_null(g_boa08) THEN
+              NEXT FIELD boa08
+           END IF
+         ##---- 20241214 add (E)
+  
         ON ACTION CONTROLF                  #欄位說明
            CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name #Add on 040913
            CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) #Add on 040913
@@ -677,20 +702,35 @@ DEFINE
     l_cnt           LIKE type_file.num5,      #No.FUN-680096 SMALLINT
     l_ima02         LIKE ima_file.ima02,
     l_ima021        LIKE ima_file.ima021,
-    l_ima05         LIKE ima_file.ima05,
+   #l_ima05         LIKE ima_file.ima05,      #20250212 mark
     l_ima08         LIKE ima_file.ima08,
     l_imaacti       LIKE ima_file.imaacti,
     l_boa02         LIKE boa_file.boa02
+DEFINE
+    g_flag2         LIKE type_file.chr1      #20241111
+
+    ##---- 20241111 (S)
+    CALL s_field_chk(g_boa01,'1',g_plant,'ima01') RETURNING g_flag2
+    IF g_flag2 = '0' THEN
+       CALL cl_err(g_boa01,'aoo-043',1)
+       LET g_boa01 = ''
+       DISPLAY BY NAME g_boa01
+       RETURN 
+    END IF
+    ##---- 20241111 (E)
+
  
     LET g_errno = ""
  
-    SELECT ima02,ima021,ima05,ima08,imaacti
-      INTO l_ima02,l_ima021,l_ima05,l_ima08,l_imaacti FROM ima_file
+   #SELECT ima02,ima021,ima05,ima08,imaacti                            #20250212 mark
+   #  INTO l_ima02,l_ima021,l_ima05,l_ima08,l_imaacti FROM ima_file    #20250212 mark
+    SELECT ima02,ima021,ima08,imaacti                                  #20250212 modify
+      INTO l_ima02,l_ima021,l_ima08,l_imaacti FROM ima_file            #20250212 modify
      WHERE ima01=g_boa01
     CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = 'mfg0002'
                                    LET l_ima02 = NULL
                                    LET l_ima021= NULL
-                                   LET l_ima05 = NULL
+                                 # LET l_ima05 = NULL                  #20250212 mark
                                    LET l_ima08 = NULL
                                    LET l_imaacti = NULL
          WHEN l_imaacti='N'        LET g_errno = '9028'
@@ -717,7 +757,7 @@ DEFINE
     IF p_cmd='d' OR cl_null(g_errno) THEN
         DISPLAY l_ima02 TO FORMONLY.ima02
         DISPLAY l_ima021 TO FORMONLY.ima021
-        DISPLAY l_ima05 TO FORMONLY.ima05
+      # DISPLAY l_ima05 TO FORMONLY.ima05            #20250212 mark
         DISPLAY l_ima08 TO FORMONLY.ima08
     END IF
  
@@ -781,10 +821,10 @@ DEFINE
  
     MESSAGE ""
     CASE p_flag
-        WHEN 'N' FETCH NEXT     i610_b_curs INTO g_boa01, g_boa02, g_boa08
-        WHEN 'P' FETCH PREVIOUS i610_b_curs INTO g_boa01, g_boa02, g_boa08
-        WHEN 'F' FETCH FIRST    i610_b_curs INTO g_boa01, g_boa02, g_boa08
-        WHEN 'L' FETCH LAST     i610_b_curs INTO g_boa01, g_boa02, g_boa08
+        WHEN 'N' FETCH NEXT     i610_b_curs INTO g_boa01, g_boa02, g_boa08, g_ta_boa01 #20250212
+        WHEN 'P' FETCH PREVIOUS i610_b_curs INTO g_boa01, g_boa02, g_boa08, g_ta_boa01 #20250212
+        WHEN 'F' FETCH FIRST    i610_b_curs INTO g_boa01, g_boa02, g_boa08, g_ta_boa01 #20250212
+        WHEN 'L' FETCH LAST     i610_b_curs INTO g_boa01, g_boa02, g_boa08, g_ta_boa01 #20250212
         WHEN '/'
             IF (NOT g_no_ask) THEN
                 CALL cl_getmsg('fetch',g_lang) RETURNING g_msg
@@ -808,7 +848,7 @@ DEFINE
                 IF INT_FLAG THEN LET INT_FLAG = 0 EXIT CASE END IF
             END IF
             LET g_no_ask = FALSE
-            FETCH ABSOLUTE g_jump i610_b_curs INTO g_boa01,g_boa02,g_boa08
+            FETCH ABSOLUTE g_jump i610_b_curs INTO g_boa01,g_boa02,g_boa08,g_ta_boa01  #20250212
     END CASE
     IF SQLCA.sqlcode THEN                         #有麻煩
        CALL cl_err(g_boa01,SQLCA.sqlcode,0)
@@ -835,8 +875,8 @@ FUNCTION i610_show()                         #將資料顯示在畫面上
  DEFINE  l_tot    LIKE type_file.num5        #No.FUN-680096 SMALLINT 
  DEFINE  l_cnt    LIKE type_file.num5        #20200130
 
-    DISPLAY g_boa01, g_boa02, g_boa08        #假單頭
-         TO boa01, boa02, boa08
+    DISPLAY g_boa01, g_boa02, g_boa08, g_ta_boa01   #假單頭 #20250212 
+         TO boa01, boa02, boa08, ta_boa01                   #20250212
     CALL i610_boa01('d')                     #單身
  
     CALL i610_b_fill(g_wc)                   #單身
@@ -911,6 +951,7 @@ DEFINE l_boa        RECORD
     END IF
  
     DELETE FROM boa_file WHERE boa01 = g_boa01 AND boa02 = g_boa02
+    DELETE FROM bob_file WHERE bob01 = g_boa01 AND bob02 = g_boa02  #20250214 應一併刪除替代群組
     IF SQLCA.sqlcode THEN
  #       CALL cl_err('BODY DELETE:',SQLCA.sqlcode,0) #No.TQC-660046
         CALL cl_err3("del","boa_file",g_boa01,g_boa02,SQLCA.sqlcode,"","BODY DELETE",1) #TQC-660046
@@ -1109,6 +1150,7 @@ DEFINE   l_bmb07    LIKE bmb_file.bmb07      #20231006
                       FROM bmb_file
                      WHERE bmb01 = g_boa01
                        AND bmb03 = g_boa[l_ac].boa03
+                       AND bmb05 IS NULL          #20240911 排除失效BOM
                     ##---20231011 (E)
                     IF SQLCA.sqlcode THEN
                         LET g_boa[l_ac].ima02b=" "
@@ -1194,6 +1236,7 @@ DEFINE   l_bmb07    LIKE bmb_file.bmb07      #20231006
              WHERE bmb01 = g_boa01
                AND bmb03 = g_boa[l_ac].boa03
                AND bmb09 = g_boa[l_ac].boa04
+               AND bmb05 IS NULL    #20240911 排除失效BOM
             ##---- 20231006 ---(E)
 
             IF g_boa[l_ac].boa04 IS NULL THEN
@@ -1491,6 +1534,7 @@ DEFINE   l_bmb07    LIKE bmb_file.bmb07      #20231006
                        FROM bmb_file
                       WHERE bmb01 = g_boa01
                         AND bmb03 = g_boa[l_ac].boa03
+                        AND bmb05 IS NULL                #20240911 排除失效BOM
                      DISPLAY l_bmb10 TO boa05
                      DISPLAY l_bmb06 TO bmb06
                      DISPLAY l_bmb07 TO bmb07
@@ -1566,6 +1610,17 @@ DEFINE   l_bmb07    LIKE bmb_file.bmb07      #20231006
  
  
     CLOSE i610_bcl
+    ##---- 20250213 add by momo (S)
+    IF g_ta_boa01='Y' THEN
+       SELECT 1 INTO l_cnt FROM boa_file
+        WHERE boa01 = g_boa01 AND boa02=g_boa02
+          AND boa07 IS NULL
+       IF l_cnt = 0 THEN
+          UPDATE boa_file SET ta_boa01='N' WHERE boa01=g_boa01 AND boa02=g_boa02
+          DISPLAY 'N' TO ta_boa01
+       END IF
+    END IF
+    ##---- 20250213 add by momo (E)
     COMMIT WORK
 END FUNCTION
  
@@ -1604,6 +1659,7 @@ FUNCTION i610_boa03(p_cmd)         #元件料號, 預帶入 boa05
          FROM bmb_file
         WHERE bmb01 = g_boa01
           AND bmb03 = g_boa[l_ac].boa03
+          AND bmb05 IS NULL                                 #20240911 排除失效BOM
        CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = "abm-015"
             OTHERWISE                 LET g_errno = SQLCA.SQLCODE USING "-------"
        END CASE
@@ -1736,10 +1792,11 @@ DEFINE
             EXIT FOREACH
         END IF
         ##--- 20231006 (S) 組成用量/底數
-        SELECT bmb06,bmb06 INTO g_boa[g_cnt].bmb06,g_boa[g_cnt].bmb07
+        SELECT bmb06,bmb07 INTO g_boa[g_cnt].bmb06,g_boa[g_cnt].bmb07
           FROM bmb_file
          WHERE bmb01 = g_boa01
            AND bmb03 = g_boa[g_cnt].boa03
+           AND bmb05 IS NULL                  #20240911 排除失效BOM
         ##--- 20231006 (E)
         CALL cs_q102_atp_qty(g_boa[g_cnt].boa03) RETURNING g_boa[g_cnt].atp  #20230714
         LET g_cnt = g_cnt + 1
@@ -2206,7 +2263,7 @@ DEFINE l_newno1  LIKE boa_file.boa01,
    DISPLAY ' ' TO boa02
    DISPLAY NULL TO FORMONLY.ima02
    DISPLAY NULL TO FORMONLY.ima021
-   DISPLAY NULL TO FORMONLY.ima05
+  #DISPLAY NULL TO FORMONLY.ima05    #20250212 mark
    DISPLAY NULL TO FORMONLY.ima08
    LET l_newno1 = ''
    LET l_newno2 = '' 
@@ -2218,6 +2275,7 @@ DEFINE l_newno1  LIKE boa_file.boa01,
       
       AFTER FIELD boa01                    #料件編號
          IF NOT cl_null(l_newno1) THEN
+            CALL i610_boa01('a')         #20241216
             IF NOT s_chk_item_no(l_newno1,'') THEN
                CALL cl_err('',g_errno,1)
                NEXT FIELD boa01
@@ -2237,7 +2295,7 @@ DEFINE l_newno1  LIKE boa_file.boa01,
          ELSE
             DISPLAY NULL TO FORMONLY.ima02
             DISPLAY NULL TO FORMONLY.ima021
-            DISPLAY NULL TO FORMONLY.ima05
+         #  DISPLAY NULL TO FORMONLY.ima05    #20250212 mark
             DISPLAY NULL TO FORMONLY.ima08
          END IF
  
@@ -2316,7 +2374,9 @@ DEFINE l_newno1  LIKE boa_file.boa01,
       RETURN
    END IF
  
+   LET g_ta_boa01 = 'N'                              #20250213
    UPDATE x SET boa01 = l_newno1,boa02 = l_newno2
+               ,ta_boa01 = 'N'                       #20250212
                ,boa06 = g_today,ta_boadate = g_today #20210629
                ,ta_boamodu = g_user                  #20210629
     WHERE 1 = 1
@@ -2449,20 +2509,22 @@ DEFINE
     l_cnt           LIKE type_file.num5,      #No.FUN-680096 SMALLINT
     l_ima02         LIKE ima_file.ima02,
     l_ima021        LIKE ima_file.ima021,
-    l_ima05         LIKE ima_file.ima05,
+  # l_ima05         LIKE ima_file.ima05,      #20250212 mark
     l_ima08         LIKE ima_file.ima08,
     l_imaacti       LIKE ima_file.imaacti,
     l_boa02         LIKE boa_file.boa02
  
     LET g_errno = ""
  
-    SELECT ima02,ima021,ima05,ima08,imaacti
-      INTO l_ima02,l_ima021,l_ima05,l_ima08,l_imaacti FROM ima_file
+    #SELECT ima02,ima021,ima05,ima08,imaacti                           #20250212 mark
+    #  INTO l_ima02,l_ima021,l_ima05,l_ima08,l_imaacti FROM ima_file   #20250212 mark
+    SELECT ima02,ima021,ima08,imaacti                                  #20250212 modify
+      INTO l_ima02,l_ima021,l_ima08,l_imaacti FROM ima_file            #20250212 modfiy
      WHERE ima01=g_boa01_c
     CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = 'mfg0002'
                                    LET l_ima02 = NULL
                                    LET l_ima021= NULL
-                                   LET l_ima05 = NULL
+                                  #LET l_ima05 = NULL                  #20250212 mark
                                    LET l_ima08 = NULL
                                    LET l_imaacti = NULL
          WHEN l_imaacti='N'        LET g_errno = '9028'
@@ -2487,7 +2549,7 @@ DEFINE
     IF p_cmd='d' OR cl_null(g_errno) THEN
         DISPLAY l_ima02 TO FORMONLY.ima02
         DISPLAY l_ima021 TO FORMONLY.ima021
-        DISPLAY l_ima05 TO FORMONLY.ima05
+       #DISPLAY l_ima05 TO FORMONLY.ima05     #20250212 mark
         DISPLAY l_ima08 TO FORMONLY.ima08
     END IF
 
@@ -2650,16 +2712,17 @@ DEFINE l_cnt          LIKE type_file.num10
 DEFINE l_boa01        LIKE boa_file.boa01
 DEFINE l_boa02        LIKE boa_file.boa02
 DEFINE l_boa08        LIKE boa_file.boa08
+DEFINE l_ta_boa01     LIKE boa_file.ta_boa01 #20250212
 
    CALL g_boa_1.clear()
    LET l_cnt = 1
 
-   FOREACH i610_b_curs INTO l_boa01,l_boa02,l_boa08 
+   FOREACH i610_b_curs INTO l_boa01,l_boa02,l_boa08,l_ta_boa01  #20250212
       IF SQLCA.sqlcode THEN
          CALL cl_err('foreach item_cur',SQLCA.sqlcode,1)
          CONTINUE FOREACH
       END IF
-      SELECT boa01,ima02,ima021,ima08,boa02,boa08
+      SELECT boa01,ima02,ima021,ima08,boa02,boa08,ta_boa01      #20250212
         INTO g_boa_1[l_cnt].*
         FROM boa_file LEFT JOIN ima_file ON boa01 = ima01
        WHERE boa01 = l_boa01

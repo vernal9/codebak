@@ -59,6 +59,12 @@
 # Modify.........: No:           18/12/18 By Ruby 增加INVOICE
 # Modify.........: No:           20/04/20 By Ruby 增加帳款客戶-送貨地址
 # Modify.........: No:2207188492 20220720 By momo 增加送貨客戶為潛在客戶時帶出簡稱 、增加顯示折數 oebud06
+# Modify.........: No:22110050   22/11/28 By Ruby 增加QBE條件ima131產品分群碼
+# Modify.........: No:24010007   24/01/10 By Ruby 增加匯率、本幣未稅金額
+# Modify.........: No:24050052   24/06/25 By Ruby 增加選項及欄位[客戶屬性]
+# Modify.........: No:24100008   24/10/08 By Ruby 增加訂單備註，送貨地址帶入實際訂單出貨地址
+# Modify.........: No:           24/11/20 By Ruby 增加規格
+# Modify.........: No:24120038   20241231 By momo 增加訂單日期、約定交貨日
 
 DATABASE ds
  
@@ -108,7 +114,9 @@ DEFINE   l_sql         STRING
 DEFINE   l_flag        LIKE type_file.chr1
 #DEFINE m_dbs       ARRAY[10] OF LIKE type_file.chr20   #No.FUN-8B0025 ARRAY[10] OF VARCHAR(20) #FUN-A70084
 DEFINE  m_plant     LIKE azw_file.azw01   #FUN-A70084
-DEFINE  g_wc        LIKE type_file.chr1000   #FUN-A70084 
+DEFINE  m_tc_oci02  LIKE tc_oci_file.tc_oci02 #240620 add by ruby
+DEFINE  g_wc        LIKE type_file.chr1000   #FUN-A70084
+DEFINE  g_wc1       LIKE type_file.chr1000    #240620 add by ruby
 
 MAIN
    OPTIONS
@@ -121,7 +129,7 @@ MAIN
  
    WHENEVER ERROR CALL cl_err_msg_log
  
-   IF (NOT cl_setup("AXM")) THEN
+   IF (NOT cl_setup("CXM")) THEN
       EXIT PROGRAM
    END IF
    CALL cl_used(g_prog,g_time,1) RETURNING g_time #No.FUN-690126
@@ -131,6 +139,7 @@ MAIN
                " oga03.oga_file.oga03,",
                " oga032.oga_file.oga032,",
                " oga04.oga_file.oga04,",
+               " oga044.oga_file.oga044,", #241021 add by ruby
                " occ02.occ_file.occ02,",
                " oga14.oga_file.oga14,",
                " oga27.oga_file.oga27,",   #181218 add by ruby
@@ -143,19 +152,26 @@ MAIN
                " ogb04.ogb_file.ogb04,",
                " ogb06.ogb_file.ogb06,",
                " ima021.ima_file.ima021,",
+               " ima131.ima_file.ima131,",  #221128 add by ruby
                " str2.type_file.chr50,",
                " ogb05.ogb_file.ogb05,",
                " oga23.oga_file.oga23,",
+               " oga24.oga_file.oga24,",     #240110 add by ruby
                " ogb13.ogb_file.ogb13,",
                " ogb12.ogb_file.ogb12,",
                " ogb916.ogb_file.ogb916,",
                " ogb917.ogb_file.ogb917,",
                " ogb14.ogb_file.ogb14,",
                " ogb14t.ogb_file.ogb14t,",   #add by ruby 2018/02/22
+               " omb16.omb_file.omb16,",   #240110 add by ruby
                " oga10.oga_file.oga10,",
                " oea10.oea_file.oea10,",     #add by ruby 2018/02/22
+               " oea02.oea_file.oea02,",     #訂單日期 20241231
+               " oeb15.oeb_file.oeb15,",     #約定交貨日 20241231
+               " oeaud01.oea_file.oeaud01,", #241008 add by ruby
                " occ241.occ_file.occ241,",   #200420 add by ruby
                " oebud06.oeb_file.oebud06,", #折數 20220720 
+               " tc_ocj02.type_file.chr1000,", #240620 add by ruby
                " y.type_file.chr1,",
                " c.type_file.chr1,",
                " oaz23.type_file.chr1,",
@@ -183,7 +199,7 @@ MAIN
    LET g_sql = " INSERT INTO ",g_cr_db_str CLIPPED,l_table clipped,
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,", 
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",  #FUN-8B0025 add? #add by ruby 2? 2018/02/22 #add by ruby 1? 2018/03/30 #181218 add 1? by ruby #200420 add 1? by ruby
-               "        ?)"                                            #20220720 add
+               "        ?,?,?,?,?, ?,?,?,?)"                           #20220720 add #221128 add 1? by ruby #240110 add 2? by ruby #240620 add 1? by ruby #241008 add 1? by ruby #241021 add 1? by ruby #20241231 add 2?
    PREPARE insert_prept111 FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep:',STATUS,1) EXIT PROGRAM 
@@ -232,8 +248,9 @@ MAIN
    LET tm.x     = ARG_VAL(20)   #No.FUN-940116  #FUN-EA0031 modify ARG_VAL(29)->ARG_VAL(21)
    LET tm.v     = ARG_VAL(21)   #No.FUN-940116  #FUN-EA0031 modify ARG_VAL(30)->ARG_VAL(22)
    LET g_wc     = ARG_VAL(22)                   #FUN-EA0031 modify ARG_VAL(18)->ARG_VAL(19)
-   LET tm.a     = ARG_VAL(23)   #CHI-B10027     #FUN-EA0031 modify ARG_VAL(19)->ARG_VAL(20)
-   LET g_xml.subject = ARG_VAL(24)              #210616 add by ruby
+   LET g_wc1    = ARG_VAL(23)                   #240626 add by ruby
+   LET tm.a     = ARG_VAL(24)   #CHI-B10027     #FUN-EA0031 modify ARG_VAL(19)->ARG_VAL(20)
+   LET g_xml.subject = ARG_VAL(25)              #210616 add by ruby
 #FUN-A70084--mod--end
  
    IF cl_null(g_bgjob) OR g_bgjob = 'N'        # If background job sw is off
@@ -256,7 +273,7 @@ DEFINE lc_qbe_sn      LIKE gbm_file.gbm01   #No.FUN-580031
  
    LET p_row = 3 LET p_col = 15
  
-   OPEN WINDOW axmr620_w AT p_row,p_col WITH FORM "axm/42f/axmr620"
+   OPEN WINDOW axmr620_w AT p_row,p_col WITH FORM "cxm/42f/axmr620"
        ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
  
     CALL cl_ui_init()
@@ -390,9 +407,9 @@ WHILE TRUE
   IF g_action_choice = "locale" THEN
      LET g_action_choice = ""
      CALL cl_dynamic_locale()
-     CONTINUE WHILE
+     #CONTINUE WHILE
   END IF
-
+  
   IF INT_FLAG THEN
      LET INT_FLAG = 0
      CLOSE WINDOW axmr620_w 
@@ -401,7 +418,61 @@ WHILE TRUE
   END IF
 #FUN-A70084--add--end
 
-   CONSTRUCT BY NAME tm.wc ON oga01,oga02,oga03,oga04,oga14,oga15,oga23,ogb04
+  #240625 add by ruby --s--
+   CONSTRUCT BY NAME g_wc1 ON tc_oci02
+
+      BEFORE CONSTRUCT
+          CALL cl_qbe_init()
+
+      ON ACTION controlp
+            IF INFIELD(tc_oci02) THEN
+               CALL cl_init_qry_var()
+               LET g_qryparam.form = "q_ocj1"
+               LET g_qryparam.state = "c"
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+               DISPLAY g_qryparam.multiret TO tc_oci02
+               NEXT FIELD tc_oci02
+            END IF
+
+      ON ACTION locale
+         CALL cl_show_fld_cont()
+         LET g_action_choice = "locale"
+         EXIT CONSTRUCT
+
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE CONSTRUCT
+
+      ON ACTION about
+         CALL cl_about()
+
+      ON ACTION help
+         CALL cl_show_help()
+
+      ON ACTION controlg
+         CALL cl_cmdask()
+      ON ACTION exit
+         LET INT_FLAG = 1
+         EXIT CONSTRUCT
+      ON ACTION qbe_select
+         CALL cl_qbe_select()
+
+  END CONSTRUCT
+  IF g_action_choice = "locale" THEN
+     LET g_action_choice = ""
+     CALL cl_dynamic_locale()
+     #CONTINUE WHILE
+  END IF
+
+  IF INT_FLAG THEN
+     LET INT_FLAG = 0
+     CLOSE WINDOW axmr620_w 
+     CALL cl_used(g_prog,g_time,2) RETURNING g_time
+     EXIT PROGRAM
+  END IF
+  #240625 add by ruby --e--
+  
+   CONSTRUCT BY NAME tm.wc ON oga01,oga02,oga03,oga04,oga14,oga15,oga23,ogb04,ima021,ima131       #221128 #241120add ima021 by ruby
          BEFORE CONSTRUCT
            #CALL cl_qbe_init() #MOD-D40008 mark
             CALL cl_qbe_display_condition(lc_qbe_sn) #MOD-D40008 add
@@ -460,6 +531,14 @@ WHILE TRUE
                 CALL cl_create_qry() RETURNING g_qryparam.multiret
                 DISPLAY g_qryparam.multiret TO ogb04
                 NEXT FIELD ogb04
+                
+              WHEN INFIELD(ima131)
+                CALL cl_init_qry_var()
+                LET g_qryparam.form = "q_oba"
+                LET g_qryparam.state = 'c'
+                CALL cl_create_qry() RETURNING g_qryparam.multiret
+                DISPLAY g_qryparam.multiret TO ima131
+                NEXT FIELD ima131                
  
            END CASE
  
@@ -810,6 +889,7 @@ WHILE TRUE
       ELSE
          LET tm.wc=cl_replace_str(tm.wc, "'", "\"")
          LET g_wc = cl_replace_str(g_wc, "'", "\"") #MOD-EB0105 add
+         LET g_wc1 = cl_replace_str(g_wc1, "'", "\"")   #240625 add by ruby
          LET l_cmd = l_cmd CLIPPED,        #(at time fglgo xxxx p1 p2 p3)
                          " '",g_pdate CLIPPED,"'",
                          " '",g_towhom CLIPPED,"'",
@@ -844,6 +924,7 @@ WHILE TRUE
                          " '",tm.x CLIPPED,"'",            #210616 add by ruby
                          " '",tm.v CLIPPED,"'",            #210616 add by ruby         
                          " '",g_wc CLIPPED,"'",            #FUN-A70084
+                         " '",g_wc1 CLIPPED,"'",           #240625 add by ruby
                          " '",tm.a CLIPPED,"'"             #CHI-B10027
                          
          CALL cl_cmdat('axmr620',g_time,l_cmd)    # Execute cmd at later time
@@ -875,7 +956,8 @@ FUNCTION axmr620()
                                   oga03 LIKE oga_file.oga03,
                                   oga032 LIKE oga_file.oga032,
                                   oga04 LIKE oga_file.oga04,
-				  occ02 LIKE occ_file.occ02,
+                                  oga044 LIKE oga_file.oga044,   #241008 add by ruby
+				                  occ02 LIKE occ_file.occ02,
                                   oga14 LIKE oga_file.oga14,
                                   oga27 LIKE oga_file.oga27,   #181218 add by ruby
                                   oga15 LIKE oga_file.oga15,
@@ -884,11 +966,13 @@ FUNCTION axmr620()
                                   ogb32 LIKE ogb_file.ogb32,    #add by ruby 2018/03/30
                                   ogb04 LIKE ogb_file.ogb04,
                                   ogb06 LIKE ogb_file.ogb06,
+                                  ima131 LIKE ima_file.ima131,  #221128 add by ruby
                                   ogb05 LIKE ogb_file.ogb05,
                                   ogb13 LIKE ogb_file.ogb13,
                                   ogb12 LIKE ogb_file.ogb12,
                                   ogb14 LIKE ogb_file.ogb14,
                                   ogb14t LIKE ogb_file.ogb14t,   #add by ruby 2018/02/22
+                                  omb16 LIKE omb_file.omb16,     #240110 add by ruby
 				  oga10	LIKE oga_file.oga10,
                                   occ241 LIKE occ_file.occ241,   #200420 add by ruby
 				  azi03	LIKE azi_file.azi03,
@@ -913,8 +997,9 @@ FUNCTION axmr620()
              l_str2       LIKE type_file.chr50,
              l_ogb915     STRING,
              l_ogb912     STRING,
-             l_ogb12      STRING,
-             l_oea10      LIKE oea_file.oea10  #add by ruby 2018/02/22
+             l_ogb12      STRING,    
+             l_oea10      LIKE oea_file.oea10,   #add by ruby 2018/02/22
+             l_oeaud01    LIKE oea_file.oeaud01  #241008 add by ruby
      DEFINE
       g_ogc        RECORD
                    ogc12 LIKE ogc_file.ogc12,
@@ -924,10 +1009,16 @@ FUNCTION axmr620()
       l_ima02   LIKE ima_file.ima02,
       l_ima021  LIKE ima_file.ima021,
       l_ima02t  LIKE ima_file.ima02
-     DEFINE     l_dbs      LIKE azp_file.azp03                               
-     DEFINE     l_azp03    LIKE azp_file.azp03                               
-     DEFINE     l_occ37    LIKE occ_file.occ37      
-     DEFINE     l_oebud06  LIKE oeb_file.oebud06 #折數 20220720                         
+     DEFINE     l_dbs          LIKE azp_file.azp03                               
+     DEFINE     l_azp03        LIKE azp_file.azp03                               
+     DEFINE     l_occ37        LIKE occ_file.occ37      
+     DEFINE     l_oebud06      LIKE oeb_file.oebud06          #折數 20220720  
+     DEFINE     l_oea02        LIKE oea_file.oea02            #訂單日期 20241231
+     DEFINE     l_oeb15        LIKE oeb_file.oeb15            #約定交貨日 2021231
+     DEFINE     l_tc_ocj01     LIKE tc_ocj_file.tc_ocj01      #240620 add by ruby
+     DEFINE     l_tc_ocj02     LIKE tc_ocj_file.tc_ocj02      #240620 add by ruby
+     DEFINE     l_tc_ocj02_t   LIKE type_file.chr1000         #240620 add by ruby  
+     DEFINE     l_oap      RECORD LIKE oap_file.*             #241008 add by ruby                 
     #FUN-EA0031--add str--
      DEFINE l_ogbc05  LIKE ogbc_file.ogbc05,
             l_ogbc06  LIKE ogbc_file.ogbc06,
@@ -1051,9 +1142,9 @@ FUNCTION axmr620()
      #CHI-AC0013 add --end-- 
  
      LET l_sql = "SELECT '','','',",
-                 "       oga01,oga02,oga03,oga032,oga04,occ02,oga14,oga27, ",   #181218 add by ruby
-		 "       oga15,ogb03,ogb31,ogb32,ogb04,ogb06,ogb05, ",              #add by ruby 2018/03/30
-		 "       ogb13,ogb12,ogb14,ogb14t,oga10,occ241, ",                  #add by ruby 2018/02/22 #200420 add occ241 by ruby
+                 "       oga01,oga02,oga03,oga032,oga04,oga044,occ02,oga14,oga27, ",   #181218 add by ruby #241008 add oga044 by ruby
+		 "       oga15,ogb03,ogb31,ogb32,ogb04,ogb06,ima131,ogb05, ",       #add by ruby 2018/03/30 #221128 add ima131 by ruby
+		 "       ogb13,ogb12,ogb14,ogb14t,round(ogb14*oga24,0),oga10,occ241, ", #add by ruby 2018/02/22 #200420 add occ241 by ruby #240110 add ogb14*oga24
                  "       azi03,azi04,azi05,oga23,oga24, ",
                  "       ogb910,ogb912,ogb913,ogb915,ogb916,ogb917,  ", #No.FUN-580004
                  "       occ37",                                        #NO.FUN-8B0025
@@ -1068,8 +1159,10 @@ FUNCTION axmr620()
                 #cl_get_target_table(m_dbs[l_i], 'azi_file'),                #NO.FUN-A10056
                  "  FROM ",cl_get_target_table(m_plant, 'oga_file'),
                  "  LEFT OUTER JOIN ",cl_get_target_table(m_plant, 'occ_file'),
-                 "          ON oga_file.oga04 = occ_file.occ01,",  
-                 cl_get_target_table(m_plant, 'ogb_file'),",",            
+                 "          ON oga_file.oga04 = occ_file.occ01,",                 
+                 cl_get_target_table(m_plant, 'ogb_file'),  
+                 "  LEFT OUTER JOIN ",cl_get_target_table(m_plant, 'ima_file'), #221128 add by ruby
+                 "          ON ogb_file.ogb04 = ima_file.ima01,",               #221128 add by ruby              
                  cl_get_target_table(m_plant, 'azi_file'),               
                 #FUN-A70084--mod--end
                  " WHERE oga01 = ogb_file.ogb01 ",
@@ -1100,6 +1193,12 @@ FUNCTION axmr620()
          IF tm.v='2' THEN LET l_sql=l_sql CLIPPED," AND ogapost='N' " END IF
      #No.FUN-940116--END--
 
+     #240625 add by ruby --s--
+     IF g_wc1 <> ' 1=1' THEN
+       LET l_sql=l_sql CLIPPED," AND oga03 IN (SELECT tc_oci01 FROM tc_oci_file WHERE ", g_wc1 CLIPPED,")" 
+     END IF
+     #240625 add by ruby --e--
+ 
     #CALL cl_parse_qry_sql(l_sql,m_dbs[l_i]) RETURNING l_sql   #NO.FUN-A10056  #FUN-A70084
      CALL cl_replace_sqldb(l_sql) RETURNING l_sql      #FUN-A70084
      CALL cl_parse_qry_sql(l_sql,m_plant) RETURNING l_sql   #NO.FUN-A70084
@@ -1107,9 +1206,8 @@ FUNCTION axmr620()
      IF SQLCA.sqlcode != 0 THEN
         CALL cl_err('prepare:',SQLCA.sqlcode,1) 
         CALL cl_used(g_prog,g_time,2) RETURNING g_time #No.FUN-690126
-        EXIT PROGRAM
-           
-     END IF
+        EXIT PROGRAM           
+     END IF    
      DECLARE axmr620_curs1 CURSOR FOR axmr620_prepare1
     #FUN-EA0031--add str--
      LET l_sql="SELECT DISTINCT(ogbc06)",
@@ -1144,6 +1242,15 @@ FUNCTION axmr620()
           CALL cl_err('foreach:',SQLCA.sqlcode,1)
           EXIT FOREACH
        END IF
+     #241008 add by ruby --s--  
+     CALL s_addr(sr.oga01,sr.oga03,sr.oga044)                           
+        RETURNING l_oap.oap041,
+                  l_oap.oap042,
+                  l_oap.oap043,
+                  l_oap.oap044,  
+                  l_oap.oap045  
+     LET sr.occ241=l_oap.oap041             
+     #241008 add by ruby --e--                   
        #MOD-G50062 --- add Start ---
        IF cl_null(sr.oga14) THEN
           LET sr.oga14 = ' '
@@ -1159,11 +1266,14 @@ FUNCTION axmr620()
           SELECT ofd02 INTO sr.occ02 FROM ofd_file
            WHERE ofd01 = sr.oga04
        END IF
-       #帶出折數
+       #帶出折數 訂單日期 訂單約交日
        LET l_oebud06 = ''
-       SELECT oebud06 INTO l_oebud06
-         FROM oeb_file
-        WHERE oeb01 = sr.ogb31 AND oeb03 = sr.ogb32 
+       LET l_oea02 = '' #20241231
+       LET l_oeb15 = '' #20241231
+       SELECT oebud06,oea02,oeb15 INTO l_oebud06,l_oea02,l_oeb15 #20241231
+         FROM oeb_file,oea_file                                  #20241231
+        WHERE oeb01 = oea01                                      #20241231
+          AND oeb01 = sr.ogb31 AND oeb03 = sr.ogb32 
        ##--- 20220720 modify by mom (E)
        
         IF cl_null(l_occ37) THEN LET l_occ37 = 'N' END IF
@@ -1367,22 +1477,50 @@ FUNCTION axmr620()
                   FETCH r620_c7 INTO l_ima02t,l_ima021t
 
       #add by ruby 2018/02/22
-      SELECT oea10 INTO l_oea10 FROM oea_file WHERE oea01=sr.ogb31
+      SELECT oea10,oeaud01 INTO l_oea10,l_oeaud01 FROM oea_file WHERE oea01=sr.ogb31   #241008 add l_oeaud01 by ruby
           IF STATUS THEN
-         LET l_oea10 = '' 
+         LET l_oea10 = ''
+         LET l_oeaud01 = ''   #241008 add by ruby
       END IF 
+ 
+     #240620 add by ruby --s--
+     LET l_tc_ocj02=''
+     LET l_tc_ocj02_t=''
+     LET i = 0     
+     LET l_sql="SELECT tc_ocj01,tc_ocj02",
+               "  FROM tc_oci_file LEFT JOIN tc_ocj_file ON tc_oci02=tc_ocj01",
+               " WHERE tc_oci01=? ",
+               " ORDER BY tc_ocj01"
+     PREPARE r620_ocj1 FROM l_sql
+     IF SQLCA.sqlcode THEN
+        CALL cl_err('prepare r410_ocj1:',SQLCA.sqlcode,1)
+        CALL cl_used(g_prog,g_time,2) RETURNING g_time
+        EXIT PROGRAM
+     END IF
+     DECLARE r620_curs4 CURSOR FOR r620_ocj1
+     FOREACH r620_curs4 USING sr.oga03 INTO l_tc_ocj01,l_tc_ocj02
+       LET i = i + 1
+       IF i = 1 THEN
+         LET l_tc_ocj02_t=l_tc_ocj02
+       ELSE      
+         LET l_tc_ocj02_t=l_tc_ocj02_t,"/",l_tc_ocj02
+       END IF  
+     END FOREACH
+     #240620 add by ruby --e-- 
       
             EXECUTE insert_prept111 USING sr.oga01,sr.oga02,
-                                sr.oga03,sr.oga032,sr.oga04,sr.occ02,sr.oga14,sr.oga27,  #181218 add by ruby
+                               sr.oga03,sr.oga032,sr.oga04,sr.oga044,sr.occ02,sr.oga14,sr.oga27,  #181218 add by ruby #241021 add oga044 by ruby
                                l_gen02,sr.oga15,l_gem02,sr.ogb03,sr.ogb31,sr.ogb04,
-                               sr.ogb06,l_ima021,l_str2,sr.ogb05,sr.oga23,
-                               sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t, #add by ruby ogb14t 2018/02/22
-                              sr.oga10,l_oea10,sr.occ241,     #add by ruby l_oea10 2018/02/22 #200420 add occ241 by ruby
-                               l_oebud06,                     #20220720
-                              tm.y,                           
-                              tm.c,     l_oaz23,  g_ogc.ogc17, l_ima02t,l_ima021t,     #FUN-8B0025 mod
-                             #g_ogc.ogc12,sr.azi03, sr.azi04, sr.azi05, m_dbs[l_i]     #FUN-8B0025 mod   #FUN-A70084
-                              g_ogc.ogc12,sr.azi03, sr.azi04, sr.azi05, m_plant     #FUN-A70084
+                               sr.ogb06,l_ima021,sr.ima131,l_str2,sr.ogb05,sr.oga23,sr.oga24,     #221128 add ima131 by ruby #240110 add oga24 by ruby
+                               sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t,sr.omb16, #add by ruby ogb14t 2018/02/22 #240110 add omb16 by ruby
+                               sr.oga10,l_oea10,                                                  #add by ruby l_oea10 2018/02/22
+                               l_oea02,l_oeb15,                                                   #20241231 oea02 oeb15
+                               l_oeaud01,sr.occ241,                                               #200420 add occ241 by ruby #241008 add oeaud01 by ruby
+                               l_oebud06,l_tc_ocj02_t,                                            #20220720 #240620 add tc_ocj02_t by ruby
+                               tm.y,                           
+                               tm.c,     l_oaz23,  g_ogc.ogc17, l_ima02t,l_ima021t,     #FUN-8B0025 mod
+                              #g_ogc.ogc12,sr.azi03, sr.azi04, sr.azi05, m_dbs[l_i]     #FUN-8B0025 mod   #FUN-A70084
+                               g_ogc.ogc12,sr.azi03, sr.azi04, sr.azi05, m_plant     #FUN-A70084
            #FUN-EA0031--add str--
             IF tm.d='Y' THEN
                LET l_flag1='N'
@@ -1498,19 +1636,47 @@ FUNCTION axmr620()
       END IF
 
       #add by ruby 2018/02/22
-      SELECT oea10 INTO l_oea10 FROM oea_file WHERE oea01=sr.ogb31
+      SELECT oea10,oeaud01 INTO l_oea10,l_oeaud01 FROM oea_file WHERE oea01=sr.ogb31   #241008 add l_oeaud01 by ruby
           IF STATUS THEN
          LET l_oea10 = '' 
+         LET l_oeaud01 = ''   #241008 add by ruby
       END IF 
-      
+
+     #240620 add by ruby --s--
+     LET l_tc_ocj02=''
+     LET l_tc_ocj02_t=''
+     LET i = 0     
+     LET l_sql="SELECT tc_ocj01,tc_ocj02",
+               "  FROM tc_oci_file LEFT JOIN tc_ocj_file ON tc_oci02=tc_ocj01",
+               " WHERE tc_oci01=? ",
+               " ORDER BY tc_ocj01"
+     PREPARE r620_ocj2 FROM l_sql
+     IF SQLCA.sqlcode THEN
+        CALL cl_err('prepare r410_ocj2:',SQLCA.sqlcode,1)
+        CALL cl_used(g_prog,g_time,2) RETURNING g_time
+        EXIT PROGRAM
+     END IF
+     DECLARE r620_curs5 CURSOR FOR r620_ocj2
+     FOREACH r620_curs5 USING sr.oga03 INTO l_tc_ocj01,l_tc_ocj02
+       LET i = i + 1
+       IF i = 1 THEN
+         LET l_tc_ocj02_t=l_tc_ocj02
+       ELSE      
+         LET l_tc_ocj02_t=l_tc_ocj02_t,"/",l_tc_ocj02
+       END IF  
+     END FOREACH
+     #240620 add by ruby --e--  
+           
       IF l_flag != 'Y' THEN
           EXECUTE insert_prept111 USING sr.oga01,sr.oga02,
-                                sr.oga03,sr.oga032,sr.oga04,sr.occ02,sr.oga14,sr.oga27,   #181218 add by ruby
+                                sr.oga03,sr.oga032,sr.oga04,sr.oga044,sr.occ02,sr.oga14,sr.oga27,   #181218 add by ruby #241021 add oga044 by ruby
                                l_gen02,sr.oga15,l_gem02,sr.ogb03,sr.ogb31,sr.ogb32,sr.ogb04,   #add by ruby ogb03 2018/03/30
-                               sr.ogb06,l_ima021,l_str2,sr.ogb05,sr.oga23,
-                               sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t,  #add by ruby ogb14t 2018/02/22
-                              sr.oga10,l_oea10,sr.occ241,                #add by ruby l_oea10 2018/02/22
-                              l_oebud06,                                 #20220720
+                               sr.ogb06,l_ima021,sr.ima131,l_str2,sr.ogb05,sr.oga23,sr.oga24,           #221128 add ima131 by ruby #240110 add oga24 by ruby 
+                               sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t,sr.omb16,  #add by ruby ogb14t 2018/02/22 #240110 add omb16 by ruby
+                               sr.oga10,l_oea10,                                      #add by ruby l_oea10 2018/02/22
+                               l_oea02,l_oeb15,                                       #20241231 add oea02 oeb15
+                              l_oeaud01,sr.occ241,                                    #241008 add oeaud01 by ruby
+                              l_oebud06,l_tc_ocj02_t,                                 #20220720 #240620 add tc_ocj02_t by ruby
                               tm.y,tm.c,l_oaz23,                         
                               g_ogc.ogc17,l_ima02t,l_ima021t,g_ogc.ogc12,sr.azi03,
                              #sr.azi04,sr.azi05,m_dbs[l_i]                             #FUN-8B0025 add m_dbs[l_i]   #FUN-A70084
@@ -1640,7 +1806,7 @@ FUNCTION axmr620()
                 ,"|","SELECT * FROM ",g_cr_db_str CLIPPED,l_table1 CLIPPED        #FUN-EA0031 
      SELECT zz05 INTO g_zz05 FROM zz_file WHERE zz01 = 'axmr620'  
      IF g_zz05 = 'Y' THEN     # (80)-70,140,210,280   /   (132)-120,240,300
-         CALL cl_wcchp(tm.wc,'oga01,oga02,oga03,oga04,oga14,oga15,oga23,ogb04')   #No.FUN-6C0039
+         CALL cl_wcchp(tm.wc,'oga01,oga02,oga03,oga04,oga14,oga15,oga23,ogb04,ima021,ima131')   #No.FUN-6C0039  #221128 modify by ruby #241120 add ima021 by ruby
               RETURNING tm.wc                
      END IF     
      LET l_str = tm.t[1,1],";",tm.t[2,2],";",tm.t[3,3],";",
