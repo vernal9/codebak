@@ -8,6 +8,7 @@
 # Modify.........: NO.23050027   20230523 add by momo 增加跨庫功能 cl_get_target_table
 # Modify.........: No.23100015   20231013 modify by momo tc_oga07 = '2', tc_oga06 時間欄位不可為空
 # Modify.........: No.24080020   20240815 modify by momo 增加 狀態4：不需處理
+# Modify.........: No.24120001   20241205 modify by momo 增加 asfp304 訂單轉工單串聯
 
 DATABASE ds
  
@@ -232,6 +233,16 @@ FUNCTION p411_menu()
                    CALL p411_b_handling()
                 END IF
            ##--- 20240815 (E)
+
+           ##--- 20241205 (S)
+           WHEN "asfp304"
+                IF cl_chk_act_auth() THEN
+                   IF cl_null(g_oeb[l_ac].sfb01) AND NOT cl_null(g_oeb[l_ac].bma05) THEN
+                      LET g_msg = " asfp304 '", g_oeb[l_ac].oeb01,"'"
+                      CALL cl_cmdrun_wait(g_msg CLIPPED)     
+                   END IF
+                END IF
+           ##--- 20241205 (E)
 
            WHEN "query" 
             IF cl_chk_act_auth() THEN
@@ -605,6 +616,12 @@ FUNCTION p411_bp(p_ud)
            LET l_ac = 1
            EXIT DISPLAY
         ##---- 20240815 (E)
+
+        ##---- 20241205 add by momo (S)
+        ON ACTION asfp304 #asfp304
+           LET g_action_choice="asfp304"
+           EXIT DISPLAY
+        ##---- 20241205 add by momo (E)
 
         ON ACTION query       
            LET plant_visible = 'N' #20230531

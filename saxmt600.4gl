@@ -1259,6 +1259,7 @@
 # Modify.........: No:           20/12/04 By Ruby 檢查出貨通知日期是否跟訂單排定交貨日一致，不一致則提示
 # Modify.........: No:           22/09/06 By Ruby 單頭增加列印次數
 # Modify.........: No:23050019   20230526 By momo 調整 mfg6090 卡控，新增段不需卡控
+# Modify.........: No.24030004   20240313 By momo 增加SKFamily 中介檔處理
 
 DATABASE ds
 
@@ -3421,6 +3422,7 @@ FUNCTION t600_menu()
                CALL t600sub_refresh(g_oga.oga01) RETURNING g_oga.*  #FUN-730012 重新讀取g_oga
               #MOD-AB0246---add---start---
                IF g_success = 'Y' THEN
+                  CALL cs_axmmid(g_oga.oga01,"axmt620")   #20240315 add 中介處理
                   IF g_oga.oga02 != g_oga_t.oga02 THEN
                      LET l_cnt = 0
                      SELECT COUNT(*) INTO l_cnt FROM npp_file
@@ -3508,6 +3510,7 @@ FUNCTION t600_menu()
                  END IF  #FUN-BA0069 add
                  CALL t600sub_refresh(g_oga.oga01) RETURNING g_oga.*  #FUN-930038 重新讀取g_oga
                  CALL t600_show() #FUN-930038
+                 CALL cs_axmmid(g_oga.oga01,"axmt620")   #20240315 add 中介處理
                ELSE
                   CALL cl_err(l_dbsnew,'mfg9143',1)
                END IF
@@ -12711,7 +12714,8 @@ FUNCTION t600_g_b1()                  #由出貨通知單產生單身
       ##---- 20180423 add by momo (S) 備置資料帶至倉儲批----
       IF NOT cl_null(l_sie.sie02) THEN LET l_ogb.ogb09=l_sie.sie02 END IF
       IF NOT cl_null(l_sie.sie03) THEN LET l_ogb.ogb091=l_sie.sie03 END IF
-      IF NOT cl_null(l_sie.sie04) THEN LET l_ogb.ogb092=l_sie.sie04 END IF
+      IF NOT cl_null(l_sie.sie04) THEN LET l_ogb.ogb092=l_sie.sie04 END IF                             
+      IF cl_null(l_sie.sie04) AND NOT cl_null(l_sie.sie11) THEN LET l_ogb.ogb092=l_sie.sie04 END IF     #231114 add by ruby
       IF cl_null(l_sie.sie11) THEN LET l_sie.sie11 = 0 END IF
       ##---- 20180423 add by momo (E)---------------------
       #檢查出貨數必須<=通知單應出數(ogb12)-累計出貨數(ogb19)

@@ -779,6 +779,9 @@
 # Modify.........: No.23040017   20230420 By momo 資料清單增加 訂單單號序號 ta_sfb01
 # Modify.........: NO.23070004   20230706 By momo 新增 生產料件相關文件 ACTION
 # Modify.........: NO.23090017   20230925 By momo 新增 「子階料件PDF」、「母階料件DWG」
+# Modify.........: NO.24060025   20240625 By momo MAIL寄送邏輯取由 sfb22 改為 ta_sfb01
+# Modify.........: No.24090032   20240916 By momo 增加 客供MAIL ACTION
+# Modify.........: No.24100030   20241101 By momo 確認寄送QRCode 增加判斷是否已有寄送記錄
 
 DATABASE ds   #MOD-640505
 
@@ -1720,6 +1723,16 @@ DEFINE l_sfp04     LIKE sfp_file.sfp04    #MOD-FC0062 add
             EXIT WHILE
          WHEN "controlg"
             CALL cl_cmdask()
+         ##---- 20240916 add by momo (S) 客供Qrcode寄送
+         WHEN "cus_mail"
+            IF (cl_confirm("csub001")) THEN
+               LET g_sfb.sfb22 = g_sfb.ta_sfb01[1,15]
+               IF NOT cl_null(g_sfb.sfb22) THEN
+                  #CALL cus_mail(g_sfb.sfb22,g_prog)   #20241025 mark
+                  CALL cus_mail(g_sfb.sfb01,g_prog)    #20241025 modify
+               END IF
+            END IF
+         ##---- 20240916 add by momo (E)
          ##---- 20230706 add by momo(S) 主件PDF圖檔
          WHEN "item_pdf"               
             IF cl_chk_act_auth() THEN
@@ -2130,8 +2143,15 @@ DEFINE l_sfp04     LIKE sfp_file.sfp04    #MOD-FC0062 add
                         #FUN-9A0095 mark end----------------------------
 
                         ##---- 20211008 add by momo (S) 客供Qrcode寄送
-                        IF NOT cl_null(g_sfb.sfb22) THEN
-                           CALL cus_mail(g_sfb.sfb22,g_prog)
+                        ##---- 20241101 modify by momo 判斷是否已有MAIL記錄
+                        LET l_cnt = 0
+                        SELECT COUNT(*) INTO l_cnt FROM sfa_file
+                         WHERE sfa03 LIKE '5%'
+                           AND sfa01 = g_sfb.sfb01
+                           AND NOT EXISTS (SELECT 1 FROM azo_file WHERE azo05=sfa01 AND azo01='asfi301')
+
+                        IF l_cnt > 0 THEN                    #無MAIL LOG，且含5開頭料號，執行寄送副程式
+                           CALL cus_mail(g_sfb.sfb01,g_prog)  
                         END IF
                         ##---- 20211008 add by momo (E)
                      END IF
@@ -8447,6 +8467,13 @@ FUNCTION i301_bp(p_ud)
          LET g_action_choice="s_n"
         #EXIT DISPLAY                  #FUN-D80022 mark
          EXIT DIALOG                   #FUN-D80022 add
+
+      ##---- 20240916 (S) 客供品寄送
+      ON ACTION cus_mail
+         LET g_action_choice = "cus_mail"
+         EXIT DIALOG
+      ##---- 20240916 (E)
+
 #@    ON ACTION 模具領用
       ON ACTION mold_wtdw
          LET g_action_choice="mold_wtdw"
@@ -9692,7 +9719,15 @@ FUNCTION i301_s()
       LET left_qty = l_sfa.sfa05
       LET old_qty = l_sfa.sfa05 - l_sfa.sfa06
       DISPLAY BY NAME l_sfa.sfa26,old_qty,l_sfa.sfa12
-      IF l_sfa.sfa26 NOT MATCHES '[1234]' THEN
+      ##---- 20240913 add by momo (S) 再次詢問，防止點錯 -------
+      IF l_sfa.sfa26 = '5' THEN
+         IF NOT (cl_confirm('csf-023')) THEN
+            CONTINUE WHILE
+         END IF
+      END IF
+      ##---- 20240913 add by momo (E) -------------------------
+      #IF l_sfa.sfa26 NOT MATCHES '[1234]' THEN          #20240913 mark
+      IF l_sfa.sfa26 NOT MATCHES '[12345]' THEN          #20240913 modify add 5
          CALL cl_err('','mfg6201',0) CONTINUE WHILE
       END IF
  
@@ -9733,6 +9768,20 @@ FUNCTION i301_s()
       CALL i301_cre_tmp()
       DELETE FROM i301_tmp      
       FOREACH i301_sc INTO l_bmd.*
+        LET l_bmd03 = 0
+        ##----20240913 add by momo (S)群組改一般取替時生效日卡控
+        IF l_sfa.sfa26='5' THEN
+           SELECT 1 INTO l_bmd03 FROM boa_file,bmd_file
+            WHERE boa01 = l_sfa.sfa29
+              AND boa03 = old_part
+              AND boa03 = bmd01
+              AND bmd04 = l_bmd.bmd04
+              AND bmd05 < boa06
+           IF l_bmd03 = 1 THEN
+              CONTINUE FOREACH
+           END IF
+        END IF
+        ##----20240913 add by momo (E)
         LET l_bmd03 = 0
         SELECT bmd03 INTO l_bmd03 FROM i301_tmp WHERE bmd04=l_bmd.bmd04
         IF cl_null(l_bmd03) OR l_bmd03 = 0 THEN
@@ -11767,6 +11816,12 @@ END FUNCTION
  
  
 FUNCTION i301_ui_default()
+
+    ##---- 20240916 add (S)
+    #IF g_plant[1,2]<>'TY' OR g_plant[1,2]<>'KR' THEN
+    #   CALL cl_set_act_visible("cus_mail,cbmi610,item_dwg,item_pdf,sfa03_pdf",FALSE)
+    #END IF
+    ##---- 20240916 add (E)
        CALL cl_set_comp_visible("sfaislk01",FALSE)
  
     IF g_aaz.aaz90='Y' THEN

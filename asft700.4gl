@@ -288,6 +288,7 @@
 # Modify.........: NO:23080015   20230828 By momo 資料清單增加欄位
 # Modify.........: No:24010020   24/01/15 By Ruby 增加action[維護工時]
 # Modify.........:               20240423 By momo 調整 20180918 工單製程變更新已計算正確轉入量，故不需再額外計算
+# Modify.........; NO:24060009   20240607 By momo 調整可入庫量檢核判斷
 
 DATABASE ds
  
@@ -6289,9 +6290,12 @@ FUNCTION t700_1()
                LET g_success = 'N' 
                CONTINUE WHILE 
             END IF  
-            
-            SELECT sfb09 INTO l_sfb09 FROM sfb_file
-             WHERE sfb01 = g_shb.shb05
+            #------- 20240607 modify by momo 改為計算抓取 可入庫量 （S）
+            #SELECT sfb09 INTO l_sfb09 FROM sfb_file
+            SELECT sfb08-sfb09-sfb12 INTO l_sfb09 FROM sfb_file
+              WHERE sfb01 = g_shb.shb05
+            #------- 20240607 modify by momo 改為計算抓取 可入庫量 （E）
+
            #SELECT ecm311 INTO l_ecm311 FROM ecm_file                   #CHI-BA0035 mark 
             SELECT ecm311,ecm315 INTO l_ecm311,l_ecm315 FROM ecm_file   #CHI-BA0035
              WHERE ecm01 = g_shb.shb05
@@ -6310,15 +6314,23 @@ FUNCTION t700_1()
            #   LET g_sfv09 = l_minus 
            #END IF    
            #MOD-C80257 mark---E---
-           #MOD-C80257 add---S---
-            LET l_totQty = l_ecm311 + l_ecm315   
-            LET l_minus = l_totQty - l_sfb09
-            IF l_shb111+l_shb115 < l_minus THEN  
-               LET g_sfv09 = l_shb111+l_shb115  
+   
+           #------- 20240607 mark (S) 依工單可入庫量判斷移轉入庫量合理量
+            #MOD-C80257 add---S---
+            #LET l_totQty = l_ecm311 + l_ecm315  #良品轉出+Boun
+            #LET l_minus = l_totQty - l_sfb09   
+            #IF l_shb111+l_shb115 < l_minus THEN  
+            #   LET g_sfv09 = l_shb111+l_shb115  
+            #ELSE
+            #   LET g_sfv09 = l_minus
+            #END IF
+            IF l_shb111+l_shb115 > l_sfb09 THEN
+               LET g_sfv09 = l_sfb09
             ELSE
-               LET g_sfv09 = l_minus
+               LET g_sfv09 = l_shb111+l_shb115  
             END IF
-           #MOD-C80257 add---E---
+            #MOD-C80257 add---E---
+           #------- 20240607 mark (E)------------------------------------
 
            ##----- 20181001 add by momo (S) 可入庫量需加回非最終站入庫量
            IF s_schdat_chk_ecm03(g_shb.shb05,g_shb.shb012,g_shb.shb06) THEN  #非最終站
@@ -6566,8 +6578,12 @@ FUNCTION t700_w3(l_shb,l_sfv03,l_sfv09)
    SELECT sfb98,sfb27,sfb271 INTO l_sfb98,l_sfb27,l_sfb271 FROM sfb_file   #MOD-C20006
     WHERE sfb01 = g_shb.shb05  
  
-    SELECT sfb09 INTO l_sfb09 FROM sfb_file
+   ##------ 20240607 modify by momo (S) 改抓取可入庫量
+   #SELECT sfb09 INTO l_sfb09 FROM sfb_file
+    SELECT sfb08-sfb09-sfb12 INTO l_sfb09 FROM sfb_file
      WHERE sfb01 = g_shb.shb05
+   ##------ 20240607 modify by momo (S) 改抓取可入庫量
+
    #SELECT ecm311 INTO l_ecm311 FROM ecm_file                   #CHI-BA0035 mark
     SELECT ecm311,ecm315 INTO l_ecm311,l_ecm315 FROM ecm_file   #CHI-BA0035
      WHERE ecm01 = g_shb.shb05
@@ -6607,15 +6623,24 @@ FUNCTION t700_w3(l_shb,l_sfv03,l_sfv09)
   #   LET l_sfv.sfv09 = l_minus 
   #END IF   
   #MOD-C80257---mark---E---
+
+  ##----- 20240607 modify 入庫量計算調整 (S)
   #MOD-C80257 add---S
    LET l_totQty = l_ecm311 + l_ecm315  
-   LET l_minus = l_totQty - l_sfb09
-   IF l_sfv09 < l_minus THEN
-      LET l_sfv.sfv09 = l_sfv09  
+  #LET l_minus = l_totQty - l_sfb09
+  #IF l_sfv09 < l_minus THEN
+  #    LET l_sfv.sfv09 = l_sfv09  
+  # ELSE
+  #    LET l_sfv.sfv09 = l_minus
+  # END IF
+   IF l_sfv09 > l_sfb09 THEN
+      LET l_sfv.sfv09 = l_sfb09
    ELSE
-      LET l_sfv.sfv09 = l_minus
-   END IF
+      LET l_sfv.sfv09 = l_sfv09
+  END IF
   #MOD-C80257 add---E
+  ##----- 20240607 modify 入庫量計算調整 (E)
+
    #No.FUN-BB0086--add--start--
    SELECT sfv08 INTO l_sfv08 FROM sfv_file WHERE sfv01=l_sfv.sfv01 AND sfv03=l_sfv.sfv03
    LET l_sfv.sfv09 = s_digqty(l_sfv.sfv09,l_sfv08)
@@ -7289,6 +7314,7 @@ DEFINE l_ecm63      LIKE ecm_file.ecm63  #TQC-B20083
 #DEFINE l_ecm315     LIKE ecm_file.ecm315   #CHI-BA0035 add  #MOD-F30066 mark
 DEFINE l_n          LIKE type_file.num5  #MOD-CA0066 add 
 DEFINE l_sfb93      LIKE sfb_file.sfb93  #MOD-CA0066 add 
+DEFINE l_ecm311     LIKE ecm_file.ecm311 #20241108 可轉出量
 
     LET g_success = 'Y'
     IF cl_null(g_shb.shb012) THEN LET g_shb.shb012=' ' END IF #FUN-A60095
@@ -7302,7 +7328,10 @@ DEFINE l_sfb93      LIKE sfb_file.sfb93  #MOD-CA0066 add
        LET g_success='N' RETURN
     END IF
     #TQC-B20083(S)
-    SELECT ecm62,ecm63 INTO l_ecm62,l_ecm63 FROM ecm_file
+    LET l_ecm311 = 0                                 #20241108 add
+    SELECT ecm62,ecm63,ecm311-ecm302                 #20241108 add #20241114 modify
+      INTO l_ecm62,l_ecm63,l_ecm311                  #20241108 add
+      FROM ecm_file  
      WHERE ecm01=g_shb.shb05 AND ecm03=g_shb.shb06
        AND ecm012=g_shb.shb012
     IF cl_null(l_ecm62) OR l_ecm62=0 THEN
@@ -7311,6 +7340,14 @@ DEFINE l_sfb93      LIKE sfb_file.sfb93  #MOD-CA0066 add
     IF cl_null(l_ecm63) OR l_ecm63=0 THEN
        LET l_ecm63=1
     END IF
+   ##----- 20241108 (S) 可移轉數判斷
+   IF g_wip > 0 AND l_ecm311 > 0 AND g_wip-l_ecm311 < 0 THEN      
+      LET g_min_set = g_wip - l_ecm311 + g_min_set                
+   END IF              
+   IF g_wip > 0 AND l_ecm311 > 0 AND g_wip > l_ecm311 THEN
+      LET g_min_set =  g_min_set - l_ecm311
+   END IF                                           
+   ##----- 20241108 (E)
    #MOD-F30066 mark str
    ##CHI-BA0035 -- begin --
    #SELECT SUM(ecm315) INTO l_ecm315 FROM ecm_file
@@ -7322,7 +7359,7 @@ DEFINE l_sfb93      LIKE sfb_file.sfb93  #MOD-CA0066 add
    #MOD-F30066 mark end
     #MOD-CA0066 add begin----------------
     LET l_n = 0
-    SELECT sfb93 INTO l_sfb93 FROM sfb_file     
+    SELECT sfb93 INTO l_sfb93 FROM sfb_file  
      WHERE sfb01 = g_shb.shb05
     IF g_sma.sma541 = 'Y' AND l_sfb93 = 'Y' THEN
        SELECT COUNT(*) INTO l_n FROM sfa_file

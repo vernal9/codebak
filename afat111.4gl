@@ -82,7 +82,8 @@
 # Modify.........: No:           19/12/17 By Ruby 增加人員/部門/位置等中文名稱，選擇人員後部門預設帶入人員所屬部門
 # Modify.........: NO:22120036   20221223 By momo 卡控 原保管人與新保管不可多人
 # Modify.........: No:23020012   23/02/08 By Ruby  人員/部門/位置中文改為left join(有空值狀況)
-# Modify.........: No:23050015   20230529 By momo 增加「簽核人員」欄位，存在afai200時,自動帶入加簽人員資訊
+# Modify.........: No:23050015   20230529 By momo 增加「簽核人員」欄位，存在afai200時,自動帶入加簽人員資訊                       
+# Modify.........: No:23120014   23/12/06 By Ruby 過帳時，開放調整移轉日期(簽核時間過久導致跨月)
 
 DATABASE ds
  
@@ -2910,20 +2911,23 @@ FUNCTION t111_y()
    #END IF
    #-----No:FUN-B60140 END-----
    #CHI-A60036 add --end--
-   IF g_fbl.fbl02 < l_bdate THEN
-      call cl_err(g_fbl.fbl02,'afa-308',0)
-      return
-   End IF
+   #240119 mark by ruby --s--
+   #IF g_fbl.fbl02 < l_bdate THEN
+   #   call cl_err(g_fbl.fbl02,'afa-308',0)
+   #   return
+   #End IF
+   #240119 mark by ruby --e--
    #FUN-B50090 add BEGIN-------------------------
    #重新抓取關帳日期
    SELECT faa09 INTO g_faa.faa09 FROM faa_file WHERE faa00='0'
    #FUN-B50090 add -end--------------------------
    #-->立帳日期小於關帳日期
   #IF g_fbl.fbl02 < g_faa.faa09 THEN  #CHI-E20004 mark
-   IF g_fbl.fbl02 <=g_faa.faa09 THEN  #CHI-E20004
-      call cl_err(g_fbl.fbl01,'aap-176',1) RETURN
-   END IF
-
+   #240119 mark by ruby --s--
+   #IF g_fbl.fbl02 <=g_faa.faa09 THEN  #CHI-E20004
+   #   call cl_err(g_fbl.fbl01,'aap-176',1) RETURN
+   #END IF
+   #240119 mark by ruby --e--
    #-----No:FUN-B60140-----
    IF g_faa.faa31 = "Y" THEN
       CALL s_azmm(g_faa.faa072,g_faa.faa082,g_plant,g_bookno2) RETURNING l_flag,l_bdate,l_edate
@@ -2997,6 +3001,18 @@ FUNCTION t111_y_chk()
      CALL cl_err('','9023',0)   #FUN-580109
      RETURN
   END IF
+
+  ##--- 20240508 add by momo (S) 檢核新保管人
+  LET l_cnt = 0
+  SELECT COUNT(DISTINCT fbm04) INTO l_cnt FROM fbm_file
+   WHERE fbm01 = g_fbl.fbl01
+  IF l_cnt > 1 THEN
+     LET g_success = 'N'        #FUN-580109
+     CALL cl_err('','cfa-003',1)
+     RETURN
+  END IF
+  ##--- 20240508 add by momo (E)
+
   #MODNO:7341 add......................................................
   SELECT count(*) INTO l_cnt FROM fbm_file
    WHERE fbm01= g_fbl.fbl01
@@ -3022,23 +3038,26 @@ FUNCTION t111_y_chk()
   #END IF
   ##-----No:FUN-B60140 END-----
   #CHI-A60036 add --end--
-  IF g_fbl.fbl02 < l_bdate THEN
-     LET g_success = 'N'   #FUN-580109
-     CALL cl_err(g_fbl.fbl02,'afa-308',0)
-     RETURN
-  END IF
+  #240119 mark by ruby --s--
+  #IF g_fbl.fbl02 < l_bdate THEN
+  #   LET g_success = 'N'   #FUN-580109
+  #   CALL cl_err(g_fbl.fbl02,'afa-308',0)
+  #   RETURN
+  #END IF
+  #240119 mark by ruby --e--
   #FUN-B50090 add BEGIN-------------------------
   #重新抓取關帳日期
   SELECT faa09 INTO g_faa.faa09 FROM faa_file WHERE faa00='0'
   #FUN-B50090 add -end--------------------------
   #-->立帳日期小於關帳日期
  #IF g_fbl.fbl02 < g_faa.faa09 THEN   #CHI-E20004 mark
-  IF g_fbl.fbl02 <=g_faa.faa09 THEN   #CHI-E20004
-     LET g_success = 'N'   #FUN-580109
-     CALL cl_err(g_fbl.fbl01,'aap-176',1)
-     RETURN
-  END IF
-
+  #240119 mark by ruby --s--
+  #IF g_fbl.fbl02 <=g_faa.faa09 THEN   #CHI-E20004
+  #   LET g_success = 'N'   #FUN-580109
+  #   CALL cl_err(g_fbl.fbl01,'aap-176',1)
+  #   RETURN
+  #END IF
+  #240119 mark by ruby --e--
   #-----No:FUN-B60140-----
   IF g_faa.faa31 = 'Y' THEN
      CALL s_azmm(g_faa.faa072,g_faa.faa082,g_plant,g_bookno2) RETURNING l_flag,l_bdate,l_edate
@@ -3340,6 +3359,63 @@ FUNCTION t111_s(p_cmd)
    #重新抓取關帳日期
    SELECT faa09 INTO g_faa.faa09 FROM faa_file WHERE faa00='0'
    #FUN-B50090 add -end--------------------------
+   #231206 add by ruby --s--
+      IF cl_null(g_bgjob) OR g_bgjob = 'N' THEN  
+         IF (g_action_choice CLIPPED = "post") OR
+            (g_action_choice CLIPPED = "insert") THEN 
+             INPUT g_fbl.fbl02 WITHOUT DEFAULTS FROM fbl02
+
+               BEFORE FIELD fbl02
+                 IF g_fbl.fbl02 < g_today THEN
+                    LET g_fbl.fbl02 = g_today
+                    DISPLAY g_fbl.fbl02 to fbl02
+                 END IF
+             
+               AFTER FIELD fbl02
+                 IF NOT cl_null(g_fbl.fbl02) THEN
+                    IF g_faa.faa09 IS NOT NULL AND g_fbl.fbl02 <= g_faa.faa09 THEN
+                       CALL cl_err('','mfg9999',0)
+                       NEXT FIELD fbl02
+                    END IF
+                    CALL s_yp(g_fbl.fbl02) RETURNING l_yy,l_mm             
+                    IF ((l_yy*12+l_mm) > (g_faa.faa07*12+g_faa.faa08)) THEN
+                       CALL cl_err('','mfg6090',0)
+                       NEXT FIELD fbl02
+                    END IF
+                 END IF
+             
+               AFTER INPUT 
+                  IF INT_FLAG THEN
+                     LET INT_FLAG = 0
+                     LET g_success = 'N'
+                     RETURN
+                  END IF
+                  IF NOT cl_null(g_fbl.fbl02) THEN
+                     IF g_faa.faa09 IS NOT NULL AND g_fbl.fbl02 <= g_faa.faa09 THEN
+                        CALL cl_err('','mfg9999',0) 
+                        NEXT FIELD fbl02
+                     END IF
+                     CALL s_yp(g_fbl.fbl02) RETURNING l_yy,l_mm
+                     IF (l_yy*12+l_mm) > (g_faa.faa07*12+g_faa.faa08) THEN
+                        CALL cl_err(l_yy,'mfg6090',0) 
+                        NEXT FIELD fbl02
+                     END IF
+                  ELSE
+                     CONTINUE INPUT
+                  END IF
+                  ON ACTION CONTROLG 
+                      CALL cl_cmdask()
+             
+                  ON IDLE g_idle_seconds
+                      CALL cl_on_idle()
+                      CONTINUE INPUT
+             END INPUT
+             LET l_fbl02 = g_fbl.fbl02   
+         END IF
+      ELSE
+         LET l_fbl02 = g_fbl.fbl02  
+      END IF
+  #231206 add by ruby --e--       
   #-MOD-A80137-add-
    #-->立帳日期小於關帳日期
   #IF g_fbl.fbl02 < g_faa.faa09 THEN  #CHI-E20004 mark
@@ -3402,6 +3478,7 @@ FUNCTION t111_s(p_cmd)
         call cl_err(g_fbl.fbl01,SQLCA.sqlcode,0)     # 資料被他人LOCK
         close t111_cl ROLLBACK WORK RETURN
     end IF
+   LET g_fbl.fbl02=l_fbl02              #231206 add by ruby
    Let g_success = 'Y'
    #--------- 過帳(2)insert fap_file
    Declare t111_cur2 CURSOR FOR
@@ -3567,7 +3644,8 @@ FUNCTION t111_s(p_cmd)
    Close t111_cl
    IF g_success = 'Y' THEN
       #--------- 過帳(1)UPDATE fblpost
-      UPDATE fbl_file SET fblpost = 'Y' WHERE fbl01 = g_fbl.fbl01
+      #UPDATE fbl_file SET fblpost = 'Y' WHERE fbl01 = g_fbl.fbl01                           #231206 mark by ruby
+      UPDATE fbl_file SET fbl02=g_fbl.fbl02,fblpost='Y',fblmodu=g_user,fbldate=g_today WHERE fbl01 = g_fbl.fbl01          #231206 add by ruby
           IF stATUS OR SQLCA.sqlerrd[3] = 0 THEN
 #            caLL cl_err('upd fblpost',STATUS,0)   #No.FUN-660136
 #            CALL cl_err3("upd","fbl_file",g_fbl.fbl01,"",SQLCA.SQLCODE,"","upd fblpost",1)  #No.FUN-660136 #No.FUN-710028

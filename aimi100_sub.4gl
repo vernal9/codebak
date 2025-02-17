@@ -157,7 +157,7 @@ FUNCTION i100sub_y_chk(p_ima01)
 #MOD-C30124 ----- add ----- end
 
    ##---- 20191024 By momo (S) 分群碼檢核
-  IF g_plant = 'DC' THEN   #20211001
+  IF g_plant = 'DC' OR g_plant = 'TY_TEST' THEN   #20211001
    IF p_ima01[1,1]='0' AND l_ima.ima08='M' THEN
       IF cl_null(l_ima.ima09) OR cl_null(l_ima.ima1007) OR cl_null(l_ima.ima10) OR
          cl_null(l_ima.ima11) OR cl_null(l_ima.ta_ima07) OR cl_null(l_ima.ta_ima06) OR
@@ -190,7 +190,9 @@ FUNCTION i100sub_y_chk(p_ima01)
          AND ROWNUM = 1
 
        IF l_n<>1 THEN
-          IF cl_confirm('cim-010') THEN 
+          CALL cl_getmsg('cim-010',g_lang) RETURNING g_msg  #20240906
+          LET g_msg = p_ima01, g_msg                        #20240906 modify
+          IF cl_confirm(g_msg) THEN               #20240906 modify
              LET g_success = 'N'
              RETURN
           END IF
@@ -450,6 +452,7 @@ FUNCTION i100sub_x(p_ima01)
 
     LET g_errno = ''   #FUN-5A0081
     IF s_shut(0) THEN RETURN END IF
+    IF cl_null(g_ima.ima01) THEN LET g_ima.ima01=p_ima01 END IF  #20241023
     IF g_ima.ima01 IS NULL THEN
         CALL cl_err('',-400,0)
         LET g_errno = '-400'       #FUN-C90107 add

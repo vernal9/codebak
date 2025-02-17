@@ -59,6 +59,7 @@
 # Modify.........: No:23040027   20230503 By momo QBE增加交貨日 pmn33
 # Modify.........: NO:23090004   20230908 By momo 調整 pmn44 抓取為 pmn31*pmm42
 # Modify.........: NO:24070036   20240729 By momo QBE 增加 ima06 料件分群碼
+# Modify.........: NO:24110039   20241125 By momo 增加採購單 pmmud01單頭備註
 
 DATABASE ds
  
@@ -135,6 +136,7 @@ MAIN
                "pmn16.pmn_file.pmn16,",   #MOD-C80151 add
                "pmm22.pmm_file.pmm22,",
                "pmm21.pmm_file.pmm21,",
+               "pmmud01.pmm_file.pmmud01,",  #單頭備註20241125 
                "pmn02.pmn_file.pmn02,",
                "pmn011.pmn_file.pmn011,",
                "pmn04.pmn_file.pmn04,",
@@ -174,7 +176,7 @@ MAIN
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,              
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ",          
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ", #20180502 add  #20190812 add  #20191203 add 2?  #20200406 add 2? #210222 add 1? by ruby
-               "        ?,?,?,? ) "                                    #20240729 add 2? #20241112 add 1?
+               "        ?,?,?,?,? ) "                                  #20240729 add 2? #20241112 add 1? #20241125 add 1?
    PREPARE insert_prep FROM g_sql                                               
    IF STATUS THEN                                                               
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM                         
@@ -571,29 +573,30 @@ FUNCTION r500()
                                   pmn16 LIKE pmn_file.pmn16,    # 狀況碼   #MOD-C80151 add
                                   pmm22 LIKE pmm_file.pmm22,    # 幣別
                                   pmm21 LIKE pmm_file.pmm21,    # 稅別
-                                  pmn02 LIKE pmn_file.pmn02,	# 項次
-                                  pmn011 LIKE pmn_file.pmn011,	# 性質
-                                  pmn04 LIKE pmn_file.pmn04,	# 料件編號
-                                  pmn041 LIKE pmn_file.pmn041,#品名規格
-                                  pmn24 LIKE pmn_file.pmn24,	# 請購單號
-                                  pmn07 LIKE pmn_file.pmn07,	# 採購單位
-                                  pmn20 LIKE pmn_file.pmn20,	# 訂購量
-                                  pmn51 LIKE pmn_file.pmn51,	# 在驗量 20180502
-                                  pmn50 LIKE pmn_file.pmn50,	# 收貨量
-                                  pmn31 LIKE pmn_file.pmn31,	# 未稅單價
-                                  pmn31t LIKE pmn_file.pmn31t,	# 含稅單價
-                                  g_pmn LIKE pmn_file.pmn31,    #MOD-530190#金額(單價*訂購量)
-                                  pmn14 LIKE pmn_file.pmn14,	# 部份交貨
-                                  pmn15 LIKE pmn_file.pmn15,	# 提前交貨
-                                  pmn33 LIKE pmn_file.pmn33,	# 交貨日期
-                                  pmn56 LIKE pmn_file.pmn56,	# 批號 20190812
-                                  pmn44 LIKE pmn_file.pmn44, 	# 本幣單價
-                                 #ima33 LIKE ima_file.ima33, 	# 銷售單價      #MOD-G10010 mark
-                                  ima53 LIKE ima_file.ima53, 	# 最近採購單價  #MOD-G10010 add
-                                  ima531 LIKE ima_file.ima531, 	# 最近市價
-                                  pmn55 LIKE pmn_file.pmn55,	# 驗退量
-                                  pmn58 LIKE pmn_file.pmn58,    # 退貨換貨量 #MOD-C80147 add
-                                  ppp   LIKE type_file.num20_6, #FUN-680136 DECIMAL(20,6)  # 本幣未交貨量金額
+                                  pmmud01 LIKE pmm_file.pmmud01, # 備註 20241125
+                                  pmn02 LIKE pmn_file.pmn02,	 # 項次
+                                  pmn011 LIKE pmn_file.pmn011,	 # 性質
+                                  pmn04 LIKE pmn_file.pmn04,	 # 料件編號
+                                  pmn041 LIKE pmn_file.pmn041,   #品名規格
+                                  pmn24 LIKE pmn_file.pmn24,	 # 請購單號
+                                  pmn07 LIKE pmn_file.pmn07,	 # 採購單位
+                                  pmn20 LIKE pmn_file.pmn20,	 # 訂購量
+                                  pmn51 LIKE pmn_file.pmn51,	 # 在驗量 20180502
+                                  pmn50 LIKE pmn_file.pmn50,	 # 收貨量
+                                  pmn31 LIKE pmn_file.pmn31,	 # 未稅單價
+                                  pmn31t LIKE pmn_file.pmn31t,	 # 含稅單價
+                                  g_pmn LIKE pmn_file.pmn31,     #MOD-530190#金額(單價*訂購量)
+                                  pmn14 LIKE pmn_file.pmn14,	 # 部份交貨
+                                  pmn15 LIKE pmn_file.pmn15,	 # 提前交貨
+                                  pmn33 LIKE pmn_file.pmn33,	 # 交貨日期
+                                  pmn56 LIKE pmn_file.pmn56,	 # 批號 20190812
+                                  pmn44 LIKE pmn_file.pmn44, 	 # 本幣單價
+                                 #ima33 LIKE ima_file.ima33, 	 # 銷售單價      #MOD-G10010 mark
+                                  ima53 LIKE ima_file.ima53, 	 # 最近採購單價  #MOD-G10010 add
+                                  ima531 LIKE ima_file.ima531, 	 # 最近市價
+                                  pmn55 LIKE pmn_file.pmn55,	 # 驗退量
+                                  pmn58 LIKE pmn_file.pmn58,     # 退貨換貨量 #MOD-C80147 add
+                                  ppp   LIKE type_file.num20_6,  #FUN-680136 DECIMAL(20,6)  # 本幣未交貨量金額
                                   pmn80 LIKE pmn_file.pmn80,
                                   pmn82 LIKE pmn_file.pmn82,
                                   pmn83 LIKE pmn_file.pmn83,
@@ -695,7 +698,7 @@ FUNCTION r500()
  
      LET l_sql = "SELECT '','','',",
                  "   pmm01,  pmm02,  pmm03,  pmm04,  pmm09,  pmm12,",
-                 "   pmn16,  pmm22,  pmm21,  pmn02,  ",            #MOD-C80151 pmm25 -> pmn16
+                 "   pmn16,  pmm22,  pmm21,  pmmud01,pmn02,  ",            #MOD-C80151 pmm25 -> pmn16 #20241125
                  "   pmn011, pmn04,  pmn041, pmn24,  pmn07,  pmn20,",
                  "   pmn51, ",                                     #20180502 add
                  "   pmn50,  pmn31,  ",
@@ -946,7 +949,8 @@ FUNCTION r500()
        ##--- 20191203 庫存量-安全存量(E)
        
        ##--- 20241112 工單狀態 (S)
-       ##--- 20200406 工單製程編號 (S) 
+       ##--- 20200406 工單製程編號 (S)
+       LET l_sfb04 = '' 
        SELECT sfb06,sfb04 INTO l_sfb06,l_sfb04 FROM sfb_file
         WHERE sfb01 = l_pmn41
        ##--- 20200406 工單製程編號 (E)
@@ -1011,7 +1015,9 @@ FUNCTION r500()
        LET l_cnt2 = l_cnt2 + (sr.qqq * sr.pmn44)     
        EXECUTE insert_prep USING sr.pmm01,sr.pmm04,sr.pmm03,sr.pmm02,sr.pmm09,
                                  l_pmc03,sr.pmm12,l_gen02,sr.pmn16,sr.pmm22,     #MOD-C80151 pmm25 -> pmn16
-                                 sr.pmm21,sr.pmn02,sr.pmn011,sr.pmn04,sr.pmn041,
+                                 sr.pmm21,
+                                 sr.pmmud01,                                     #20241125
+                                 sr.pmn02,sr.pmn011,sr.pmn04,sr.pmn041,
                                  l_ima021,
                                  l_gen02_2,                                      #20191220
                                  sr.pmn24,l_str4,sr.pmn07,sr.pmn86,

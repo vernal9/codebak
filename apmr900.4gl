@@ -82,6 +82,8 @@
 # Modify.........: No:2111297230 20211201 By momo 若pmnud03為Y，料件前增加“補單”
 # Modify.........:               20211208 By momo 增加列印請購人
 # Modify.........: NO:23010018   20230112 By momo 委外採購單增加列印“作業說明”ecm45
+# Modify.........: NO:23100047   20231113 By momo 增加 bmbud02 Package欄位顯示
+# Modify.........: No:24110054   20241204 By momo 料件分群碼22021 增加節數顯示 
 
 DATABASE ds
  
@@ -215,7 +217,8 @@ MAIN
                "pmmud04.pmm_file.pmmud04,",#add by ruby 2017/12/26
                "pmmud01.pmm_file.pmmud01,",#add by ruby 2017/12/26
                "pmm16.pmm_file.pmm16,",    #CHI-B90026 add
-               "ecm45.ecm_file.ecm45,",    #作業說明 20230112 
+               "ecm45.ecm_file.ecm45,",    #作業說明 20230112
+               "bmbud02.bmb_file.bmbud02,",#Package 20231113 
                "pme031.pme_file.pme031,",
                "pme032.pme_file.pme032,",
                "pme033.pme_file.pme033,",  #CHI-A80047 add
@@ -627,6 +630,7 @@ FUNCTION apmr900()
      DEFINE l_ima28            LIKE type_file.chr1     #特殊件否 20201214
      DEFINE l_pmnud03          LIKE pmn_file.pmnud03   #補單否 20211201
      DEFINE l_ecm45            LIKE ecm_file.ecm45     #作業說明 20230112
+     DEFINE l_bmbud02          LIKE bmb_file.bmbud02   #Package 20231113
 
      DEFINE sr2  RECORD
                       pmq01    LIKE pmq_file.pmq01,
@@ -692,7 +696,7 @@ FUNCTION apmr900()
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",
               #"        ?,?,?,?,?, ?,?,?,?,?, ?)" #FUN-7B0142 拿掉一個?  #FUN-770064 mod #CHI-A80047 mark
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",    #FUN-B940043 add 3?  #CHI-A80047  #TQC-C10039 ADD 1? #CHI-B90026 add 1?
-               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?)"           #20230112 add 1?  #FUN-EC0014 add 1?  #add by ruby 9? 2017/12/19 #add by ruby 1? 2018/03/19 #20180802 add 1? #20201214 add 1? #211129 add 1? by ruby
+               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?)"         #20231113 add 1? #20230112 add 1?  #FUN-EC0014 add 1?  #add by ruby 9? 2017/12/19 #add by ruby 1? 2018/03/19 #20180802 add 1? #20201214 add 1? #211129 add 1? by ruby
    PREPARE insert_prep FROM g_sql
    IF STATUS THEN
       CALL cl_err("insert_prep:",STATUS,1)
@@ -991,6 +995,20 @@ FUNCTION apmr900()
          EXECUTE insert_prep4 USING sr.pmm01,sr.pmn02,l_pmo06
       END IF
 
+      ##---- 20241204 add by momo (S)工單單位用量顯示
+      SELECT sfa16 INTO l_pmo06
+        FROM sfa_file,pml_file
+       WHERE sfa01 = ta_pml02 AND sfa03 = pml04
+         AND pml01 = sr.pmn24
+         AND pml04 = sr.pmn04
+         AND sfa16 <> 1
+         AND EXISTS (SELECT 1 FROM ima_file WHERE ima01=sr.pmn04 AND ima06 = '22021')
+      IF l_pmo06 > 0 THEN
+         LET l_pmo06 = "節數：",l_pmo06 USING "###.#"
+         EXECUTE insert_prep4 USING sr.pmm01,sr.pmn02,l_pmo06
+      END IF
+      ##---- 20241204 add by momo (E)
+
       #規格,單位使用方式 
       SELECT ima021,ima906 INTO l_ima021,l_ima906 FROM ima_file
        WHERE ima01=sr.pmn04
@@ -1098,6 +1116,14 @@ FUNCTION apmr900()
          AND pmn43 = ecm03 
       #20230112 作業說明 (E)
 
+      ##---- 20231113 BOM Package (S)
+      LET l_bmbud02=''
+      SELECT bmbud02 INTO l_bmbud02 FROM bmb_file
+       WHERE bmb03 = sr.pmn04
+         AND bmbud02 is not null
+         AND rownum = 1
+      ##---- 20231113 BOM Package (E)
+
       #add by ruby 2017/12/19                
       LET l_gen02 = ''
       #SELECT gen02 INTO l_gen02 FROM gen_file WHERE gen01 = sr.pmm12
@@ -1114,6 +1140,7 @@ FUNCTION apmr900()
       EXECUTE insert_prep USING 
          sr.*,
          l_ecm45,                                      #20230112
+         l_bmbud02,                                    #20231113
          l_pme031,l_pme032,l_pme033,l_pme034,l_pme035, #CHI-A80047 add l_pme033,l_pme034,l_pme035
          l_pme0311,l_pme0322,l_pme0333,l_pme0344,l_pme0355, #CHI-A80047 add l_pme0333,l_pme0344,l_pme0355
          l_gen02,l_pmd02,l_pmh04,l_ima021,                  #add by ruby l_gen02,l_pmd02 2017/12/19 #add by ruby l_pmh04 2018/03/19

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{d06eb4d3-0000-4000-8606-c899eb79a499}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_tc_dic" order="" uid="{72a8f82e-0000-4000-b962-b35ee275b00b}" where="">
+    <RecordField colName="tc_dic01" fieldIdRef="1" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dic01" sqlTabName="tc_dic_file" sqlType="VARCHAR" table_alias_name="tc_dic_file" uid="{ffbde024-0000-4000-881a-3e3e7b330346}"/>
+    <RecordField colName="tc_dic02" fieldIdRef="2" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dic02" sqlTabName="tc_dic_file" sqlType="VARCHAR" table_alias_name="" uid="{622e2fbe-0000-4000-86ba-67169704831d}"/>
+    <RecordField colName="tc_dic03" fieldIdRef="3" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dic03" sqlTabName="tc_dic_file" sqlType="SMALLINT" table_alias_name="" uid="{f3648cce-0000-4000-8fba-5c3006c3a6d7}"/>
+    <RecordField colName="tc_dic04" fieldIdRef="4" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dic04" sqlTabName="tc_dic_file" sqlType="VARCHAR" table_alias_name="" uid="{c39f9c74-0000-4000-8c78-c087009dcf32}"/>
+    <RecordField colName="tc_dic05" fieldIdRef="10" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dic05" sqlTabName="tc_dic_file" sqlType="VARCHAR" table_alias_name="" uid="{a0a45a42-658e-44fa-a721-fdd2d1231898}"/>
+    <RecordField colName="tc_dicacti" defaultValue="Y" fieldIdRef="7" fieldType="TABLE_COLUMN" name="tc_dic_file.tc_dicacti" sqlTabName="tc_dic_file" sqlType="VARCHAR" table_alias_name="" uid="{ec1c3610-0000-4000-8d63-f0b550c7a334}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{7848fab2-0000-4000-a6f1-0928af27fc09}" where="">
+    <RecordField colName="" fieldIdRef="8" fieldType="NON_DATABASE" name="cn2" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{214c9a7a-0000-4000-b65b-a913915e2a63}"/>
+  </Record>
+  <Form gridHeight="26" gridWidth="140" image="zoom.png" lstrtext="false" name="cooi001" spacing="normal" text="arti030">
+    <VBox gridHeight="14" gridWidth="107" name="vb3" posX="6" posY="1">
+      <Folder gridHeight="9" gridWidth="107" lstrcomment="false" name="pc4" posX="0" posY="1">
+        <Page name="Page7" text="MAIN">
+          <Table gridHeight="7" gridWidth="105" name="s_tc_dic" posX="2" posY="1" totalRows="5">
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dic01" colorCondition="black" columnCount="" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" lstrcomment="false" lstrtitle="false" name="tc_dic_file.tc_dic01" notNull="true" posX="0" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="tc_dic_file" title="tc_dic01" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dic02" colorCondition="black" columnCount="" fieldId="2" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" lstrcomment="false" lstrtitle="false" name="tc_dic_file.tc_dic02" notNull="true" posX="10" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="tc_dic02" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dic03" colorCondition="black" columnCount="" fieldId="3" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" lstrcomment="false" lstrtitle="false" name="tc_dic_file.tc_dic03" notNull="true" posX="20" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="SMALLINT" stepX="" stepY="" tabIndex="3" table_alias_name="" title="tc_dic03" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dic04" colorCondition="black" columnCount="" fieldId="4" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="11" lstrcomment="false" lstrtitle="false" name="tc_dic_file.tc_dic04" noEntry="false" notNull="true" posX="30" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" title="tc_dic04" widget="Edit"/>
+            <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dic05" columnCount="" fieldId="10" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="27" name="tc_dic_file.tc_dic05" notNull="true" posX="41" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" title="tc_dic05" widget="Edit"/>
+            <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_dicacti" columnCount="" defaultValue="Y" fieldId="7" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="5" lstrcomment="false" lstrtitle="false" name="tc_dic_file.tc_dicacti" notNull="true" posX="68" posY="0" required="true" rowCount="" sqlTabName="tc_dic_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" title="Acti" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+          </Table>
+        </Page>
+      </Folder>
+      <Grid gridHeight="3" gridWidth="107" lstrcomment="false" name="gr13" posX="0" posY="10">
+        <HLine gridWidth="10" name="hl9" posX="2" posY="0"/>
+        <Label posX="12" posY="0" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="8" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" noEntry="true" posX="17" posY="0" rowCount="" sqlTabName="" sqlType="SMALLINT" stepX="" stepY="" tabIndex="6" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl10" posX="24" posY="0"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewA2ADIAMgBlADIAZgBiAGUALQAwADAAMAAwAC0ANAAwADAAMAAtADgANgBiAGEALQA2ADcAMQA2ADkANwAwADQAOAAzADEAZAB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewBmAGYAYgBkAGUAMAAyADQALQAwADAAMAAwAC0ANAAwADAAMAAtADgAOAAxAGEALQAzAGUAMwBlADcAYgAzADMAMAAzADQANgB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQAAAEwAewBlAGMAMQBjADMANgAxADAALQAwADAAMAAwAC0ANAAwADAAMAAtADgAZAA2ADMALQBmADAAYgA1ADUAMABjADcAYQAzADMANAB9QCQAAAAAAABAYmAAAAAAAAAAAAAAAAAAAQAAAEwAewA3ADIAYQA4AGYAOAAyAGUALQAwADAAMAAwAC0ANAAwADAAMAAtAGIAOQA2ADIALQBiADMANQBlAGUAMgA3ADUAYgAwADAAYgB9AAAAAAAAAAAAAAAAAAAAAD9ok3S8an76AQAAAEwAewA3ADgANAA4AGYAYQBiADIALQAwADAAMAAwAC0ANAAwADAAMAAtAGEANgBmADEALQAwADkAMgA4AGEAZgAyADcAZgBjADAAOQB9QG2gAAAAAADAFAAAAAAAAD9QYk3S8an8AQAAAEwAewBmADMANgA0ADgAYwBjAGUALQAwADAAMAAwAC0ANAAwADAAMAAtADgAZgBiAGEALQA1AGMAMwAwADAANgBjADMAYQA2AGQANwB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewBjADMAOQBmADkAYwA3ADQALQAwADAAMAAwAC0ANAAwADAAMAAtADgAYwA3ADgALQBjADAAOAA3ADAAMAA5AGQAYwBmADMAMgB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewAyADEANABjADkAYQA3AGEALQAwADAAMAAwAC0ANAAwADAAMAAtAGIANgA1AGIALQBhADkAMQAzADkAMQA1AGUAMgBhADYAMwB9QBQAAAAAAABAOAAAAAAAAAAAAAAAAAAAAQAAAEwAewBhADAAYQA0ADUAYQA0ADIALQA2ADUAOABlAC0ANAA0AGYAYQAtAGEANwAyADEALQBmAGQAZAAyAGQAMQAyADMAMQA4ADkAOAB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>

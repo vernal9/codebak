@@ -311,6 +311,7 @@
 # Modify.........: NO:23010028   20230207 By momo 單頭增加 ta_bmx03 ECN原因輸入
 # Modify.........: NO:24080019   20240814 By momo 單頭備註調整顯示
 # Modify.........: No:24080015   20240816 By momo ECN筆數過多，送簽時調整 不送單身資料，BPM表單直接抓取資料顯示即可
+# Modify.........: No:24110010   20241108 By momo 追加提醒
 
 DATABASE ds
  
@@ -1063,7 +1064,14 @@ DEFINE l_cmd        LIKE type_file.chr1000 #No.FUN-820027
                CALL ui.Interface.refresh()                                                                                          
                CALL i720_carry()                                                                                                    
                ERROR ""                                                                                                             
+            END IF
+
+         ##---20241108 add (S)
+         WHEN "check_sub"
+            IF cl_chk_act_auth() THEN
+               CALL cs_check_ecn(g_bmx.bmx01)
             END IF                                                                                                                  
+         ##---20241108 add (E)                                                                                                                  
                                                                                                                                     
          WHEN "download"                                                                                                            
             IF cl_chk_act_auth() THEN                                                                                               
@@ -6809,6 +6817,12 @@ FUNCTION i720_bp(p_ud)
          LET g_action_choice = "carry"                                                                                              
         #EXIT DISPLAY #FUN-E70037 mark
          EXIT DIALOG  #FUN-E70037 modify
+
+      ##---- 20241108 (S)
+      ON ACTION check_sub
+         LET g_action_choice = "check_sub"
+         EXIT DIALOG 
+      ##---- 20241108 (E)
                                                                                                                                     
       ON ACTION download                                                                                                            
          LET g_action_choice = "download"                                                                                           
@@ -10615,6 +10629,7 @@ END FUNCTION
 FUNCTION i720_ef()
  DEFINE l_cnt    LIKE type_file.num5                      #20240808
     #CALL i720_y_chk()          #CALL 原確認的 check 段   #FUN-580161 #FUN-AC0060 mark
+     CALL cs_check_ecn(g_bmx.bmx01)                                   #20241108 add 
      CALL i720sub_y_chk(g_bmx.bmx01)                                  #FUN-AC0060 add
      IF g_success = "N" THEN
          RETURN

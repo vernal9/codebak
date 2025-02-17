@@ -115,6 +115,7 @@
 # Modify.........: No.MOD-FC0009 15/12/03 By catmoon aimp800產生空白標籤的pia30與aimp810u應一致為null
 # Modify.........: No:FUN-G90017 16/09/27 By lixh 產生條碼明細檔
 # Modify.........: 20190108 By momo 排除非成本倉庫別
+# Modify.........: No.23010016   20230131 By momo 依WIP盤點
 
 DATABASE ds
  
@@ -546,13 +547,15 @@ FUNCTION p800_tm()
               DISPLAY BY NAME tm.tag2,tm.spcg2,          #CHI-960065
                              tm.spc2,tm.qty2             #CHI-960065
          ELSE
+              LET tm.default_wip='Y'   #20230201
+              LET tm.sw = 'Y'          #20230201
               IF tm.spcg2 IS NULL OR tm.spcg2 = ' ' THEN
                  LET tm.spcg2  = 'N'
               END IF
               IF tm.order2 IS NULL OR tm.order2 = ' ' THEN
                  LET tm.order2 = '54'
               END IF
-              DISPLAY BY NAME tm.tag2,tm.spcg2
+              DISPLAY BY NAME tm.tag2,tm.spcg2,tm.default_wip,tm.sw
          END IF
  
       AFTER FIELD tag2
@@ -1126,7 +1129,8 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                           #"      (SELECT DISTINCT pmn41,pmn46,pmm09,pmn43,pmn012 ",  #FUN-A60095 #FUN-A60095
                           #"          FROM pmn_file,pmm_file ",                                   #FUN-A60095
                           #"          WHERE pmn01=pmm01) tmp ",                                   #FUN-A60095
-                           " LEFT OUTER JOIN ecm_file ON ecm01 = sfa01  AND ecm04 = sfa08 ",  #FUN-A60095
+                           " LEFT OUTER JOIN ecm_file ON ecm01 = sfa01  ",
+                           "                          AND ecm04 = sfa08 ",                         #FUN-A60095
                           #"  AND ecm03 = sfa013 AND ecm012= sfa012 ",                        #FUN-A60095   #FUN-B40082
                            l_ecm_where ,  #FUN-B40082
                            " LEFT OUTER JOIN pmn_file ",  #FUN-A60095
@@ -1655,7 +1659,10 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                LET l_sql = "SELECT sfb01,sfb02,sfb04,sfb05,sfb08,sfb09,sfb10,",
                            "sfb11,sfb12,sfb15,",
                            "sfa03,sfa05,sfa06,sfa062,sfa161,sfa063,",
-                           "sfa065,sfa13,sfa08,sfa11,sfa12,ecm06,sfb82,ima55,",
+                           "sfa065,sfa13,",
+                           #"sfa08,",                                               #20230131 mark
+                           "CASE sfb04 WHEN '4' THEN sfa08 ELSE ecm04 END sfa08,",                                               #20230131 modify
+                           "sfa11,sfa12,ecm06,sfb82,ima55,",
                            "ecm52,pmm09,ecm03,sfa26,sfa27,sfa28,",
                            "sfb93,sfa100,ecm012 ",   #FUN-A60095 
                            " FROM sfb_file ",  #FUN-A60095
@@ -1664,19 +1671,31 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                           #"      (SELECT DISTINCT pmn41,pmn46,pmm09,pmn43,pmn012 ",  #FUN-A60095 #FUN-A60095
                           #"          FROM pmn_file,pmm_file ",                                   #FUN-A60095
                           #"          WHERE pmn01=pmm01) tmp ",                                   #FUN-A60095
-                           " LEFT OUTER JOIN ecm_file ON ecm01 = sfa01  AND ecm04 = sfa08 ",  #FUN-A60095
+                           " LEFT OUTER JOIN ecm_file ON ecm01 = sfa01  ",                        #FUN-A60095
+                          #"                             AND ecm04 = sfa08 ",                     #20230131 mark
+                           "                             AND ((ecm301+ecm302>ecm311+ecm312+ecm313 AND ecm311>0 AND ecm52='N' ) ", #20230201 非委外有WIP
+                           "                             OR (ecm301>ecm311 AND ecm03>10 AND ecm311=0)",                    #20230202 非第一站有轉入無轉出
+                           "                             OR (ecm301>ecm311 AND sfa08=' ' AND ecm52='N' AND ecm311=0 ) ",   #20230201 非委外無分段發料無WIP
+                           "                             OR (ecm03=10 AND sfa08=' ' AND ecm52='N' AND ecm301=0 ) ",        #20231226 首站非委外無分段發料無WIP
+                           "                             OR (ecm321>ecm322 AND ecm301 > 0 ) ",                             #20230201 委外
+                           "                             OR (ecm311=0 AND ecm04=sfa08)) ",                                 #20230131 分段發料無移轉
                           #"  AND ecm03 = sfa013 AND ecm012= sfa012 ",                        #FUN-A60095   #FUN-B40082
                            l_ecm_where,  #FUN-B40082
                            " LEFT OUTER JOIN pmn_file ",  #FUN-A60095
                            " LEFT OUTER JOIN pmm_file ON pmm01 = pmn01 ",  #FUN-A60095
-                           "   ON pmn41 = sfa01  AND pmn43  = sfa013  AND pmn012 = sfa012 ",  #FUN-A60095                          
+                          #"   ON pmn41 = sfa01  AND pmn43  = sfa013  AND pmn012 = sfa012 ",  #FUN-A60095  #20230203 mark     
+                           "   ON pmn41 = ecm01  AND pmn46  = ecm03  AND pmn012 = ecm012 ",   #FUN-A60095  #20230203 modify     
+                           "                     AND pmm18='Y' AND pmn16 <='2' ",             #20230203 採購單已確認                
                            " WHERE sfb01 = sfa01 ",
                           #" AND sfb_file.sfb05 = ima_file.ima01 ", #FUN-A60095
-                           " AND sfb87!='X' ",  #CHI-960065
-                          #" AND sfb04 IN ('2','3','4','5','6','7') ",   #MOD-C80184 mark
-                           " AND sfb04 IN ('4','5','6','7') ",           #MOD-C80184
-                           " AND (sfb02=1 OR sfb02=5 OR sfb02=7 OR sfb02=8) ",     #MOD-B20012 add sfb02=8
-                          #" AND ecm01 = sfa01 ",  #FUN-A60095
+                          #" AND sfb87!='X' ",  #CHI-960065                                #20230202 mark
+                          #" AND sfb04 IN ('2','3','4','5','6','7') ",   #MOD-C80184 mark  #20230202 mark
+                          #" AND sfb04 IN ('4','5','6','7') ",           #MOD-C80184       #20230202 mark
+                          #" AND (sfb02=1 OR sfb02=5 OR sfb02=7 OR sfb02=8) ",     #MOD-B20012 add sfb02=8
+                           " AND sfb87 = 'Y' ",                                    #20230202 優化
+                           " AND sfb04 between '4' AND '7' ",                      #20230202 優化
+                           " AND sfb02 <= '8' ",                                   #20230202 優化
+                           " AND ecm01 = sfb01 ",  #FUN-A60095
                           #" AND ecm04 = sfa08 ",  #FUN-A60095
                            " AND sfa06 > 0 ",
                           #" AND tmp.pmn41 = sfb_file.sfb01 ",  #FUN-A60095
@@ -1732,16 +1751,20 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                     ELSE LET l_wc=l_wc CLIPPED,' ,sfb04'
                     END IF
            WHEN '4' IF l_sw='N' THEN
-                        LET l_wc=' ORDER BY sfb02' LET l_sw='Y'
-                    ELSE LET l_wc=l_wc CLIPPED,' ,sfb02'
+                    #    LET l_wc=' ORDER BY sfb02' LET l_sw='Y'  #20230202 mark
+                    #ELSE LET l_wc=l_wc CLIPPED,' ,sfb02'         #20230202 mark
+                         LET l_wc=' ORDER BY pmm09' LET l_sw='Y'  #20230202 modify
+                    ELSE LET l_wc=l_wc CLIPPED,' ,pmm09'          #20230202 modify
                     END IF
            WHEN '5' IF l_sw='N' THEN
 	 	                 LET l_wc=' ORDER BY sfb01' LET l_sw='Y'
                     ELSE LET l_wc=l_wc CLIPPED,' ,sfb01'
                     END IF
            WHEN '6' IF l_sw='N' THEN
-	 	                 LET l_wc=' ORDER BY sfb82' LET l_sw='Y'
-                    ELSE LET l_wc=l_wc CLIPPED,' ,sfb82'
+	 	    #LET l_wc=' ORDER BY sfb82' LET l_sw='Y'     #20230202 mark
+                    #ELSE LET l_wc=l_wc CLIPPED,' ,sfb82'        #20230202 mark
+	 	    LET l_wc=' ORDER BY ecm06' LET l_sw='Y'      #20230202 modify
+                    ELSE LET l_wc=l_wc CLIPPED,' ,ecm06'         #20230202 modify
                     END IF
            OTHERWISE LET l_wc = l_wc  CLIPPED
         END CASE
@@ -1913,6 +1936,27 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                 LET l_work = l_sfa08   #作業編號
              END IF
           END IF
+
+          ##---- 20230202 add by momo (S)
+          #無分段發料，未移轉取最小站
+          IF cl_null(l_sfa08) OR l_sfa08=' ' THEN
+             CALL s_schdat_min_ecm03(l_sfb01) RETURNING l_MINecm012,l_MINecm03
+             SELECT ecm04,ecm67 INTO l_sfa08,l_sfb82 FROM ecm_file
+              WHERE ecm01 = l_sfb01
+               AND ecm03 = l_MINecm03
+          END IF
+          #取委外供應商
+          IF l_ecm52='Y' AND cl_null(l_pmm09) THEN
+             SELECT pmm09 INTO l_pmm09 
+               FROM pmm_file,pmn_file
+              WHERE pmm01 = pmn01 AND pmm18 = 'Y'
+                AND pmn41 = l_sfb01 AND pmn46 = l_ecm03
+                AND pmn012 = l_ecm012
+                AND pmn16 <= '2'
+             LET l_sfb82 = l_pmm09
+          END IF
+          ##---- 20230202 add by momo (E)
+          
           #================> 產生單頭盤點卡號 pid_file
           #盤點卡依工號,作業編號,廠商不同而有盤點卡
           IF (l_sfb01!=l_sfb01_old) OR
@@ -1968,6 +2012,15 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                END IF
                #FUN-A60095(E)
              END IF
+
+             ##---- 20230201 add by momo (S)無分段發料，未移轉取最小站
+             #IF cl_null(l_sfa08) OR l_sfa08=' ' THEN
+             #   SELECT ecm04,ecm67 INTO l_sfa08,l_sfb82 FROM ecm_file
+             #    WHERE ecm01 = l_sfb01
+             #      AND ecm03 = l_MINecm03
+             #   LET l_pmm09 = l_sfb82
+             #END IF
+             ##---- 20230201 add by momo (E)
  
              #如果此站為第一站則 WIP 量為"0"
              #ANN01
@@ -2010,7 +2063,9 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
              #99.12.25 重新定義
              #不管委外量,委外量抓總量
              #------------------------------------------------
-             IF l_ecm03=l_MINecm03 AND l_ecm012=l_MINecm012 THEN  #FUN-A60095
+ 
+            #IF l_ecm03=l_MINecm03 AND l_ecm012=l_MINecm012 THEN  #FUN-A60095 #20230203 mark
+             IF l_ecm03=l_MINecm03 AND l_ecm012=l_MINecm012 AND ll_ecm301=0 THEN  #FUN-A60095 #20230203 modify
                 #第一站套數給0
                 LET l_sfb08 = 0
              ELSE
@@ -2043,6 +2098,8 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                                ll_ecm321+ll_ecm322
                 END IF
              END IF
+             ##--- 20230202 mark (S) 
+             {
              IF l_ecm52='Y' AND (NOT cl_null(l_pmm09)) THEN
                 IF ll_ecm301 > ll_ecm321 THEN
                    SELECT count(*) INTO g_cnt FROM pid_file
@@ -2088,6 +2145,9 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                    END IF
                 END IF
              END IF
+             }
+             ##--- 20230202 mark (E)
+              
              #將值放置pid_file中
              IF l_ecm52='Y' THEN
                    SELECT SUM(pmn20-pmn53) INTO l_sfb08 FROM pmn_file,pmm_file
@@ -2298,14 +2358,15 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                INSERT INTO pie_file (pie01,pie02,pie03,pie04,pie05,pie06,pie07,
                                    pie11,pie12,pie13,pie14,pie15,pie151,pie152,
                                    pie153,pie16,pie900,pieplant,pielegal,pie012,pie013,pie30) 
-                  VALUES (l_subno,l_sfa03,l_sfa08,l_sfa12,l_work,l_sfa11,l_item,
+                 #VALUES (l_subno,l_sfa03,l_sfa08,l_sfa12,l_work,l_sfa11,l_item,         #20230202 mark
+                  VALUES (l_pid01,l_sfa03,l_sfa08,l_sfa12,l_work,l_sfa11,l_item,         #20230202 modify
                           l_sfa05,l_sfa06,l_sfa062,l_sfa161,l_sfa063,l_sfa065,
                           l_sfa13,l_uninv,'N',l_sfa27,g_plant,g_legal,l_ecm012,l_ecm03,l_uninv)
              END IF
              IF SQLCA.sqlcode THEN
                 CALL s_errmsg('','','ckp#4.1',SQLCA.sqlcode,1)
                 LET g_success = 'N'
-                CALL cl_progressing(" ")   #CHI-B90052 add
+               #CALL cl_progressing(" ")   #CHI-B90052 add #20230201 mark
                 CONTINUE FOREACH   #No.FUN-710025
              END IF
           END IF
@@ -2323,12 +2384,20 @@ DEFINE l_bcah         RECORD LIKE bcah_file.*      #FUN-G90017
                                l_sfa063,l_sfa065,l_sfa13,l_uninv,'N',
                                l_sfa27,g_plant,g_legal,l_ecm012,l_ecm03,'' #FUN-980004 add g_plant,g_legal  #FUN-A60095
           ELSE
+          ##--- 20230131 add by momo (S)
+          LET l_sfa08_old = l_sfa08
+          SELECT sfa08 INTO l_sfa08
+            FROM sfa_file
+           WHERE sfa01 = l_sfb01
+             AND sfa03 = l_sfa03
+          ##--- 20230131 add by momo (E)
           PUT p800_cpie  FROM l_pid01,l_sfa03,l_sfa08,
                               l_sfa12,l_work,l_sfa11,l_item,
                                l_sfa05,l_sfa06,l_sfa062,l_sfa161,
                                l_sfa063,l_sfa065,l_sfa13,l_uninv,'N',
                                l_sfa27,g_plant,g_legal,l_ecm012,l_ecm03,l_uninv
           END IF
+          LET l_sfa08 = l_sfa08_old   #20230131
           IF SQLCA.sqlcode THEN
              CALL s_errmsg('','',l_sfb01,SQLCA.sqlcode,1)
              LET g_success = 'N'
