@@ -133,7 +133,12 @@ DEFINE   g_boa_1        DYNAMIC ARRAY OF RECORD
                            ima08_l     LIKE ima_file.ima08,
                            boa02_l     LIKE boa_file.boa02,
                            boa08_1     LIKE boa_file.boa08,
-                           ta_boa01_1  LIKE boa_file.ta_boa01  #20250212
+                           ta_boa01_1  LIKE boa_file.ta_boa01,  #20250212
+                           ima131      LIKE ima_file.ima131,    #20250217
+                           ima09       LIKE ima_file.ima09,     #20250217
+                           ima1007     LIKE ima_file.ima1007,   #20250217
+                           ta_ima06    LIKE ima_file.ta_ima06,  #20250217
+                           ta_ima08    LIKE ima_file.ta_ima08   #20250217
                                        END RECORD
 ##---- 20190709 資料清單 (E)
 
@@ -2722,7 +2727,8 @@ DEFINE l_ta_boa01     LIKE boa_file.ta_boa01 #20250212
          CALL cl_err('foreach item_cur',SQLCA.sqlcode,1)
          CONTINUE FOREACH
       END IF
-      SELECT boa01,ima02,ima021,ima08,boa02,boa08,ta_boa01      #20250212
+      SELECT boa01,ima02,ima021,ima08,boa02,boa08,ta_boa01,      #20250212
+             ima131,ima09,ima1007,ta_ima06,ta_ima08              #20250217
         INTO g_boa_1[l_cnt].*
         FROM boa_file LEFT JOIN ima_file ON boa01 = ima01
        WHERE boa01 = l_boa01
