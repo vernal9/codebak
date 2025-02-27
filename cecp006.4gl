@@ -10,6 +10,7 @@
 #                                                     額外增加調整 ecb19、ecb21 新增時時間預設為 0
 # Modify.........: No:2205188097 20220520 add by momo 增加 同步營運中心選擇
 # Modify.........: No:23030028   20230317 modify by momo 增加 建立日期 ecuud13
+# Modify.........: No:25020038   20250227 modify by momo 製程營運中心調整
  
 DATABASE ds
  
@@ -24,7 +25,8 @@ DEFINE
                   ecu02         LIKE ecu_file.ecu02,
                   updateima94   LIKE type_file.chr1,   #20200507
                   TY            LIKE type_file.chr1,   #20220520
-                  KS            LIKE type_file.chr1    #20220520
+                  KS            LIKE type_file.chr1,   #20220520
+                  KR            LIKE type_file.chr1    #20250227
                   END RECORD,
     g_bne2        DYNAMIC ARRAY OF RECORD 
                   bne02         LIKE bne_file.bne02,
@@ -203,13 +205,21 @@ FUNCTION p116_tm()
    LET tm.updateima94='Y' #20200507
    LET tm.TY = 'N'        #20220520
    LET tm.KS = 'N'        #20220520
+   LET tm.KR = 'N'        #20250227
    
    CALL cl_set_head_visible("","YES")     #No.FUN-6B0033
+   
+   IF g_plant = 'DC' THEN
+      CALL cl_set_comp_visible("TY,KS,KR",TRUE)
+   ELSE
+      CALL cl_set_comp_visible("TY,KS,KR",FALSE)
+   END IF
  
-   INPUT BY NAME tm.ecu01,tm.ecu02,tm.updateima94,tm.TY,tm.KS #20220520
+   INPUT BY NAME tm.ecu01,tm.ecu02,tm.updateima94,tm.TY,tm.KS,tm.KR #20220520 #20250227
                    WITHOUT DEFAULTS 
  
-      AFTER FIELD ecu02 
+      AFTER FIELD ecu02
+        IF NOT cl_null(tm.ecu02) THEN 
           SELECT COUNT(*) INTO l_cnt
             FROM ecu_file
            WHERE ecu01 = tm.ecu01 AND ecu02=tm.ecu02
@@ -218,12 +228,13 @@ FUNCTION p116_tm()
              CALL cl_err('','aec-090',1)
              LET tm.ecu02=''
           END IF
+        END IF
 
       AFTER FIELD updateima94
-          IF tm.updateima94='N' THEN
-             CALL cl_set_comp_entry("TY,KS",FALSE)
+          IF tm.updateima94='N' THEN  
+             CALL cl_set_comp_entry("TY,KS,KR",FALSE)
           ELSE
-             CALL cl_set_comp_entry("TY,KS",TRUE)
+             CALL cl_set_comp_entry("TY,KS,KR",TRUE)
           END IF
             
       #AFTER FIELD ima09        #其他分群碼一
@@ -459,6 +470,11 @@ FUNCTION p116_insert()
                  END IF
                  IF tm.KS='Y' THEN  #20220520
                     UPDATE ks.ima_file SET ima94 = tm.ecu02
+                     WHERE ima01 = tm.ecu01
+                        OR ima01 = g_ima[l_i].ecb01
+                 END IF
+                 IF tm.KR='Y' THEN  #20250227
+                    UPDATE kr.ima_file SET ima94 = tm.ecu02
                      WHERE ima01 = tm.ecu01
                         OR ima01 = g_ima[l_i].ecb01
                  END IF
