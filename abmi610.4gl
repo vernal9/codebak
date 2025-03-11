@@ -50,7 +50,9 @@
 # Modify.........: No:23070027   20230714 By momo 增加欄位查詢功能 
 # Modify.........: NO:23100001   20231006 By momo 增加顯示 bmb06、bmb07 欄位
 # Modify.........: NO:24110007   20241111 By momo boa01 依資料中心設定增加卡控
+#                                20250220 By momo 卡控增加條件為 新增  時
 # Modify.........: No:25020016   20250212 By momo 增加標準否ta_boa01欄位記錄與功能
+#                                20250311 By momo ta_boa01 NULL 值時預設為 N
 
 DATABASE ds
  
@@ -235,7 +237,7 @@ FUNCTION i610_curs()                         #QBE 查詢資料
    INITIALIZE g_boa01 TO NULL    #No.FUN-750051
    INITIALIZE g_boa02 TO NULL    #No.FUN-750051
    INITIALIZE g_boa08 TO NULL    #No.FUN-750051
-   INITIALIZE g_ta_boa01 TO NULL #20250212
+   INITIALIZE g_ta_boa01 TO NULL #20250212 
            CONSTRUCT g_wc ON boa01,boa02,boa08,
                              ta_boa01,                                            #20250212
                              a.ima02,a.ima021,                                    #20230714
@@ -657,12 +659,20 @@ DEFINE
                NEXT FIELD boa08
             END IF
 
-         ##---- 20241214 add (S)
-         AFTER FIELD boa08
-           IF cl_null(g_boa08) THEN
-              NEXT FIELD boa08
-           END IF
-         ##---- 20241214 add (E)
+        ##---- 20241214 add (S)
+        AFTER FIELD boa08
+          IF cl_null(g_boa08) THEN
+             NEXT FIELD boa08
+          END IF
+        ##---- 20241214 add (E)
+
+        ##--- 20250311 modify (S) DEFAULT N
+        BEFORE FIELD ta_boa01
+          IF cl_null(g_ta_boa01) THEN
+             LET g_ta_boa01 = 'N'
+             DISPLAY g_ta_boa01 TO ta_boa01
+          END IF
+        ##--- 20250311 modify (E)
   
         ON ACTION CONTROLF                  #欄位說明
            CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name #Add on 040913
@@ -715,13 +725,15 @@ DEFINE
     g_flag2         LIKE type_file.chr1      #20241111
 
     ##---- 20241111 (S)
-    CALL s_field_chk(g_boa01,'1',g_plant,'ima01') RETURNING g_flag2
-    IF g_flag2 = '0' THEN
-       CALL cl_err(g_boa01,'aoo-043',1)
-       LET g_boa01 = ''
-       DISPLAY BY NAME g_boa01
-       RETURN 
-    END IF
+    IF p_cmd = 'a' THEN   #20250220 add
+       CALL s_field_chk(g_boa01,'1',g_plant,'ima01') RETURNING g_flag2
+       IF g_flag2 = '0' THEN
+          CALL cl_err(g_boa01,'aoo-043',1)
+          LET g_boa01 = ''
+          DISPLAY BY NAME g_boa01
+          RETURN 
+       END IF
+    END IF               #20250220 add
     ##---- 20241111 (E)
 
  

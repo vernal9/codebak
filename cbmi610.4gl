@@ -12,6 +12,7 @@
 # Modify.........: No:23070027   20230718 By momo 增加QBE與atp_qty顯示
 # Modify.........: No:23100001   20231012 By momo 增加bmb06、bmb07 欄位顯示
 # Modify.........: No:24090011   20240910 By momo 增加批次失效ACTION
+# Modify.........: No:25020030   20250224 By momo 增加顯示ta_boa01標準否欄位，無有效資料時自動失效標準否欄位
 
 DATABASE ds
  
@@ -37,6 +38,7 @@ DEFINE                                     #模組變數(Module Variables)
                 ima021      LIKE ima_file.ima021,
                 ima08       LIKE ima_file.ima08,
                 boa02       LIKE boa_file.boa02,
+                ta_boa01    LIKE boa_file.ta_boa01,   #20250224
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
@@ -71,6 +73,7 @@ DEFINE                                     #模組變數(Module Variables)
                 ima021      LIKE ima_file.ima021,
                 ima08       LIKE ima_file.ima08,
                 boa02       LIKE boa_file.boa02,
+                ta_boa01    LIKE boa_file.ta_boa01,   #20250224
                 boa03       LIKE boa_file.boa03,
                 ima02b      LIKE ima_file.ima02,
                 ima021b     LIKE ima_file.ima021,
@@ -220,7 +223,9 @@ FUNCTION i610_curs()                         #QBE 查詢資料
    INITIALIZE g_boa08 TO NULL    #No.FUN-750051
            CONSTRUCT g_wc ON boa08,boa01,
                              a.ima02,a.ima021,                    #20230718
-                             boa02,boa03,
+                             boa02,
+                             ta_boa01,                            #20250224
+                             boa03,
                              b.ima02,b.ima021,                    #20230718
                              boa04,boa05,boa06,boa07,
                              ta_boadate,ta_boamodu                #20230718
@@ -228,6 +233,7 @@ FUNCTION i610_curs()                         #QBE 查詢資料
                              s_boa[1].boa01,
                              s_boa[1].ima02,s_boa[1].ima021,      #20230718
                              s_boa[1].boa02,
+                             s_boa[1].ta_boa01,                   #20250224
                              s_boa[1].boa03,
                              s_boa[1].ima02b,s_boa[1].ima021b,    #20230718
                              s_boa[1].boa04,s_boa[1].boa05,
@@ -383,6 +389,7 @@ FUNCTION i610_menu()                         #中文的MENU
          WHEN "detail"
             IF cl_chk_act_auth() THEN
                CALL i610_b()
+               CALL i610_b_fill(g_wc)
             ELSE
                LET g_action_choice = NULL
             END IF
@@ -1020,7 +1027,7 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
     CALL cl_opmsg('b')
  
     LET g_forupd_sql =
-       "SELECT boa01,'','','',boa02,boa03,'','',",
+       "SELECT boa01,'','','',boa02,ta_boa01,boa03,'','',",            #20250224
        "       0,0,",                                                  #20240408
        "       boa04,boa05,boa06,boa07,ta_boadate,ta_boamodu,boa08 ", 
        "  FROM boa_file ",
@@ -1445,6 +1452,15 @@ DEFINE   l_bmb10    LIKE bmb_file.bmb10
                     #END IF 
                     #CHI-D10033---end
                     }
+                     ##---- 20250224 無有效資料時，取消標準否 (S)
+                     IF g_boa[l_ac].ta_boa01 = 'Y' THEN
+                        UPDATE boa_file SET ta_boa01='N',ta_boadate=g_today,ta_boamodu=g_user
+                         WHERE boa01=g_boa_t.boa01 AND boa02=g_boa_t.boa02
+                           AND NOT EXISTS (SELECT 1 FROM boa_file b
+                                            WHERE b.boa01=g_boa_t.boa01 AND b.boa02=g_boa_t.boa02 AND boa07 is null)
+
+                     END IF
+                    ##---- 20250224 無有效資料時，取消標準否 (E)
                     COMMIT WORK
                     CALL cs_updbmb16(g_boa_t.boa01,g_boa_t.boa03,'S')   #20220530 更新BOM取替代狀態 
                     MESSAGE "UPDATE O.K"
@@ -1708,7 +1724,7 @@ DEFINE
     p_wc     STRING                  
      
     LET g_sql =
-       "SELECT boa01,a.ima02,a.ima021,a.ima08,boa02,boa03,b.ima02,b.ima021,",
+       "SELECT boa01,a.ima02,a.ima021,a.ima08,boa02,ta_boa01,boa03,b.ima02,b.ima021,",    #20250224
        "       bmb06,bmb07,",                                                             #20231012
        "       boa04,boa05,boa06,boa07 ",
        "       ,ta_boadate,ta_boamodu,boa08  " ,      
@@ -2309,6 +2325,16 @@ FUNCTION i610_allinvalid()
            EXIT FOR
            ROLLBACK WORK
         ELSE
+           ##---- 20250224 無有效資料時，取消標準否 (S)
+           IF g_boa[l_i].ta_boa01 = 'Y' THEN
+              UPDATE boa_file  
+                 SET ta_boa01='N',ta_boadate=g_today,ta_boamodu=g_user
+              WHERE boa01=g_boa_t.boa01 AND boa02=g_boa_t.boa02
+                AND NOT EXISTS (SELECT 1 FROM boa_file b 
+                                 WHERE b.boa01=g_boa_t.boa01 AND b.boa02=g_boa_t.boa02 AND b.boa07 is null)
+                
+           END IF
+           ##---- 20250224 無有效資料時，取消標準否 (E)
            CALL cs_updbmb16(g_boa_t.boa01,g_boa_t.boa03,'S')
            COMMIT WORK   
         END IF
