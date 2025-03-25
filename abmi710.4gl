@@ -304,6 +304,8 @@
 # Modify.........: NO:24080018   20240814 By momo 調整備註欄位顯示 
 # Modify.........: No:24080014   20240816 By momo ECN筆數過多，送簽時調整 不送單身資料，BPM表單直接抓取資料顯示即可
 # Modify.........: No:24110009   20241108 By momo 增加 cbmi604 檢核機制
+# Modify.........: No:24120031   20241230 By momo bmy06 bmy07 不帶預設值
+# Modify.........: No:23050015   20250325 By momo 增加判斷 ECN 是否存在 KS
 
 DATABASE ds
  
@@ -2099,6 +2101,21 @@ FUNCTION i710_show()
     DEFINE w     ui.Window                 #20241115 
     DEFINE n     om.DomNode                #20241115
     DEFINE l_cnt LIKE type_file.num5       #20241115
+    
+    ##---20250325 add (S)
+    LET l_cnt = 0
+    SELECT 1 INTO l_cnt 
+      FROM ks.bma_file,bmz_file
+     WHERE bma01 = bmz02
+　　   AND bmz01 = g_bmx.bmx01
+       AND rownum = 1
+    IF l_cnt = 1 THEN
+       DISPLAY 'Y' TO KS
+    ELSE
+       DISPLAY 'N' TO KS
+    END IF
+      
+    ##---20250325 add (E)
 
     LET g_bmx_t.* = g_bmx.*                #保存單頭舊值
     LET g_data_keyvalue = g_bmx.bmx01      #No:FUN-F50016
@@ -2493,9 +2510,11 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
             LET g_bmy_t.* = g_bmy[l_ac].*
             LET g_bmy_o.* = g_bmy[l_ac].*  #MOD-FA0119 add
             
-            LET g_bmy[l_ac].bmy06 = 1      #No.MOD-770126 modify
-            LET g_bmy[l_ac].bmy07 = 1
-            LET g_bmy[l_ac].bmy34 = 'N'   #TQC-9B0163 add
+           #LET g_bmy[l_ac].bmy06 = 1      #No.MOD-770126 modify #20241230 mark
+           #LET g_bmy[l_ac].bmy07 = 1                            #20241230 mark
+            LET g_bmy[l_ac].bmy06 = ''     #20241230 mark
+            LET g_bmy[l_ac].bmy07 = ''     #20241230 mark
+            LET g_bmy[l_ac].bmy34 = 'N'    #TQC-9B0163 add
             #No.FUN-A60008--begin
             IF g_argv1='2' THEN           #CHI-CA0035 mod g_argv3->g_argv1
                LET g_bmy[l_ac].bmy16='0'     
@@ -2840,19 +2859,23 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
               #CHI-DC0019-Start-Add
              #SELECT bmb06,bmb07 INTO g_bmy[l_ac].bmy06,g_bmy[l_ac].bmy07                         #MOD-EC0101 mark
              #SELECT bmb06,bmb07,bmb14 INTO g_bmy[l_ac].bmy06,g_bmy[l_ac].bmy07,g_bmy[l_ac].bmy35 #MOD-EC0101 add #20221123 mark
-              SELECT bmb06,bmb07,bmb14,bmb09                                                      #20221123
-                INTO g_bmy[l_ac].bmy06,g_bmy[l_ac].bmy07,g_bmy[l_ac].bmy35,g_bmy[l_ac].bmy09      #20221123
-                FROM bmb_file 
+
+             ##---- 20241230 modify by momo (S) 不帶入預設 
+             # SELECT bmb06,bmb07,bmb14,bmb09                                                      #20221123 #20241230
+             #   INTO g_bmy[l_ac].bmy06,g_bmy[l_ac].bmy07,g_bmy[l_ac].bmy35,g_bmy[l_ac].bmy09      #20221123 #20241230
+             #   FROM bmb_file 
                #M014 180208 By TSD.Tim---(S)
                #WHERE bmb01 = g_bmz[l_ac].bmz02 
-               WHERE bmb01 = g_bmz[1].bmz02 
+             #  WHERE bmb01 = g_bmz[1].bmz02                                                       #20241230
                #M014 180208 By TSD.Tim---(E)
-                 AND bmb03 = g_bmy[l_ac].bmy05
-                 AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)
-                 AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)
+             #    AND bmb03 = g_bmy[l_ac].bmy05                                                    #20241230
+             #    AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)                                      #20241230
+             #    AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)                                      #20241230
                  
-              IF cl_null(g_bmy[l_ac].bmy06) THEN LET g_bmy[l_ac].bmy06 = 1 END IF 
-              IF cl_null(g_bmy[l_ac].bmy07) THEN LET g_bmy[l_ac].bmy07 = 1 END IF
+             # IF cl_null(g_bmy[l_ac].bmy06) THEN LET g_bmy[l_ac].bmy06 = 1 END IF                 #20241230
+             # IF cl_null(g_bmy[l_ac].bmy07) THEN LET g_bmy[l_ac].bmy07 = 1 END IF                 #20241230
+             ##---- 20241230 modify by momo (E) 不帶入預設 
+
              #M014 180207 By TSD.Tim---(E)
               IF cl_null(g_bmy[l_ac].bmy35) THEN LET g_bmy[l_ac].bmy35 = 0 END IF   #MOD-EC0101 add
              #M014 180207 By TSD.Tim---(S)
@@ -3164,9 +3187,13 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
                       LET g_bmy[l_ac].bmy06 = ''         #CHI-A30011 add
                       LET g_bmy[l_ac].bmy07 = ''         #CHI-A30011 add
                    END IF                                #CHI-960004
-                   IF g_bmy[l_ac].bmy03 = '3' THEN       #TQC-DA0052 add
-                       LET g_bmy[l_ac].bmy06 = ''        #TQC-DA0052 add
-                    END IF                               #TQC-DA0052 add
+                   #--- 20241230 modify 不帶預設 (S)
+                   #IF g_bmy[l_ac].bmy03 = '3' THEN       #TQC-DA0052 add
+                   #    LET g_bmy[l_ac].bmy06 = ''        #TQC-DA0052 add
+                   #END IF                                #TQC-DA0052 add
+                   LET g_bmy[l_ac].bmy06 = ''
+                   LET g_bmy[l_ac].bmy07 = ''
+                   #--- 20241230 modify 不帶預設 (E)
                    DISPLAY g_bmy[l_ac].bmy16  TO bmy16
                    DISPLAY g_bmy[l_ac].bmy06  TO bmy06
                    DISPLAY g_bmy[l_ac].bmy07  TO bmy07
@@ -3304,7 +3331,7 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
                        IF g_bmy[l_ac].bmy35 = '2' THEN
                           LET g_bmy[l_ac].bmy06 = -1
                        ELSE
-                          LET g_bmy[l_ac].bmy06 = 1
+                       #  LET g_bmy[l_ac].bmy06 = 1  #20241230 mark
                        END IF
                     END IF                           #M014 180205 By TSD.Andy
                  ELSE
@@ -3383,6 +3410,14 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
         ##------ 20201208 mark (S)
         #FUN-D80022 --------End----------
 
+        ##--- 20241230 (S)
+        BEFORE FIELD bmy06
+           IF p_cmd = 'a' THEN
+              LET g_bmy[l_ac].bmy06=''
+              LET g_bmy[l_ac].bmy07=''
+           END IF
+        ##--- 20241230 (E)
+
         AFTER FIELD bmy06
            IF NOT cl_null(g_bmy[l_ac].bmy06) THEN
               IF g_bmy[l_ac].bmy03 MATCHES '[23456]' THEN  #CHI-960004 #CHI-C20060
@@ -3408,24 +3443,26 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
              #CHI-DC0019-End-Add
            ELSE                                  #MOD-B50058 add
             # IF g_bmy[l_ac].bmy03='2' THEN      #MOD-B70147 add
-              IF g_bmy[l_ac].bmy03='2' AND g_bmy[l_ac].bmy35 NOT MATCHES '[2]' THEN   #TQC-BA0079 
-                 LET g_bmy[l_ac].bmy06 = 1       #MOD-B50058 add
-              END IF                             #MOD-B70147 add
+              #IF g_bmy[l_ac].bmy03='2' AND g_bmy[l_ac].bmy35 NOT MATCHES '[2]' THEN   #TQC-BA0079 #20241230 mark
+              #   LET g_bmy[l_ac].bmy06 = 1       #MOD-B50058 add                                  #20241230 mark
+              #END IF                             #MOD-B70147 add                                  #20241230 mark
            END IF
         #No.FUN-A60083--begin
         BEFORE FIELD bmy07 
-           IF g_bmy[l_ac].bmy03='2' THEN 
-              LET g_bmy[l_ac].bmy07=1
-           END IF 
+          # IF g_bmy[l_ac].bmy03='2' THEN  #20241230 mark
+          #    LET g_bmy[l_ac].bmy07=1     #20241230 mark
+          # END IF                         #20241230 mark
         #No.FUN-A60083--end
-           LET g_bmy_t.bmy07 = g_bmy[l_ac].bmy07 #CHI-DC0019 add
+          # LET g_bmy_t.bmy07 = g_bmy[l_ac].bmy07 #CHI-DC0019 add #20241230 mark
            
         AFTER FIELD bmy07
-           IF cl_null(g_bmy[l_ac].bmy07) AND
-              g_bmy[l_ac].bmy03 NOT MATCHES '[34]' THEN #FUN-850156   #CHI-A30011 add 4
-               LET g_bmy[l_ac].bmy07 = 1
-              DISPLAY BY NAME g_bmy[l_ac].bmy07
-           END IF
+           ##-- 20241230 mark (S)
+           #IF cl_null(g_bmy[l_ac].bmy07) AND
+           #   g_bmy[l_ac].bmy03 NOT MATCHES '[34]' THEN #FUN-850156   #CHI-A30011 add 4
+           #    LET g_bmy[l_ac].bmy07 = 1
+           #   DISPLAY BY NAME g_bmy[l_ac].bmy07
+           #END IF
+           ##-- 20241230 mark (E)
            #MOD-E60057---add----str---
            #控卡=>mfg2615:主件底數不可小於等於零
            IF NOT cl_null(g_bmy[l_ac].bmy07) THEN
