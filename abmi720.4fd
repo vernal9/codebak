@@ -75,7 +75,7 @@
     <RecordField colName="" fieldIdRef="46" fieldType="NON_DATABASE" name="cn2" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{f027115e-464a-4ae1-ac84-f1e98e6a87e7}"/>
     <RecordField colName="ta_bmx03" fieldIdRef="78" fieldType="TABLE_COLUMN" name="bmx_file.ta_bmx03" sqlTabName="bmx_file" sqlType="VARCHAR" table_alias_name="" uid="{eecbf6ce-7f3c-4c58-b092-d9d6f86726db}"/>
     <RecordField colName="" fieldIdRef="81" fieldType="NON_DATABASE" name="azf03" sqlTabName="" sqlType="CHAR" table_alias_name="" uid="{9c1ffd87-b8d5-447b-9e7e-f71060db00b7}"/>
-    <RecordField colName="bmxmksg" fieldIdRef="82" fieldType="NON_DATABASE" name="KS" sqlTabName="bmx_file" sqlType="VARCHAR" table_alias_name="" uid="{0d670814-161f-4999-a5db-6969c4ac1508}"/>
+    <RecordField colName="bmxmksg" defaultValue="N" fieldIdRef="82" fieldType="NON_DATABASE" name="ksyn" sqlTabName="bmx_file" sqlType="CHAR" table_alias_name="" uid="{0d670814-161f-4999-a5db-6969c4ac1508}"/>
   </Record>
   <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Record1" order="" uid="{9257bc40-2915-4595-b71b-8c12458d5268}" where=""/>
   <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Record2" order="" uid="{98157ece-9b8c-4b8e-84eb-b4b83aea3a6b}" where=""/>
@@ -151,7 +151,7 @@
                   <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="bmxmksg" columnCount="" fieldId="14" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="14" lstrcomment="false" lstrtext="false" lstrtitle="false" name="bmx_file.bmxmksg" noEntry="true" notNull="true" posX="2" posY="2" required="true" rowCount="" sqlTabName="bmx_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="13" table_alias_name="" text="Approve?" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
                   <Label posX="1" posY="3" text="ECR Doc#"/>
                   <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="bmx05" columnCount="" comment="&lt;^P&gt;Query ECRData" fieldId="9" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="20" image="zoom" lstrcomment="false" lstrtitle="false" name="bmx_file.bmx05" posX="22" posY="3" rowCount="" sqlTabName="bmx_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="9" table_alias_name="" widget="ButtonEdit"/>
-                  <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="bmxmksg" columnCount="" fieldId="82" fieldType="NON_DATABASE" gridHeight="1" gridWidth="14" lstrcomment="false" lstrtext="false" lstrtitle="false" name="KS" noEntry="true" notNull="true" posX="2" posY="4" required="true" rowCount="" sqlTabName="bmx_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="81" table_alias_name="" text="KS" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+                  <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="bmxmksg" columnCount="" defaultValue="N" fieldId="82" fieldType="NON_DATABASE" gridHeight="1" gridWidth="14" lstrcomment="false" lstrtext="false" lstrtitle="false" name="ksyn" noEntry="true" notNull="false" posX="2" posY="4" required="false" rowCount="" sqlTabName="bmx_file" sqlType="CHAR" stepX="" stepY="" tabIndex="81" table_alias_name="" text="KS" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
                 </Grid>
               </HBox>
             </Page>

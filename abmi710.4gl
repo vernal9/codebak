@@ -2110,9 +2110,9 @@ FUNCTION i710_show()
 　　   AND bmz01 = g_bmx.bmx01
        AND rownum = 1
     IF l_cnt = 1 THEN
-       DISPLAY 'Y' TO KS
+       DISPLAY 'Y' TO FORMONLY.ksyn
     ELSE
-       DISPLAY 'N' TO KS
+       DISPLAY 'N' TO FORMONLY.ksyn
     END IF
       
     ##---20250325 add (E)
