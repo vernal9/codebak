@@ -302,22 +302,28 @@ MAIN
    IF  l_table6 = -1 THEN EXIT PROGRAM END IF
 
    #子報表-7
-   LET g_sql="sfb01.sfb_file.sfb01,ocf01.ocf_file.ocf01,",
-             "ocf02.ocf_file.ocf02,ocf101.ocf_file.ocf101,",
-             "ocf102.ocf_file.ocf102,ocf103.ocf_file.ocf103,",
-             "ocf104.ocf_file.ocf104,ocf105.ocf_file.ocf105,",
-             "ocf106.ocf_file.ocf106,ocf107.ocf_file.ocf107,",
-             "ocf108.ocf_file.ocf108,ocf109.ocf_file.ocf109,",
-             "ocf110.ocf_file.ocf110,ocf111.ocf_file.ocf111,",
-             "ocf112.ocf_file.ocf112,ocf201.ocf_file.ocf201,",
-             "ocf202.ocf_file.ocf202,ocf203.ocf_file.ocf203,",
-             "ocf204.ocf_file.ocf204,ocf205.ocf_file.ocf205,",
-             "ocf206.ocf_file.ocf206,ocf207.ocf_file.ocf207,",
-             "ocf208.ocf_file.ocf208,ocf209.ocf_file.ocf209,",
-             "ocf210.ocf_file.ocf210,ocf211.ocf_file.ocf211,",
-             "ocf212.ocf_file.ocf212,occ02.occ_file.occ02"
+   #--- 20250414 調整為 aimi108 QC01 指定 （S） 
+   #LET g_sql="sfb01.sfb_file.sfb01,ocf01.ocf_file.ocf01,",
+   #          "ocf02.ocf_file.ocf02,ocf101.ocf_file.ocf101,",
+   #          "ocf102.ocf_file.ocf102,ocf103.ocf_file.ocf103,",
+   #          "ocf104.ocf_file.ocf104,ocf105.ocf_file.ocf105,",
+   #          "ocf106.ocf_file.ocf106,ocf107.ocf_file.ocf107,",
+   #          "ocf108.ocf_file.ocf108,ocf109.ocf_file.ocf109,",
+   #          "ocf110.ocf_file.ocf110,ocf111.ocf_file.ocf111,",
+   #          "ocf112.ocf_file.ocf112,ocf201.ocf_file.ocf201,",
+   #          "ocf202.ocf_file.ocf202,ocf203.ocf_file.ocf203,",
+   #          "ocf204.ocf_file.ocf204,ocf205.ocf_file.ocf205,",
+   #          "ocf206.ocf_file.ocf206,ocf207.ocf_file.ocf207,",
+   #          "ocf208.ocf_file.ocf208,ocf209.ocf_file.ocf209,",
+   #          "ocf210.ocf_file.ocf210,ocf211.ocf_file.ocf211,",
+   #          "ocf212.ocf_file.ocf212,occ02.occ_file.occ02"
+   LET g_sql="sfb01.sfb_file.sfb01,",
+             "imc01.imc_file.imc01,",
+             "imc03.imc_file.imc03,",
+             "imc04.imc_file.imc04"
    LET l_table7 = cl_prt_temptable('csfr1027',g_sql) CLIPPED
    IF  l_table7 = -1 THEN EXIT PROGRAM END IF
+   #--- 20250414 調整為 aimi108 QC01 指定 （E） 
    #FUN-E40035 add end----------------------------------------------------------
 
 
@@ -675,7 +681,9 @@ DEFINE    sr1       RECORD
                      eca04    LIKE eca_file.eca04     #工作站型態
                     END RECORD,
           sr3       RECORD
-                     ocf      RECORD LIKE ocf_file.*     #NO:6882
+          #           ocf      RECORD LIKE ocf_file.*     #NO:6882 #20250410 mark
+                    imc03      LIKE imc_file.imc03,   #20250414 序號
+                    imc04      LIKE imc_file.imc04    #20250414 說明
                     END RECORD,
           sr4       RECORD
                      oao03      LIKE oao_file.oao03,   #NO:6882
@@ -935,16 +943,21 @@ DEFINE    sr1       RECORD
       EXIT PROGRAM
    END IF
 
+   ##---20250410 (S)
    #子報表-7
+   #LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table7 CLIPPED,
+   #            " VALUES(?,?,?,?,? ,?,?,?,?,? ,?,?,?,?,? ,?,?,?,?,?",
+   #            "       ,?,?,?,?,? ,?,?,?) "
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table7 CLIPPED,
-               " VALUES(?,?,?,?,? ,?,?,?,?,? ,?,?,?,?,? ,?,?,?,?,?",
-               "       ,?,?,?,?,? ,?,?,?) "
+               " VALUES(?,?,?,?) "
    PREPARE insert_prep7 FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep7:',status,1)
       CALL cl_used(g_prog,g_time,2) RETURNING g_time
       EXIT PROGRAM
    END IF
+   ##---20250410 (E)
+   
    #FUN-E40035 add end----------------------------------------------------------
 
 
@@ -970,11 +983,6 @@ DEFINE    sr1       RECORD
    END IF
    DECLARE asfr102_curs1 CURSOR FOR asfr102_p1
 
-
-   LET l_sql = " SELECT * FROM ocf_file ",      #NO:6882
-               " WHERE  ocf01=? AND ocf02=? "
-   PREPARE asfr102_p2 FROM l_sql                  # RUNTIME 編譯
-   DECLARE asfr102_curs2 CURSOR FOR asfr102_p2    # CURSOR
 
 #No.FUN-670104--BEGIN--
    IF tm.a = 'Y' THEN        #備料資料
@@ -1007,6 +1015,14 @@ DEFINE    sr1       RECORD
      PREPARE r102_memo1_2 FROM l_sql
      DECLARE r102_memo1_c CURSOR FOR r102_memo1_2
    END IF
+
+   ##---2020414 QC01 -- (S) aimi108 QC01 全 子報表7
+   LET l_sql = " SELECT imc03,imc04 FROM imc_file ",
+               "   WHERE imc02='QC01' AND imc01 = ? ",
+               "  ORDER BY imc03 "
+   PREPARE asfr102_p2 FROM l_sql
+   DECLARE asfr102_curs2 CURSOR FOR asfr102_p2 
+   ##---2020414 QC01 -- (E)
 
    IF tm.g='Y' THEN
       #(單頭)抓取尺寸總共有幾個
@@ -1331,69 +1347,82 @@ DEFINE    sr1       RECORD
          END FOREACH
       END IF
  
-      IF tm.d = 'Y' THEN #訂單麥頭
-         LET g_po_no=''
-         SELECT oea01,oea04,oea44,oea10 INTO l_oea01,l_oea04,l_oea44,g_po_no #MOD-530401
-          FROM oea_file              #抓單頭資料
-         WHERE oea01=sr.sfb.sfb22
-         IF SQLCA.SQLCODE THEN
-            LET l_oea01=NULL
-            LET l_oea04=NULL
-            LET l_oea44=NULL
-         END IF
-         OPEN asfr102_curs2 USING l_oea04,l_oea44
-         FETCH asfr102_curs2 INTO sr3.*
-         IF SQLCA.SQLCODE=0 AND NOT cl_null(l_oea04) THEN
-            SELECT occ02 INTO l_occ02 FROM occ_file WHERE occ01=sr3.ocf.ocf01
+      #IF tm.d = 'Y' THEN #訂單麥頭
+      #   LET g_po_no=''
+      #   SELECT oea01,oea04,oea44,oea10 INTO l_oea01,l_oea04,l_oea44,g_po_no #MOD-530401
+      #    FROM oea_file              #抓單頭資料
+      #   WHERE oea01=sr.sfb.sfb22
+      #   IF SQLCA.SQLCODE THEN
+      #      LET l_oea01=NULL
+      #      LET l_oea04=NULL
+      #      LET l_oea44=NULL
+      #   END IF
+      #   OPEN asfr102_curs2 USING l_oea04,l_oea44
+      #   FETCH asfr102_curs2 INTO sr3.*
+      #   IF SQLCA.SQLCODE=0 AND NOT cl_null(l_oea04) THEN
+      #      SELECT occ02 INTO l_occ02 FROM occ_file WHERE occ01=sr3.ocf.ocf01
  #MOD-530401
-            LET g_ctn_no1=''
-            LET g_ctn_no2=''
-            LET sr3.ocf.ocf101=r102_ocf_c(sr3.ocf.ocf101)
-            LET sr3.ocf.ocf102=r102_ocf_c(sr3.ocf.ocf102)
-            LET sr3.ocf.ocf103=r102_ocf_c(sr3.ocf.ocf103)
-            LET sr3.ocf.ocf104=r102_ocf_c(sr3.ocf.ocf104)
-            LET sr3.ocf.ocf105=r102_ocf_c(sr3.ocf.ocf105)
-            LET sr3.ocf.ocf106=r102_ocf_c(sr3.ocf.ocf106)
-            LET sr3.ocf.ocf107=r102_ocf_c(sr3.ocf.ocf107)
-            LET sr3.ocf.ocf108=r102_ocf_c(sr3.ocf.ocf108)
-            LET sr3.ocf.ocf109=r102_ocf_c(sr3.ocf.ocf109)
-            LET sr3.ocf.ocf110=r102_ocf_c(sr3.ocf.ocf110)
-            LET sr3.ocf.ocf111=r102_ocf_c(sr3.ocf.ocf111)
-            LET sr3.ocf.ocf112=r102_ocf_c(sr3.ocf.ocf112)
-            LET sr3.ocf.ocf201=r102_ocf_c(sr3.ocf.ocf201)
-            LET sr3.ocf.ocf202=r102_ocf_c(sr3.ocf.ocf202)
-            LET sr3.ocf.ocf203=r102_ocf_c(sr3.ocf.ocf203)
-            LET sr3.ocf.ocf204=r102_ocf_c(sr3.ocf.ocf204)
-            LET sr3.ocf.ocf205=r102_ocf_c(sr3.ocf.ocf205)
-            LET sr3.ocf.ocf206=r102_ocf_c(sr3.ocf.ocf206)
-            LET sr3.ocf.ocf207=r102_ocf_c(sr3.ocf.ocf207)
-            LET sr3.ocf.ocf208=r102_ocf_c(sr3.ocf.ocf208)
-            LET sr3.ocf.ocf209=r102_ocf_c(sr3.ocf.ocf209)
-            LET sr3.ocf.ocf210=r102_ocf_c(sr3.ocf.ocf210)
-            LET sr3.ocf.ocf211=r102_ocf_c(sr3.ocf.ocf211)
-            LET sr3.ocf.ocf212=r102_ocf_c(sr3.ocf.ocf212)
-            #str TQC-740275 add 
-           #EXECUTE insert_prep3 USING #FUN-E40035 mark
-            EXECUTE insert_prep7 USING #FUN-E40035
-               sr.sfb.sfb01,sr3.ocf.ocf01
-              ,sr3.ocf.ocf02,sr3.ocf.ocf101
-              ,sr3.ocf.ocf102,sr3.ocf.ocf103
-              ,sr3.ocf.ocf104,sr3.ocf.ocf105
-              ,sr3.ocf.ocf106,sr3.ocf.ocf107
-              ,sr3.ocf.ocf108,sr3.ocf.ocf109
-              ,sr3.ocf.ocf110,sr3.ocf.ocf111
-              ,sr3.ocf.ocf112,sr3.ocf.ocf201
-              ,sr3.ocf.ocf202,sr3.ocf.ocf203
-              ,sr3.ocf.ocf204,sr3.ocf.ocf205
-              ,sr3.ocf.ocf206,sr3.ocf.ocf207
-              ,sr3.ocf.ocf208,sr3.ocf.ocf209
-              ,sr3.ocf.ocf210,sr3.ocf.ocf211
-              ,sr3.ocf.ocf212,l_occ02
-            #end TQC-740275 add 
-         END IF
-      END IF
+      #      LET g_ctn_no1=''
+      #      LET g_ctn_no2=''
+      #      LET sr3.ocf.ocf101=r102_ocf_c(sr3.ocf.ocf101)
+      #      LET sr3.ocf.ocf102=r102_ocf_c(sr3.ocf.ocf102)
+      #      LET sr3.ocf.ocf103=r102_ocf_c(sr3.ocf.ocf103)
+      #      LET sr3.ocf.ocf104=r102_ocf_c(sr3.ocf.ocf104)
+      #      LET sr3.ocf.ocf105=r102_ocf_c(sr3.ocf.ocf105)
+      #      LET sr3.ocf.ocf106=r102_ocf_c(sr3.ocf.ocf106)
+      #      LET sr3.ocf.ocf107=r102_ocf_c(sr3.ocf.ocf107)
+      #      LET sr3.ocf.ocf108=r102_ocf_c(sr3.ocf.ocf108)
+      #      LET sr3.ocf.ocf109=r102_ocf_c(sr3.ocf.ocf109)
+      #      LET sr3.ocf.ocf110=r102_ocf_c(sr3.ocf.ocf110)
+      #      LET sr3.ocf.ocf111=r102_ocf_c(sr3.ocf.ocf111)
+      #      LET sr3.ocf.ocf112=r102_ocf_c(sr3.ocf.ocf112)
+      #      LET sr3.ocf.ocf201=r102_ocf_c(sr3.ocf.ocf201)
+      #      LET sr3.ocf.ocf202=r102_ocf_c(sr3.ocf.ocf202)
+      #      LET sr3.ocf.ocf203=r102_ocf_c(sr3.ocf.ocf203)
+      #      LET sr3.ocf.ocf204=r102_ocf_c(sr3.ocf.ocf204)
+      #      LET sr3.ocf.ocf205=r102_ocf_c(sr3.ocf.ocf205)
+      #      LET sr3.ocf.ocf206=r102_ocf_c(sr3.ocf.ocf206)
+      #      LET sr3.ocf.ocf207=r102_ocf_c(sr3.ocf.ocf207)
+      #      LET sr3.ocf.ocf208=r102_ocf_c(sr3.ocf.ocf208)
+      #      LET sr3.ocf.ocf209=r102_ocf_c(sr3.ocf.ocf209)
+      #      LET sr3.ocf.ocf210=r102_ocf_c(sr3.ocf.ocf210)
+      #      LET sr3.ocf.ocf211=r102_ocf_c(sr3.ocf.ocf211)
+      #      LET sr3.ocf.ocf212=r102_ocf_c(sr3.ocf.ocf212)
+      #      #str TQC-740275 add 
+      #     #EXECUTE insert_prep3 USING #FUN-E40035 mark
+      #      EXECUTE insert_prep7 USING #FUN-E40035
+      #         sr.sfb.sfb01,sr3.ocf.ocf01
+      #        ,sr3.ocf.ocf02,sr3.ocf.ocf101
+      #        ,sr3.ocf.ocf102,sr3.ocf.ocf103
+      #        ,sr3.ocf.ocf104,sr3.ocf.ocf105
+      #        ,sr3.ocf.ocf106,sr3.ocf.ocf107
+      #        ,sr3.ocf.ocf108,sr3.ocf.ocf109
+      #        ,sr3.ocf.ocf110,sr3.ocf.ocf111
+      #        ,sr3.ocf.ocf112,sr3.ocf.ocf201
+      #        ,sr3.ocf.ocf202,sr3.ocf.ocf203
+      #        ,sr3.ocf.ocf204,sr3.ocf.ocf205
+      #        ,sr3.ocf.ocf206,sr3.ocf.ocf207
+      #        ,sr3.ocf.ocf208,sr3.ocf.ocf209
+      #        ,sr3.ocf.ocf210,sr3.ocf.ocf211
+      #        ,sr3.ocf.ocf212,l_occ02
+      #      #end TQC-740275 add 
+      #   END IF
+      #END IF
  
 #No.FUN-670104--BEGIN--
+
+   ##---- 20250414 (S)
+   FOREACH asfr102_curs2 USING sr.sfb.sfb05 INTO sr3.imc03,sr3.imc04
+       IF SQLCA.sqlcode THEN
+          CALL cl_err('',SQLCA.sqlcode,0)  
+          EXIT FOREACH
+        END IF
+        IF sr3.imc03=10 THEN LET sr.imc04_1 = sr3.imc04 END If
+        EXECUTE insert_prep7 USING 
+               sr.sfb.sfb01,sr.sfb.sfb05,sr3.imc03,sr3.imc04
+   ##---- 20250414 (E)
+
+   END FOREACH
       IF tm.e = 'Y' THEN #工單備註
 
          FOREACH r102_memo1_c USING sr.sfb.sfb05 INTO l_sfw02,l_sfw03 #No.FUN-670104
