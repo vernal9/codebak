@@ -65,6 +65,7 @@
 # Modify.........: No:24100008   24/10/08 By Ruby 增加訂單備註，送貨地址帶入實際訂單出貨地址
 # Modify.........: No:           24/11/20 By Ruby 增加規格
 # Modify.........: No:24120038   20241231 By momo 增加訂單日期、約定交貨日
+# Modify.........: No:25050016   20250516 By momo 增加潛在客戶行業別顯示 ofd03-ofq02
 
 DATABASE ds
  
@@ -139,7 +140,9 @@ MAIN
                " oga03.oga_file.oga03,",
                " oga032.oga_file.oga032,",
                " oga04.oga_file.oga04,",
+               " ofq02.ofq_file.ofq02,",   #20250516 潛在客戶行業別                
                " oga044.oga_file.oga044,", #241021 add by ruby
+               " ocd03.ocd_file.ocd03,",   #250321 add by ruby 
                " occ02.occ_file.occ02,",
                " oga14.oga_file.oga14,",
                " oga27.oga_file.oga27,",   #181218 add by ruby
@@ -199,7 +202,7 @@ MAIN
    LET g_sql = " INSERT INTO ",g_cr_db_str CLIPPED,l_table clipped,
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,", 
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",  #FUN-8B0025 add? #add by ruby 2? 2018/02/22 #add by ruby 1? 2018/03/30 #181218 add 1? by ruby #200420 add 1? by ruby
-               "        ?,?,?,?,?, ?,?,?,?)"                           #20220720 add #221128 add 1? by ruby #240110 add 2? by ruby #240620 add 1? by ruby #241008 add 1? by ruby #241021 add 1? by ruby #20241231 add 2?
+               "        ?,?,?,?,?, ?,?,?,?,?, ? )"                     #250516 1? #20220720 add #221128 add 1? by ruby #240110 add 2? by ruby #240620 add 1? by ruby #241008 add 1? by ruby #241021 add 1? by ruby #20241231 add 2? #250321 add 1? by ruby 
    PREPARE insert_prept111 FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep:',STATUS,1) EXIT PROGRAM 
@@ -947,17 +950,17 @@ FUNCTION axmr620()
           l_sql     STRING,                    #TQC-B50069
           l_chr     LIKE type_file.chr1,       #No.FUN-680137 VARCHAR(1)
           l_za05    LIKE type_file.chr1000,       #No.FUN-680137 VARCHAR(40)
-         l_order    ARRAY[5] OF LIKE oea_file.oea01,             # No.FUN-680137  VARCHAR(16)   #No.FUN-550070
-         sr               RECORD order1 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
-                                 order2 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
-                                 order3 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
+          l_order   ARRAY[5] OF LIKE oea_file.oea01,             # No.FUN-680137  VARCHAR(16)   #No.FUN-550070
+          sr               RECORD order1 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
+                                  order2 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
+                                  order3 LIKE oea_file.oea01,     # No.FUN-680137  VARCHAR(16)
                                   oga01 LIKE oga_file.oga01,    #
                                   oga02 LIKE oga_file.oga02,
                                   oga03 LIKE oga_file.oga03,
                                   oga032 LIKE oga_file.oga032,
                                   oga04 LIKE oga_file.oga04,
                                   oga044 LIKE oga_file.oga044,   #241008 add by ruby
-				                  occ02 LIKE occ_file.occ02,
+				  occ02 LIKE occ_file.occ02,
                                   oga14 LIKE oga_file.oga14,
                                   oga27 LIKE oga_file.oga27,   #181218 add by ruby
                                   oga15 LIKE oga_file.oga15,
@@ -1004,7 +1007,7 @@ FUNCTION axmr620()
       g_ogc        RECORD
                    ogc12 LIKE ogc_file.ogc12,
                    ogc17 LIKE ogc_file.ogc17
-              END RECORD,
+                   END RECORD,
       l_oaz23   LIKE oaz_file.oaz23,
       l_ima02   LIKE ima_file.ima02,
       l_ima021  LIKE ima_file.ima021,
@@ -1018,7 +1021,9 @@ FUNCTION axmr620()
      DEFINE     l_tc_ocj01     LIKE tc_ocj_file.tc_ocj01      #240620 add by ruby
      DEFINE     l_tc_ocj02     LIKE tc_ocj_file.tc_ocj02      #240620 add by ruby
      DEFINE     l_tc_ocj02_t   LIKE type_file.chr1000         #240620 add by ruby  
-     DEFINE     l_oap      RECORD LIKE oap_file.*             #241008 add by ruby                 
+     DEFINE     l_oap          RECORD LIKE oap_file.*         #241008 add by ruby  
+     DEFINE     l_ocd03        LIKE ocd_file.ocd03            #250321 add by ruby
+     DEFINE     l_ofq02        LIKE ofq_file.ofq02            #20250516 潛在客戶行業別
     #FUN-EA0031--add str--
      DEFINE l_ogbc05  LIKE ogbc_file.ogbc05,
             l_ogbc06  LIKE ogbc_file.ogbc06,
@@ -1260,20 +1265,38 @@ FUNCTION axmr620()
        END IF 
        #MOD-G50062 --- add End ---
 
+       ##--- 20250516 modify (S)
        ##--- 20220720 modify by momo (S)
-       #帶出潛在客戶簡稱
+       #帶出潛在客戶簡稱 、潛在客戶行業別 
+       LET l_ofq02 = ''
        IF cl_null(sr.occ02) THEN
-          SELECT ofd02 INTO sr.occ02 FROM ofd_file
-           WHERE ofd01 = sr.oga04
+          #SELECT ofd02 INTO sr.occ02 FROM ofd_file
+          # WHERE ofd01 = sr.oga04
+       
+          LET l_sql = "SELECT ofd02,ofq02 ",
+                      "  FROM ",cl_get_target_table(m_plant,'ofd_file'),
+                      "  LEFT JOIN " ,cl_get_target_table(m_plant,'ofq_file'), " ON ofd03=ofq01 ",
+                      " WHERE ofd01 =  '",sr.oga04,"' "
+          CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+          CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+          PREPARE sel_ofd03_pre FROM l_sql
+          EXECUTE sel_ofd03_pre INTO sr.occ02,l_ofq02
        END IF
-       #帶出折數 訂單日期 訂單約交日
+       ##--- 20250516 modify (E)
+
+       #帶出折數 訂單日期 訂單約交日 20241231
        LET l_oebud06 = ''
        LET l_oea02 = '' #20241231
        LET l_oeb15 = '' #20241231
-       SELECT oebud06,oea02,oeb15 INTO l_oebud06,l_oea02,l_oeb15 #20241231
-         FROM oeb_file,oea_file                                  #20241231
-        WHERE oeb01 = oea01                                      #20241231
-          AND oeb01 = sr.ogb31 AND oeb03 = sr.ogb32 
+       LET l_sql = "SELECT oebud06,oea02,oeb15 ",
+                   "FROM ",cl_get_target_table(m_plant,'oeb_file'),
+                   " ,"   ,cl_get_target_table(m_plant,'oea_file'),                              
+                   " WHERE oeb01 = oea01    ",                                  #20241231
+                   "AND oeb01 = '",sr.ogb31,"' AND oeb03 = '",sr.ogb32,"' "
+       CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+       CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+       PREPARE sel_oeb15_pre FROM l_sql
+       EXECUTE sel_oeb15_pre INTO l_oebud06,l_oea02,l_oeb15
        ##--- 20220720 modify by mom (E)
        
         IF cl_null(l_occ37) THEN LET l_occ37 = 'N' END IF
@@ -1507,9 +1530,22 @@ FUNCTION axmr620()
        END IF  
      END FOREACH
      #240620 add by ruby --e-- 
+
+     #250321 add by ruby --s--
+     LET l_ocd03=''
+     IF cl_null(sr.oga044) THEN
+        SELECT occ02 INTO l_ocd03 FROM occ_file WHERE occ01=sr.oga03
+     END IF 
+
+     IF NOT cl_null(sr.oga044) THEN
+        SELECT ocd03 INTO l_ocd03 FROM ocd_file WHERE ocd01=sr.oga03 and ocd02=sr.oga044
+     END IF          
+     #250321 add by ruby --e--
       
             EXECUTE insert_prept111 USING sr.oga01,sr.oga02,
-                               sr.oga03,sr.oga032,sr.oga04,sr.oga044,sr.occ02,sr.oga14,sr.oga27,  #181218 add by ruby #241021 add oga044 by ruby
+                               sr.oga03,sr.oga032,sr.oga04,
+                               l_ofq02,                                       #20250516
+                               sr.oga044,l_ocd03,sr.occ02,sr.oga14,sr.oga27,  #181218 add by ruby #241021 add oga044 by ruby #250321 add ocd03 by ruby
                                l_gen02,sr.oga15,l_gem02,sr.ogb03,sr.ogb31,sr.ogb04,
                                sr.ogb06,l_ima021,sr.ima131,l_str2,sr.ogb05,sr.oga23,sr.oga24,     #221128 add ima131 by ruby #240110 add oga24 by ruby
                                sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t,sr.omb16, #add by ruby ogb14t 2018/02/22 #240110 add omb16 by ruby
@@ -1666,10 +1702,23 @@ FUNCTION axmr620()
        END IF  
      END FOREACH
      #240620 add by ruby --e--  
-           
+
+     #250321 add by ruby --s--
+     LET l_ocd03=''
+     IF cl_null(sr.oga044) THEN
+        SELECT occ02 INTO l_ocd03 FROM occ_file WHERE occ01=sr.oga03
+     END IF 
+
+     IF NOT cl_null(sr.oga044) THEN
+        SELECT ocd03 INTO l_ocd03 FROM ocd_file WHERE ocd01=sr.oga03 and ocd02=sr.oga044
+     END IF          
+     #250321 add by ruby --e--
+                
       IF l_flag != 'Y' THEN
           EXECUTE insert_prept111 USING sr.oga01,sr.oga02,
-                                sr.oga03,sr.oga032,sr.oga04,sr.oga044,sr.occ02,sr.oga14,sr.oga27,   #181218 add by ruby #241021 add oga044 by ruby
+                               sr.oga03,sr.oga032,sr.oga04,
+                               l_ofq02,                                        #20250516
+                               sr.oga044,l_ocd03,sr.occ02,sr.oga14,sr.oga27,   #181218 add by ruby #241021 add oga044 by ruby #250321 add ocd03 by ruby
                                l_gen02,sr.oga15,l_gem02,sr.ogb03,sr.ogb31,sr.ogb32,sr.ogb04,   #add by ruby ogb03 2018/03/30
                                sr.ogb06,l_ima021,sr.ima131,l_str2,sr.ogb05,sr.oga23,sr.oga24,           #221128 add ima131 by ruby #240110 add oga24 by ruby 
                                sr.ogb13,sr.ogb12,sr.ogb916,sr.ogb917,sr.ogb14,sr.ogb14t,sr.omb16,  #add by ruby ogb14t 2018/02/22 #240110 add omb16 by ruby

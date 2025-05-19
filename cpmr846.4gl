@@ -5,7 +5,7 @@
 # Return code....:
 # Date & Author..: 2023/03/09 By momo
 #-------MODIFICATION-------MODIFICATION-------MODIFIACTION-------
-#
+# #-25040031 20250423 By momo 
 #
  
 DATABASE ds
@@ -50,20 +50,24 @@ MAIN
    CALL cl_used(g_prog,g_time,1) RETURNING g_time #No.FUN-690115 BY dxfwo 
 
 #No.FUN-A40023 -----------start-----------------
-    LET g_sql = " ima01.ima_file.ima01,",
+    LET g_sql = " sn.type_file.num5,",
+                " ima01.ima_file.ima01,",
                 " ima02.ima_file.ima02,",
                 " ima021.ima_file.ima021,",
                 " ima25.ima_file.ima25,",
                 " ima41.ima_file.ima41,",        
                 " ima44_fac.ima_file.ima44_fac,",
+                " ima133.ima_file.ima133,",     #產品預設料號
                 " bmb06.bmb_file.bmb06,",       #組成用量
                 " bmb10.bmb_file.bmb10,",       #BOM單位
                 " imgplant.img_file.imgplant, ",     
                 " pmc03.pmc_file.pmc03,",
                 " pmh04.pmh_file.pmh04,",
-                " pmh12.pmh_file.pmh12,",
+                " pmh06.pmh_file.pmh06,",       #採購日期/核價日期 20250423
+                " pmh12.pmh_file.pmh12,",       #價格 
                 " pmh22.pmh_file.pmh22,",       #價格型態
                 " pmn20.pmn_file.pmn20,",       #最近採購量
+                " pmi05.pmi_file.pmi05,",       #分量計價  20250424
                 " azk01.azk_file.azk01,",       #幣別
                 " atp_qty.type_file.num15_3,",
                 " oeb_q.type_file.num15_3,",
@@ -87,7 +91,7 @@ MAIN
     IF l_table = -1 THEN EXIT PROGRAM END IF                  # Temp Table產生
     LET g_sql = " INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,
                 " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?, ",
-                "        ?,?,?,?,?, ?,?,?,?,?, ?,? ) "        
+                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ? ) "        
     PREPARE insert_prep FROM g_sql
     IF STATUS THEN
        CALL cl_err('insert_prep:',status,1) EXIT PROGRAM
@@ -251,7 +255,7 @@ WHILE TRUE
 #  END IF
 #TQC-A70003 ---end
    
-   CONSTRUCT BY NAME tm.wc2 ON ima01,ima06          #TQC-A70003 
+   CONSTRUCT BY NAME tm.wc2 ON ima01,ima02,ima021,ima06          #20250423
  
    #No.FUN-570240 --start
      #No.FUN-580031 --start--
@@ -459,14 +463,16 @@ FUNCTION cpmr846()
           l_ima271  LIKE ima_file.ima271,
           maxstk    LIKE ima_file.ima271,
           sr            RECORD
-                        ima01  LIKE ima_file.ima01, #料件編號
-                        ima02  LIKE ima_file.ima02, #品名規格
-                        ima021 LIKE ima_file.ima021,#品名規格
-                        ima25  LIKE ima_file.ima25, #採購單位
-                        ima41  LIKE ima_file.ima41, #平均用量
+                        sn     LIKE type_file.num5,  #序號
+                        ima01  LIKE ima_file.ima01,  #料件編號
+                        ima02  LIKE ima_file.ima02,  #品名規格
+                        ima021 LIKE ima_file.ima021, #品名規格
+                        ima25  LIKE ima_file.ima25,  #採購單位
+                        ima41  LIKE ima_file.ima41,  #平均用量
                         ima44_fac LIKE ima_file.ima44_fac, #採購換算
-                        bmb06  LIKE bmb_file.bmb06, #組成用量
-                        bmb10  LIKE bmb_file.bmb10  #BOM單位
+                        ima133 LIKE ima_file.ima133, #產品預設料號 20250423
+                        bmb06  LIKE bmb_file.bmb06,  #組成用量
+                        bmb10  LIKE bmb_file.bmb10   #BOM單位
                         END RECORD
    DEFINE g_str         STRING                      
    DEFINE tok           base.StringTokenizer 
@@ -474,10 +480,15 @@ FUNCTION cpmr846()
    DEFINE l_str         STRING                    
    DEFINE l_pmc03       LIKE pmc_file.pmc03
    DEFINE l_pmh04       LIKE pmh_file.pmh04  
+   DEFINE l_pmh06       LIKE pmh_file.pmh06 #採購日期/核價日期 20250423
    DEFINE l_pmh12       LIKE pmh_file.pmh12
    DEFINE l_pmh22       LIKE pmh_file.pmh22 #價格型態
    DEFINE l_pmn20       LIKE pmn_file.pmn20 #最近採購量
    DEFINE l_azk01       LIKE azk_file.azk01 #幣別
+   DEFINE l_pmi05       LIKE pmi_file.pmi05 #分量計價 20250424
+   DEFINE l_pmi01       LIKE pmi_file.pmi01 #核價單號 20250424
+   DEFINE l_pmj02       LIKE pmj_file.pmj02 #核價項次 20250424
+   DEFINE l_pmj05       LIKE pmj_file.pmj05 #核價幣別 20250424
    DEFINE l_ima           RECORD
              oeb_q        LIKE type_file.num15_3,
              sfa_q1       LIKE type_file.num15_3,
@@ -526,7 +537,7 @@ FUNCTION cpmr846()
 
      IF tm.bom='Y' THEN 
         LET tm.wc2 = cl_replace_str(tm.wc2,"ima01","bmb01") 
-        LET l_sql = "SELECT ima01,ima02,ima021,ima44,ima41/ima44_fac,ima44_fac,bmb06,bmb10 ",
+        LET l_sql = "SELECT rownum,ima01,ima02,ima021,ima44,ima41/ima44_fac,ima44_fac,ima133,bmb06,bmb10 ", #20250423
                     "  FROM ",cl_get_target_table(l_plant,'ima_file'),
                     "      ,",cl_get_target_table(l_plant,'bmb_file'),
                     "  WHERE bmb03 = ima01 AND bmb05 IS NULL ",
@@ -534,13 +545,14 @@ FUNCTION cpmr846()
                     "  START WITH ",tm.wc2 CLIPPED ,
                     "  CONNECT BY PRIOR bmb03 = bmb01 "
      ELSE
-        LET l_sql = "SELECT ima01,ima02,ima021,ima44,ima41/ima44_fac,ima44_fac,0,'' ",
+        LET l_sql = 
+                    "SELECT '',ima01,ima02,ima021,ima44,ima41/ima44_fac ima41,ima44_fac,ima133,0,'' ",   #20250423
                     " FROM ",cl_get_target_table(l_plant,'ima_file'), 
-                    " WHERE imaacti='Y' AND ",tm.wc2 CLIPPED
+                    " WHERE imaacti='Y' AND ima140='N' AND ",tm.wc2 CLIPPED,
+                    " ORDER BY ima02,ima021,ima01 "
 
      END IF
                  
-     LET l_sql = l_sql CLIPPED, " ORDER BY ima01"
      CALL cl_replace_sqldb(l_sql) RETURNING l_sql
      CALL cl_parse_qry_sql(l_sql,l_plant) RETURNING l_sql
      PREPARE r846_prepare1 FROM l_sql
@@ -558,9 +570,16 @@ FUNCTION cpmr846()
         LET l_pmn20 = 0
         LET l_pmc03=''
         LET l_pmh12 = 0
+        LET l_pmh06 = ''    #20250423
         LET l_azk01 = ''
+        LET l_pmi05 = ''    #20250424
+        LET l_pmi01 = '' 
+        LET l_pmj02 = '' 
+        LET l_pmj05 = '' 
+        LET g_today = g_today - 1
+
         #最近採購量 
-        LET l_sql = "SELECT SUM(pmn20),pmc03,pmn44,pmm02,aza17 ",
+        LET l_sql = "SELECT SUM(pmn20),MAX(pmm04),pmc03,pmn44,pmm02,aza17 ",   #20250423
                     "  FROM ",cl_get_target_table(l_plant,'pmn_file'),
                     "  ,"    ,cl_get_target_table(l_plant,'pmm_file'),
                     "  ,"    ,cl_get_target_table(l_plant,'pmc_file'), 
@@ -568,26 +587,27 @@ FUNCTION cpmr846()
                     " WHERE pmn01=pmm01 ",
                     "   AND pmc01=pmm09 ",
                     "   AND pmn04 = '",sr.ima01,"' ",
-                    "   AND pmm04 = (SELECT MAX(pmm04) FROM ",cl_get_target_table(l_plant,'pmm_file'),
-                    "  ,"                                    ,cl_get_target_table(l_plant,'pmn_file'),
-                    "                 WHERE pmm01=pmn01 ",
-                    "                   AND pmm04 between '",tm.bdate,"' AND '",tm.edate,"' ",
+                    "   AND pmm04 between '",tm.bdate,"' AND '",tm.edate,"' ",                            
+                    "   AND pmm04 = (SELECT MAX(pmm04) FROM ",cl_get_target_table(l_plant,'pmm_file'),   
+                    "  ,"                                    ,cl_get_target_table(l_plant,'pmn_file'),    
+                    "                 WHERE pmm01=pmn01 ",                                                
+                    "                   AND pmm04 between '",tm.bdate,"' AND '",tm.edate,"' ",            
                     "                   AND pmn04 = '",sr.ima01,"') ",
                     "GROUP BY pmc03,pmn44,pmm02,aza17 "
          
          CALL cl_replace_sqldb(l_sql) RETURNING l_sql
          CALL cl_parse_qry_sql(l_sql,l_plant) RETURNING l_sql
          PREPARE sel_pmn_pre FROM l_sql
-         EXECUTE sel_pmn_pre INTO l_pmn20,l_pmc03,l_pmh12,l_pmh22,l_azk01
+         EXECUTE sel_pmn_pre INTO l_pmn20,l_pmh06,l_pmc03,l_pmh12,l_pmh22,l_azk01 #20250423
 
          IF l_pmh22='S' THEN LET l_pmh22='2' ELSE LET l_pmh22='1' END IF
 
          IF cl_null(l_pmh22) THEN CONTINUE FOREACH END IF
 
-         #最新最低核價
+         #最新核價
          IF tm.price = '2' THEN
             LET l_sql = "SELECT * FROM ( ",
-                        "SELECT pmc03,pmj07*azk052,pmi10,aza17 ",
+                        "SELECT pmc03,pmi01,pmj02,pmj05,pmi02,pmi05,pmj07*azk052,pmi10,aza17 ",     #20250424
                         "  FROM ",cl_get_target_table(l_plant,'pmi_file'),
                         "  ,"    ,cl_get_target_table(l_plant,'pmj_file'),
                         "  ,"    ,cl_get_target_table(l_plant,'pmc_file'),
@@ -596,9 +616,10 @@ FUNCTION cpmr846()
                         " WHERE pmi01 = pmj01 ",
                         "   AND pmc01 = pmi03 ",
                         "   AND pmj05 = azk01 ",
-                        "   AND azk02 = (SELECT MAX(azk02) FROM ",cl_get_target_table(l_plant,'azk_file'),
-                        "  ,"                                    ,cl_get_target_table(l_plant,'pmj_file'),
-                        "                  WHERE azk01=pmj05) ",
+                        "   AND azk02 = '",g_today,"'  ",
+                      # "   AND azk02 = (SELECT MAX(azk02) FROM ",cl_get_target_table(l_plant,'azk_file'),
+                      # "  ,"                                    ,cl_get_target_table(l_plant,'pmj_file'),
+                      # "                  WHERE azk01=pmj05) ",
                         "   AND pmc05 = '1' ",
                         "   AND pmi10 <= '2' ",
                         "   AND ta_pmj02 is null ",
@@ -606,14 +627,32 @@ FUNCTION cpmr846()
                         "   AND pmj03 = '",sr.ima01,"' ",
                         "   AND pmj09 IN (SELECT MAX(pmj09) FROM ",cl_get_target_table(l_plant,'pmi_file'),
                         "  ,"                                     ,cl_get_target_table(l_plant,'pmj_file'),
-                        "                        WHERE pmi01=pmj01 AND pmj03 = '",sr.ima01,"' AND pmj07>0 ",
+                      # "                        WHERE pmi01=pmj01 AND pmj03 = '",sr.ima01,"' AND pmj07>0 ",
+                        "                        WHERE pmi01=pmj01 AND pmj03 = '",sr.ima01,"' ",
+                        "                          AND pmi02 between '",tm.bdate,"' AND '",tm.edate,"' ",     #20250422
                         "                          AND pmiconf='Y' AND ta_pmj02 is null AND pmj12<='2') ",
                         "   ORDER BY pmj07 ) ",
                         "   WHERE ROWNUM=1 "
             CALL cl_replace_sqldb(l_sql) RETURNING l_sql
             CALL cl_parse_qry_sql(l_sql,l_plant) RETURNING l_sql
             PREPARE sel_pmj_pre FROM l_sql
-            EXECUTE sel_pmj_pre INTO l_pmc03,l_pmh12,l_pmh22,l_azk01
+            EXECUTE sel_pmj_pre INTO l_pmc03,l_pmi01,l_pmj02,l_pmj05,l_pmh06,l_pmi05,l_pmh12,l_pmh22,l_azk01  #20250424
+     
+            ##---- 分量計價 取最高 (S)
+            IF l_pmi05='Y' THEN
+               LET l_sql = "SELECT MAX(pmr05*azk052) ",
+                           "  FROM ",cl_get_target_table(l_plant,'pmr_file'),
+                           "  ,"    ,cl_get_target_table(l_plant,'azk_file'),
+                           " WHERE pmr01 = '",l_pmi01,"' AND pmr02 = '",l_pmj02,"' ", 
+                           "   AND azk01 = '",l_pmj05,"' ",
+                           "   AND azk02 = '",g_today,"'  "
+                CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+                CALL cl_parse_qry_sql(l_sql,l_plant) RETURNING l_sql
+                PREPARE sel_pmr_pre FROM l_sql
+                EXECUTE sel_pmr_pre INTO l_pmh12
+            END IF
+            ##---- 分量計價 取最低 (E)
+
          END IF
  
          #實際成本
@@ -629,8 +668,8 @@ FUNCTION cpmr846()
             EXECUTE sel_ccc_pre INTO l_pmh12,l_azk01
          END IF 
 
-         IF NOT cl_null(tm.azk01) AND l_azk01 <> tm.azk01 AND tm.azk04>0 THEN
-            LET l_pmh12 = l_pmh12/tm.azk04
+         IF l_azk01 = tm.azk01 AND tm.azk04>0 THEN
+            LET l_pmh12 = l_pmh12*tm.azk04
          END IF
 
           CALL cs_muplant_qty(sr.ima01,l_plant)
@@ -640,11 +679,14 @@ FUNCTION cpmr846()
           LET l_ima.atp_qty = l_ima.atp_qty / sr.ima44_fac
 
         
-          EXECUTE insert_prep USING sr.ima01,sr.ima02,sr.ima021,sr.ima25,
+          EXECUTE insert_prep USING sr.sn,sr.ima01,sr.ima02,sr.ima021,sr.ima25,
                                     sr.ima41,sr.ima44_fac,
+                                    sr.ima133,                                          #20250423
                                     sr.bmb06,sr.bmb10,
                                     l_plant,
-                                    l_pmc03,l_pmh04,l_pmh12,l_pmh22,l_pmn20,l_azk01,
+                                    l_pmc03,l_pmh04,
+                                    l_pmh06,                                            #20250423
+                                    l_pmh12,l_pmh22,l_pmn20,l_pmi05,l_azk01,
                                     l_ima.atp_qty,l_ima.oeb_q,l_ima.sfa_q1,l_ima.sfa_q2,
                                     l_ima.misc_q1,l_ima.sfs_q2,l_ima.sie_q,l_ima.pml_q,
                                     l_ima.pmn_q,l_ima.rvb_q2,l_ima.rvb_q,
