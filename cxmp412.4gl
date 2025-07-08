@@ -212,16 +212,15 @@ DEFINE
 
 	    LET g_sql= "SELECT UNIQUE tc_mpn03,tc_mpn01 FROM tc_mpn_file ",               
 		       " WHERE ", g_wc CLIPPED,
-		       "   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )",
-		       " ORDER BY tc_mpn03 "
+		       "   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )"
 	    PREPARE p412_prepare FROM g_sql      #預備一下
 	    DECLARE p412_b_curs                  #宣告成可捲動的
 		SCROLL CURSOR WITH HOLD FOR p412_prepare
 	    
 	    DROP TABLE x
-	    LET g_sql = "SELECT COUNT(DISTINCT tc_mpn03,tc_mpn01) FROM tc_mpn_file",
-			"   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )",
-			" WHERE ",g_wc CLIPPED
+	    LET g_sql = "SELECT COUNT(DISTINCT tc_mpn03||tc_mpn01) FROM tc_mpn_file",
+			" WHERE ",g_wc CLIPPED,
+			"   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )"
 	    PREPARE p412_precount FROM g_sql
 	    DECLARE p412_count CURSOR FOR p412_precount
 
@@ -259,8 +258,9 @@ DEFINE
 		 WHEN "modify_date"
 		    IF cl_chk_act_auth() THEN
 		       LET g_sa = 'm' 
-		       CALL p412_b_fill(g_wc)              
-		       CALL p412_b()
+                       CALL update_mpn17()        #20250507 add
+		       CALL p412_b_fill(g_wc)     #20250507 mark         
+		       CALL p412_b()              #20250507
 		       LET g_sa = ''
 		    END IF
                  #- 研發-更新料號(S) 20240422
@@ -282,8 +282,9 @@ DEFINE
 		 WHEN "create_item"
 		    IF cl_chk_act_auth() THEN
 		       LET g_sa = 'r' 
+                       CALL update_mpn18()       #20250507 add
 		       CALL p412_b_fill(g_wc)              
-		       CALL p412_b()
+		       CALL p412_b()            
 		       LET g_sa = ''
 		    END IF
 	 
@@ -1162,25 +1163,29 @@ DEFINE
 		     FROM bma_file
 		    WHERE bma01 = g_tc_mpn[g_cnt].tc_mpn06
 		END IF
+                ##---- 20250507 mark (S)
 		#--生管確認日
-		IF g_sa = 'm' AND cl_null(g_tc_mpn[g_cnt].tc_mpn17) THEN
-		   UPDATE tc_mpn_file SET tc_mpn17 = sysdate 
-		    WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
-		      AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
-		      AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
-		      AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
-		      AND tc_mpn17 IS NULL
-		END IF
+		#IF g_sa = 'm' AND cl_null(g_tc_mpn[g_cnt].tc_mpn17) THEN
+		#   UPDATE tc_mpn_file SET tc_mpn17 = sysdate 
+		#    WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+		#      AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+		#      AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+		#      AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+		#      AND tc_mpn17 IS NULL
+		#END IF
+                ##---- 20250507 mark (E)
 	 
+                ##---- 20250507 mark (S)
 		#--研發確認日
-		IF g_sa = 'r' AND cl_null(g_tc_mpn[g_cnt].tc_mpn18) THEN
-		   UPDATE tc_mpn_file SET tc_mpn18 = sysdate 
-		    WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
-		      AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
-		      AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
-		      AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
-		      AND tc_mpn18 IS NULL
-		END IF
+		#IF g_sa = 'r' AND cl_null(g_tc_mpn[g_cnt].tc_mpn18) THEN
+		#   UPDATE tc_mpn_file SET tc_mpn18 = sysdate 
+		#    WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+		#      AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+		#      AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+		#      AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+		#      AND tc_mpn18 IS NULL
+		#END IF
+                ##---- 20250507 mark (E)
 
 		#--更新料號、結案碼
 		IF cl_null(g_tc_mpn[g_cnt].tc_mpn06) AND g_tc_mpn[g_cnt].tc_mpn10='N' 
@@ -1440,3 +1445,28 @@ FUNCTION p412_b_no_entry()
    END IF
 
 END FUNCTION 
+
+##--更新研發確認日
+FUNCTION update_mpn18()
+
+   FOR g_cnt = 1 TO g_tc_mpn.getLength()
+       UPDATE tc_mpn_file SET tc_mpn18 = sysdate
+        WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+          AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+          AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+          AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+          AND tc_mpn18 IS NULL
+   END FOR
+END FUNCTION
+
+##--更新生管確認日
+FUNCTION update_mpn17()
+   FOR g_cnt = 1 TO g_tc_mpn.getLength()
+     UPDATE tc_mpn_file SET tc_mpn17 = sysdate
+      WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+        AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+        AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+        AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+        AND tc_mpn17 IS NULL
+   END FOR
+END FUNCTION
