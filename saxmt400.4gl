@@ -3,7 +3,7 @@
 # Pattern name...: saxmt400.4gl
 # Descriptions...: 合約/訂單維護作業
 # Date & Author..: 94/12/22 By Danny
-# Modify	 : 95/06/20 by nick 在csd重計時,有已發量及待發量的項次將不予列入
+# Modify	 : 95/06/20 by nick 在csd重計時,有已發量及待發量的項次將不予列入                                                                 
 # Modify(V.2.0)..: 95/11/07 By Apple 取消確認時必須check 是否已出貨
 # 應帶出符合該客戶的資料,2.其它資料中銷貨待驗收入應check match Y/N,
                    # CSD 應check match Y/N
@@ -1035,6 +1035,12 @@
 # Modify.........: No.23110010   23/11/06 By Ruby 單身增加[庫存數量]，依img10可用庫存帶入
 # Modify.........: No.23120058   23/12/25 By Ruby 單身輸入時檢查成本數量不得超出oazud10設定
 # Modify.........: No.224030004  20240313 By momo SKYFamily 中介檔處理 取消確認、作廢、取消確認 
+# Modify.........: No.24050026   20240516 By Ruby 拋轉採購單依單身設定供應商帶入
+# Modify.........: No.           20240614 By Ruby 單身增加欄位[交易時間點]
+# Modify.........: No.24050045   20240617 By Ruby 單身增加[特價單號]
+# Modify.........: No.24080053   20240904 By momo 拋轉請購單時若存在選配件，增加轉工單功能
+# Modify.........: No.24120005   20241209 By Ruby 增加選項oeaud05[是否寄送通知信MIAL?]預設Y
+# Modify.........: No.24120030   20241226 By Ruby 客戶區域碼AME/EUR，增加寫入oao_file備註
 
 DATABASE ds
 
@@ -1119,6 +1125,7 @@ DEFINE g_oeb07_flag   LIKE type_file.chr1    #MOD-F70049 add
 DEFINE g_oea03_t1     LIKE oea_file.oea03    #MOD-F90121 add
 DEFINE l_p_cmd        LIKE type_file.chr1    #MOD-G30074 add    #紀錄oeb04 controlp原本單據處理狀態(a:新增,u:修改)
 DEFINE l_oea          RECORD LIKE oea_file.*   #20221021
+DEFINE g_oao          RECORD LIKE oao_file.*   #241226 add by ruby
 
 
 FUNCTION t400(p_argv1,p_oea901,p_argv2,p_argv3)
@@ -1334,6 +1341,7 @@ FUNCTION t400(p_argv1,p_oea901,p_argv2,p_argv3)
     CALL cl_set_comp_visible("oeb44,oeb45,oeb46,oeb47,oeb48",g_azw.azw04='2')
     CALL cl_set_comp_visible("oea94",g_aza.aza88 = 'Y')                          #FUN-A50071 add
     CALL cl_set_act_visible("carry_po",g_azw.azw04<>'2')
+    CALL cl_set_act_visible("carry_po1",g_azw.azw04<>'2')                        #240515 add by ruby
     CALL cl_set_act_visible("pay_money,money_detail,modify_rate",g_azw.azw04='2') #FUN-9C0083
 #   CALL cl_set_act_visible("discount_detail",g_prog='axmt410')       #FUN-A10110 ADD  #TQC-AA0101 mark
     CALL cl_set_comp_visible("spare_qty,oebiicd03",FALSE)           #FUN-C30235
@@ -1409,7 +1417,7 @@ FUNCTION t400(p_argv1,p_oea901,p_argv2,p_argv3)
      END IF
 
       #設定簽核功能及哪些 action 在簽核狀態時是不可被執行的
-      CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail, query,locale,                        void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data, expense_data,  #FUN-D20025 add undo_void                       on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore, carry_pr,carry_po,  #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                       mul_trade, mul_trade_other, allocate, undo_distribution, modify_price,                        modify_rate, pref, discount_allowed, deposit_multi_account,                        balance_multi_account, new_code_application, product_inf                      ,memo,other_data     #TQC-B40205 add                       ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281  #FUN-A50013
+      CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail, query,locale,                        void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data, expense_data,  #FUN-D20025 add undo_void                       on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore, carry_pr,carry_po,carry_po1,  #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                       mul_trade, mul_trade_other, allocate, undo_distribution, modify_price,                        modify_rate, pref, discount_allowed, deposit_multi_account,                        balance_multi_account, new_code_application, product_inf                      ,memo,other_data     #TQC-B40205 add                       ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281  #FUN-A50013 #240515 add carry_po1 by ruby
            RETURNING g_laststage
     CALL t400_menu()
 
@@ -2165,10 +2173,11 @@ DEFINE  l_msg           STRING                 #TQC-A30155
            oeb916,oeb917,oeb29,oeb24,oeb25,oeb27,oeb28,oeb1004,oeb1002,   # 螢幕上取單身條件  #NO.FUN-670007   #No.FUN-740016
            oeb37,oeb13,oeb1006,oeb14,oeb14t,oeb919,oeb41,oeb42,oeb43,oeb09,oeb091,    #FUN-810045 add oeb41,42,43  ##FUN-A80102    #FUN-AB0061 add oeb37
            oeb930,oeb908,oeb22,oeb19,oeb70,oeb16  #FUN-670063 #FUN-6B0151 add oeb16
+           ,oeb907,oeb1005                        #240617 add by ruby #241212 add oeb1005 by ruby
            ,oebud01,oebud02,oebud03,oebud04,oebud05
            ,oebud06,oebud07,oebud08,oebud09,oebud10
            ,oebud11,oebud12,oebud13,oebud14,oebud15
-           ,oeb44,oeb45,oeb46,oeb47,oeb48          #No.FUN-870007
+           ,oeb44,oeb45,oeb46,oeb47,oeb48,oeb909          #No.FUN-870007 #240515 add oeb909 by ruby
        FROM
            s_oeb[1].oeb03,                           #No.FUN-7C0017
            s_oeb[1].oeb49,s_oeb[1].oeb50,s_oeb[1].oeb04,s_oeb[1].oeb06,s_oeb[1].oeb918, #FUN-A80054  #FUN-A90040
@@ -2186,10 +2195,11 @@ DEFINE  l_msg           STRING                 #TQC-A30155
            s_oeb[1].oeb41,s_oeb[1].oeb42,s_oeb[1].oeb43,  #FUN-810045 
            s_oeb[1].oeb09,s_oeb[1].oeb091,s_oeb[1].oeb930,s_oeb[1].oeb908,  #FUN-670063
            s_oeb[1].oeb22,s_oeb[1].oeb19,s_oeb[1].oeb70,s_oeb[1].oeb16  #FUN-6B0151 add oeb16
+           ,s_oeb[1].oeb907,s_oeb[1].oeb1005                            #240617 add by ruby #241212 add oeb1005 by ruby
            ,s_oeb[1].oebud01,s_oeb[1].oebud02,s_oeb[1].oebud03,s_oeb[1].oebud04,s_oeb[1].oebud05
            ,s_oeb[1].oebud06,s_oeb[1].oebud07,s_oeb[1].oebud08,s_oeb[1].oebud09,s_oeb[1].oebud10
            ,s_oeb[1].oebud11,s_oeb[1].oebud12,s_oeb[1].oebud13,s_oeb[1].oebud14,s_oeb[1].oebud15
-           ,s_oeb[1].oeb44,s_oeb[1].oeb45,s_oeb[1].oeb46,s_oeb[1].oeb47,s_oeb[1].oeb48   #No.FUN-870007
+           ,s_oeb[1].oeb44,s_oeb[1].oeb45,s_oeb[1].oeb46,s_oeb[1].oeb47,s_oeb[1].oeb48,s_oeb[1].oeb909   #No.FUN-870007 #240515 add oeb909 by ruby
 
 	       	BEFORE CONSTRUCT
 		        CALL cl_qbe_display_condition(lc_qbe_sn)     
@@ -2764,7 +2774,35 @@ DEFINE  l_msg           STRING                 #TQC-A30155
                 WHEN INFIELD(oebud06)
                    CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
                    DISPLAY g_qryparam.multiret TO oebud06
-                   NEXT FIELD oebud06                      
+                   NEXT FIELD oebud06  
+                #240614 add by ruby --s--   
+                WHEN INFIELD(oebud10)
+                   CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oebud10
+                   NEXT FIELD oebud10
+                #240614 add by ruby --e--  
+                #240617 add by ruby --s--   
+                WHEN INFIELD(oeb907)
+                   CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb907
+                   NEXT FIELD oeb907
+                #240617 add by ruby --e--   
+                #241212 add by ruby --s--
+                WHEN INFIELD(oeb1005)
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.state = "c"
+                   LET g_qryparam.form ="q_ocd"
+                   CALL cl_create_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb1005
+                   NEXT FIELD oeb1005                 
+                #241212 add by ruby --e--                                  
+                WHEN INFIELD(oeb909) 
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.state = "c"
+                   LET g_qryparam.form ="q_pmc1"
+                   CALL cl_create_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb909
+                   NEXT FIELD oeb909                                                        
                 END CASE
 
              ON IDLE g_idle_seconds
@@ -2840,10 +2878,11 @@ DEFINE  l_msg           STRING                 #TQC-A30155
            oeb916,oeb917,oeb29,oeb24,oeb25,oeb27,oeb28,oeb1004,oeb1002,   # 螢幕上取單身條件  #NO.FUN-670007   #No.FUN-740016
            oeb37,oeb13,oeb1006,oeb14,oeb14t,oeb919,oeb41,oeb42,oeb43,oeb09,oeb091,    #FUN-810045 add oeb41,42,43  #FUN-A80102    #FUN-AB0061 add oeb37
            oeb930,oeb908,oeb22,oeb19,oeb70,oeb16  #FUN-670063 #FUN-6B0151 add oeb16
+           ,oeb907,oeb1005                        #240617 add by ruby #241212 add oeb1005 by ruby
            ,oebud01,oebud02,oebud03,oebud04,oebud05
            ,oebud06,oebud07,oebud08,oebud09,oebud10
            ,oebud11,oebud12,oebud13,oebud14,oebud15
-           ,oeb44,oeb45,oeb46,oeb47,oeb48          #No.FUN-870007
+           ,oeb44,oeb45,oeb46,oeb47,oeb48,oeb909          #No.FUN-870007 #240515 add oeb909 by ruby
        FROM
            s_oeb[1].oeb03,                           #No.FUN-7C0017
            s_oeb[1].oeb49,s_oeb[1].oeb50,s_oeb[1].oeb04,s_oeb[1].oeb06,s_oeb[1].oeb918, #FUN-A80054  #FUN-A90040
@@ -2861,10 +2900,11 @@ DEFINE  l_msg           STRING                 #TQC-A30155
            s_oeb[1].oeb41,s_oeb[1].oeb42,s_oeb[1].oeb43,  #FUN-810045
            s_oeb[1].oeb09,s_oeb[1].oeb091,s_oeb[1].oeb930,s_oeb[1].oeb908,  #FUN-670063
            s_oeb[1].oeb22,s_oeb[1].oeb19,s_oeb[1].oeb70,s_oeb[1].oeb16  #FUN-6B0151 add oeb16
+           ,s_oeb[1].oeb907,s_oeb[1].oeb1005                            #240617 add by ruby #241212 add oeb1005 by ruby
            ,s_oeb[1].oebud01,s_oeb[1].oebud02,s_oeb[1].oebud03,s_oeb[1].oebud04,s_oeb[1].oebud05
            ,s_oeb[1].oebud06,s_oeb[1].oebud07,s_oeb[1].oebud08,s_oeb[1].oebud09,s_oeb[1].oebud10
            ,s_oeb[1].oebud11,s_oeb[1].oebud12,s_oeb[1].oebud13,s_oeb[1].oebud14,s_oeb[1].oebud15
-           ,s_oeb[1].oeb44,s_oeb[1].oeb45,s_oeb[1].oeb46,s_oeb[1].oeb47,s_oeb[1].oeb48   #No.FUN-870007
+           ,s_oeb[1].oeb44,s_oeb[1].oeb45,s_oeb[1].oeb46,s_oeb[1].oeb47,s_oeb[1].oeb48,s_oeb[1].oeb909   #No.FUN-870007 #240515 add oeb909 by ruby
 
 	      	 BEFORE CONSTRUCT
 		          CALL cl_qbe_display_condition(lc_qbe_sn)     
@@ -3437,8 +3477,27 @@ DEFINE  l_msg           STRING                 #TQC-A30155
                 WHEN INFIELD(oebud06)
                    CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
                    DISPLAY g_qryparam.multiret TO oebud06
-                   NEXT FIELD oebud06   
-###                     
+                   NEXT FIELD oebud06 
+                #240614 add by ruby --s--     
+                WHEN INFIELD(oebud10)
+                   CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oebud10
+                   NEXT FIELD oebud10 
+                #240614 add by ruby --e-- 
+                #240617 add by ruby --s--     
+                WHEN INFIELD(oeb907)
+                   CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb907
+                   NEXT FIELD oeb907 
+                #240617 add by ruby --e--     
+                #241212 add by ruby --s--
+                 WHEN INFIELD(oeb1005)    
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.form ="q_ocd"
+                   CALL cl_create_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb1005
+                   NEXT FIELD oeb1005                
+                #241212 add by ruby --e--
                 WHEN INFIELD(oeb1007)
                    CALL cl_init_qry_var()
                    LET g_qryparam.state = "c"
@@ -3446,6 +3505,12 @@ DEFINE  l_msg           STRING                 #TQC-A30155
                    CALL cl_create_qry() RETURNING g_qryparam.multiret
                    DISPLAY g_qryparam.multiret TO oeb1007
                    NEXT FIELD oeb1007                                    
+                 WHEN INFIELD(oeb909)    
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.form ="q_pmc1"
+                   CALL cl_create_qry() RETURNING g_qryparam.multiret
+                   DISPLAY g_qryparam.multiret TO oeb909
+                   NEXT FIELD oeb909
                 END CASE
 
              ON IDLE g_idle_seconds
@@ -3879,6 +3944,17 @@ FUNCTION t400_menu()
                ELSE                                      #TQC-750133 add
                  CALL cl_err('','axm-296',1)             #TQC-750133 add
                END IF   #TQC-740027
+              ##----- 20240904 add by momo (S) ----判斷是否存在選配件開啟asfp304執行轉單
+              LET l_n = 0
+              SELECT 1 INTO l_n FROM oeo_file
+               WHERE oeo01 = g_oea.oea01
+              IF l_n > 0 THEN
+                 IF (cl_confirm('cxm-042')) THEN
+                    LET g_msg = "asfp304 '",g_oea.oea01,"'  "   
+                    CALL cl_cmdrun(g_msg)
+                 END IF
+              END IF
+              ##----- 20240904 add by momo (E) ----
             END IF
 
          WHEN "carry_po"
@@ -3907,6 +3983,28 @@ FUNCTION t400_menu()
             #FUN-E20010 add-----------------------------------------------------
             #FUN-E20010 add end-------------------------------------------------
 
+         WHEN "carry_po1"
+            IF cl_chk_act_auth() THEN
+               IF g_oea.oea00 = '4' THEN
+                  CALL cl_err('','axm-054',1)
+                  CONTINUE WHILE
+               END IF
+               IF g_oea901='Y' THEN #多角貿易訂單才需判斷是否為最終訂單
+                  CALL t400_chk_oeb904()
+                  IF NOT cl_null(g_errno) THEN
+                     CALL cl_err('',g_errno,1)
+                     CONTINUE WHILE
+                  END IF
+               END IF
+               IF cl_null(g_oea.oeahold) THEN           
+                  CALL t400sub_exp_po1(g_oea.oea01,'','') 
+                  CALL t400sub_refresh(g_oea.oea01)  RETURNING g_oea.* 
+                  CALL t400_show() 
+               ELSE                                     
+                  CALL cl_err('','axm-296',1)          
+               END IF                                  
+            END IF
+            
          WHEN "allocate"
 #TQC-B40205 --begin--
            IF g_oea.oea49 MATCHES '[Ss]' THEN 
@@ -4256,7 +4354,7 @@ FUNCTION t400_menu()
                     IF NOT cl_null(g_argv2) THEN
                        CALL t400_q()
                        #設定簽核功能及哪些 action 在簽核狀態時是不可被執行的
-                       CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,                        query,locale, void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data,   #FUN-D20025 add undo_void                        expense_data, on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore,        #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                       carry_pr,carry_po, mul_trade, mul_trade_other, allocate,                        undo_distribution, modify_price, modify_rate, pref, discount_allowed,                        deposit_multi_account, balance_multi_account, new_code_application,                        product_inf                       ,memo,other_data     #TQC-B40205 add                        ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281 #FUN-A50013
+                       CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,                        query,locale, void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data,   #FUN-D20025 add undo_void                        expense_data, on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore,        #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                       carry_pr,carry_po,carry_po1, mul_trade, mul_trade_other, allocate,                        undo_distribution, modify_price, modify_rate, pref, discount_allowed,                        deposit_multi_account, balance_multi_account, new_code_application,                        product_inf                       ,memo,other_data     #TQC-B40205 add                        ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281 #FUN-A50013 #240515 add carry_po1 by ruby
                             RETURNING g_laststage
                     ELSE
                        EXIT WHILE
@@ -4284,7 +4382,7 @@ FUNCTION t400_menu()
                       IF NOT cl_null(g_argv2) THEN
                          CALL t400_q()
                          #設定簽核功能及哪些 action 在簽核狀態時是不可被執行的
-                         CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,                          query,locale, void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data,  #FUN-D20025 add undo_void                         expense_data, on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore,       #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                         carry_pr,carry_po, mul_trade, mul_trade_other, allocate,                          undo_distribution, modify_price, modify_rate, pref, discount_allowed,                           deposit_multi_account, balance_multi_account, new_code_application,                            product_inf                          ,memo,other_data     #TQC-B40205 add                                                     ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281
+                         CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,                          query,locale, void, undo_void,confirm, undo_confirm, easyflow_approval, csd_data,  #FUN-D20025 add undo_void                         expense_data, on_hold, undo_on_hold,batch_detail_date, change_status,mul_trade_carry, restore,       #FUN-D50048 add mul_trade_carry #FUN-D50018 add batch_detail_date                         carry_pr,carry_po,carry_po1, mul_trade, mul_trade_other, allocate,                          undo_distribution, modify_price, modify_rate, pref, discount_allowed,                           deposit_multi_account, balance_multi_account, new_code_application,                            product_inf                          ,memo,other_data     #TQC-B40205 add                                                     ") ##TQC-5B0117   #FUN-6C0050 add carry_po #TQC-740127  #TQC-740281 #240515 add carry_po1 by ruby
                               RETURNING g_laststage
                       ELSE
                          EXIT WHILE
@@ -6731,6 +6829,7 @@ DEFINE l_ima02      LIKE ima_file.ima02
 DEFINE l_ima021     LIKE ima_file.ima021
 DEFINE l_ima54      LIKE ima_file.ima54    #220215 add by ruby
 DEFINE l_pmc03_1    LIKE pmc_file.pmc03    #220215 add by ruby
+DEFINE l_pmc03_2    LIKE pmc_file.pmc03    #240614 add by ruby
 DEFINE l_img10      LIKE img_file.img10    #231106 add by ruby
 DEFINE l_count      LIKE type_file.num5
     #-----END CHI-990037-----
@@ -6744,6 +6843,7 @@ DEFINE l_rtz04  LIKE rtz_file.rtz04  #No.FUN-870007
 DEFINE l_oeb05  LIKE oeb_file.oeb05  #NO.FUN-960130   #NO.FUN-9B0016
 DEFINE l_sum    LIKE oeb_file.oeb47  #NO.FUN-960130
 DEFINE l_oah04  LIKE oah_file.oah04  #NO.FUN-960130
+DEFINE l_occ74  LIKE occ_file.occ74      #240806 add by ruby
 
 #FUN-A60035 ---MARK BEGIN
 ##FUN-A50054 --Begin
@@ -8176,6 +8276,14 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
                  CALL cl_digcut(g_oeb[l_ac].oeb14,t_azi04)  RETURNING g_oeb[l_ac].oeb14
               END IF
            END IF #FUN-BC0130
+           #241226 add by ruby --s--
+           LET l_cnt=0
+           SELECT count(*) INTO l_cnt FROM occ_file WHERE occ01=g_oea.oea03 AND occ20 in ('AME','EUR')
+           IF cl_null(l_cnt) THEN LET l_cnt=0 END IF
+           IF p_cmd='a' AND l_cnt>0 AND g_plant='TY' THEN
+              CALL t410_ins_oao()   
+           END IF                      
+           #241226 add by ruby --e--
            #計算折價
            SELECT SUM(rxc06) INTO l_sum FROM rxc_file WHERE rxc00 = '01'
                                              AND rxc01 = g_oea.oea01
@@ -8275,6 +8383,18 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
       #-----CHI-990037---------
       AFTER FIELD oeb11
         IF NOT cl_null(g_oeb[l_ac].oeb11) THEN
+            #240806 add by ruby --s--
+            LET l_occ74='N'
+            SELECT occ74 INTO l_occ74 FROM occ_file WHERE occ01=g_oea.oea03
+            IF l_occ74='Y' AND NOT cl_null(g_oeb[l_ac].oeb11) THEN
+               LET l_cnt=0
+               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=g_oeb[l_ac].oeb11 AND obk02=g_oea.oea03 AND obk01<>g_oeb[l_ac].oeb04 
+               IF l_cnt>0 THEN
+                  CALL cl_err('','cxm-041',1)                
+                  NEXT FIELD oeb11
+               END IF
+            END IF
+            #240806 add by ruby --e--          
           LET l_count = 0  #MOD-GA0033 add
           SELECT COUNT(*) INTO l_count FROM obk_file
             WHERE obk03 = g_oeb[l_ac].oeb11
@@ -8324,6 +8444,7 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
               LET l_ima021 = NULL
               LET l_ima54 = NULL         #220215 add by ruby
               LET l_pmc03_1 = NULL       #220215 add by ruby
+              LET l_pmc03_2 = NULL       #240614 add by ruby
               LET l_img10 = 0         #231106 add by ruby
              #MOD-GA0033--add----end---
               #SELECT ima02,ima021 INTO l_ima02,l_ima021 FROM ima_file                       #220215 mark by ruby
@@ -8336,11 +8457,14 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
               LET g_oeb[l_ac].img10 = l_img10                                     #231106 add by ruby
               SELECT pmc03 INTO l_pmc03_1 FROM pmc_file WHERE pmc01=l_ima54       #220215 add by ruby
               LET g_oeb[l_ac].pmc03_1 = l_pmc03_1                                 #220215 add by ruby
+              SELECT pmc03 INTO l_pmc03_2 FROM pmc_file WHERE pmc01=g_oeb[l_ac].oeb909 #240614 add by ruby
+              LET g_oeb[l_ac].pmc03_2 = l_pmc03_2                                      #240614 add by ruby
               CALL t400_oea01()  #FUN-A80054
               DISPLAY BY NAME g_oeb[l_ac].oeb04,g_oeb[l_ac].oeb05,g_oeb[l_ac].oeb12,
                               g_oeb[l_ac].oeb13,g_oeb[l_ac].oeb906,g_oeb[l_ac].oeb06,
                               g_oeb[l_ac].oeb37,                                       #FUN-AB0061 
                               g_oeb[l_ac].oebud05,                     #20190326 
+                              g_oeb[l_ac].pmc03_2,                     #240614 add by ruby
                               g_oeb[l_ac].ima54,                       #220215 add by ruby
                               g_oeb[l_ac].pmc03_1,                     #220215 add by ruby
                               g_oeb[l_ac].img10,                       #231106 add by ruby
@@ -9400,8 +9524,10 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
            IF NOT t400_chk_oeb930() THEN
               NEXT FIELD CURRENT
            END IF
-
-
+        #240617 add by ruby --s--
+        AFTER FIELD oeb907
+           IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+        #240617 add by ruby --e--   
         AFTER FIELD oebud01
            #IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD oebud02
@@ -9456,6 +9582,16 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD oebud15
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+
+        AFTER FIELD oeb909
+             LET l_cnt = 0
+             SELECT COUNT(*) INTO l_cnt
+               FROM pmc_file
+              WHERE pmc01 = g_oeb[l_ac].oeb909 AND pmcacti='Y'
+             IF l_cnt = 0 AND NOT cl_null(g_oeb[l_ac].oeb909) THEN
+                CALL cl_err(g_oeb[l_ac].oeb909,'art-056',1)
+                NEXT FIELD oeb909
+             END IF
 
         BEFORE DELETE                            #是否取消單身
            IF l_lock_sw = "Y" THEN
@@ -10287,7 +10423,35 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
                  CALL cl_dynamic_qry() RETURNING g_oeb[l_ac].oebud06
                  DISPLAY BY NAME g_oeb[l_ac].oebud06
                  NEXT FIELD oebud06
-
+              #240614 add by ruby --s--   
+              WHEN INFIELD(oebud10)
+                 CALL cl_dynamic_qry() RETURNING g_oeb[l_ac].oebud10
+                 DISPLAY BY NAME g_oeb[l_ac].oebud10
+                 NEXT FIELD oebud10
+              #240614 add by ruby --e--   
+              #240617 add by ruby --s--   
+              WHEN INFIELD(oeb907)
+                 CALL cl_dynamic_qry() RETURNING g_oeb[l_ac].oeb907
+                 DISPLAY BY NAME g_oeb[l_ac].oeb907
+                 NEXT FIELD oeb907
+              #240617 add by ruby --e--   
+              #241212 add by ruby --s--
+              WHEN INFIELD(oeb1005)   
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form ="cq_ocd1"
+                 LET g_qryparam.default1 = g_oeb[l_ac].oeb1005
+                 LET g_qryparam.arg1     = g_oea.oea03
+                 LET g_qryparam.arg2     = g_oea.oea04
+                 CALL cl_create_qry() RETURNING g_oeb[l_ac].oeb1005
+                 DISPLAY BY NAME g_oeb[l_ac].oeb1005
+                 NEXT FIELD oeb1005              
+              #241212 add by ruby --e--                             
+              WHEN INFIELD(oeb909)   
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form ="q_pmc1"
+                 CALL cl_create_qry() RETURNING g_oeb[l_ac].oeb909
+                 DISPLAY BY NAME g_oeb[l_ac].oeb909
+                 NEXT FIELD oeb909
               OTHERWISE
                  LET g_msg="axmq450 '",g_oeb[l_ac].oeb04,"' " #MOD-4B0293 modify
                  CALL cl_cmdrun(g_msg)
@@ -10664,7 +10828,7 @@ FUNCTION t400_bp(p_ud)
 
    CALL cl_set_act_visible("accept,cancel", FALSE)
    IF g_argv1 != '1' THEN
-      CALL cl_set_act_visible("carry_pr,carry_po", FALSE)  #FUN-6C0050 add carry_po
+      CALL cl_set_act_visible("carry_pr,carry_po,carry_po1", FALSE)  #FUN-6C0050 add carry_po #240515 add carry_po1 by ruby
    END IF
    IF g_argv1 = '0' THEN
       CALL cl_set_act_visible("allocate", FALSE)
@@ -10732,7 +10896,7 @@ FUNCTION t400_bp(p_ud)
          BEFORE DISPLAY
             LET g_chr='@'
             IF g_argv1 <> '1' THEN
-               CALL cl_set_act_visible("carry_pr,carry_po",FALSE)  #FUN-6C0050 add carry_po
+               CALL cl_set_act_visible("carry_pr,carry_po,carry_po1",FALSE)  #FUN-6C0050 add carry_po #240515 add carry_po1 by ruby
             END IF
             IF g_prog != 'axmt410' OR g_aza.aza50 = 'N' THEN
                CALL cl_set_act_visible("obj_return_close,cash_return,obj_return",FALSE)
@@ -10933,7 +11097,12 @@ FUNCTION t400_bp(p_ud)
          LET g_action_choice="carry_po"
          EXIT DIALOG
 
-
+      #240515 add by ruby --s--
+#@    ON ACTION 拋轉採購單(依單身供應商)
+      ON ACTION carry_po1
+         LET g_action_choice="carry_po1"
+         EXIT DIALOG
+      #240515 add by ruby --e--   
 
 #@    ON ACTION 備置
       ON ACTION allocate
@@ -12716,10 +12885,12 @@ FUNCTION t400_b_fill(p_wc2,p_wc5)              #BODY FILL UP
         "       oeb37,oeb13,oeb1006,oeb14,oeb14t,oeb919,oeb41,oeb42,oeb43,oeb09,oeb091,oeb930,'',oeb908,oeb22,oeb19,", #FUN-670063  #FUN-810045 add oeb41/42/43 #FUN-A80102     #FUN-AB0061 add oeb37
         "       oeb70,ima15,oeb16, ",   #No.FUN-6B0151 add oeb16
         "       '','','','','', ",       #No.FUN-7C0017
+        "       oeb907,oeb1005, ",       #240617 add by ruby #241212 add oeb1005 by ruby
         "       oebud01,oebud02,oebud03,oebud04,oebud05,oebud06,oebud07,oebud08,oebud09,oebud10,oebud11,oebud12,oebud13,oebud14,oebud15,", #No.FUN-840011
-        "       oeb44,oeb45,oeb46,oeb47,oeb48,ima54,pmc03,nvl(img10,0)", #No.FUN-870007 #220215 add ima54,pmc03 by ruby #231106 add img10 by ruby
+        "       oeb44,oeb45,oeb46,oeb47,oeb48,oeb909,b.pmc03,ima54,a.pmc03,nvl(img10,0)", #No.FUN-870007 #220215 add ima54,a.pmc03 by ruby #231106 add img10 by ruby #240515 add oeb909 by ruby #240614 add b.pmc03 by ruby
         " FROM oeb_file LEFT OUTER JOIN  ima_file ON oeb04 = ima01",
-        " LEFT JOIN pmc_file ON ima54=pmc01",                                   #220215 add by ruby
+        " LEFT JOIN pmc_file a ON ima54=a.pmc01",                                   #220215 add by ruby
+        " LEFT JOIN pmc_file b ON oeb909=b.pmc01",                                  #240614 add by ruby
         " LEFT JOIN (SELECT img01,SUM(img10) as img10 FROM img_file WHERE img10<>0 AND img23='Y' AND img02<>'Y01' GROUP BY img01) ON oeb04=img01 ", #231106 add by ruby
         " WHERE oeb01 ='",g_oea.oea01,"'",  #單頭
         " AND ",p_wc2 CLIPPED,                     #單身
@@ -12870,7 +13041,7 @@ FUNCTION t400_bp1(p_ud)
 
    CALL cl_set_act_visible("accept,cancel", FALSE)
    IF g_argv1 != '1' THEN
-      CALL cl_set_act_visible("carry_pr,carry_po", FALSE)  #FUN-6C0050 add carry_po
+      CALL cl_set_act_visible("carry_pr,carry_po,carry_po1", FALSE)  #FUN-6C0050 add carry_po #240515 add carry_po1 by ruby
    END IF
    IF g_oea901 != 'Y' THEN
       CALL cl_set_act_visible("mul_trade,mul_trade_other,mul_trade_carry,restore", FALSE)   #FUN-D50048 add mul_trade_carry
@@ -12883,7 +13054,7 @@ FUNCTION t400_bp1(p_ud)
       BEFORE DISPLAY
             LET g_chr='@'
             IF g_argv1 <> '1' THEN
-               CALL cl_set_act_visible("carry_pr,carry_po",FALSE)  #FUN-6C0050 add carry_po
+               CALL cl_set_act_visible("carry_pr,carry_po,carry_po1",FALSE)  #FUN-6C0050 add carry_po #240515 add carry_po1 by ruby
             END IF
 
            #FUN-D50018---add---S
@@ -13028,6 +13199,13 @@ FUNCTION t400_bp1(p_ud)
          LET g_action_choice="carry_po"
          EXIT DISPLAY
 
+      #240515 add by ruby --s--  
+#@    ON ACTION 拋轉購購單(單身供應商)
+      ON ACTION carry_po1
+         LET g_action_choice="carry_po1"
+         EXIT DISPLAY
+      #240515 add by ruby --e--
+         
 #@    ON ACTION 備置
       ON ACTION allocate
          LET g_action_choice="allocate"
@@ -14984,6 +15162,7 @@ FUNCTION t400_b_move_back()
    LET b_oeb.oeb1012 = g_oeb[l_ac].oeb1012
    LET b_oeb.oeb1004 = g_oeb[l_ac].oeb1004
    LET b_oeb.oeb1002 = g_oeb[l_ac].oeb1002
+   LET b_oeb.oeb1005 = g_oeb[l_ac].oeb1005 #241212 by ruby
    LET b_oeb.oeb1006 = g_oeb[l_ac].oeb1006
    LET b_oeb.oeb16   = g_oeb[l_ac].oeb16   #20180403 add by momo
    LET b_oeb.oeb11 = g_oeb[l_ac].oeb11     #MOD-780272 mark    #MOD-890137取消mark
@@ -15039,6 +15218,7 @@ FUNCTION t400_b_move_back()
    LET b_oeb.oeb27 = g_oeb[l_ac].oeb27   #NO.FUN-670007
    LET b_oeb.oeb28 = g_oeb[l_ac].oeb28   #NO.FUN-670007
    LET b_oeb.oeb908 = g_oeb[l_ac].oeb908
+   LET b_oeb.oeb909 = g_oeb[l_ac].oeb909 #240515 add by ruby
    LET b_oeb.oeb910= g_oeb[l_ac].oeb910
    LET b_oeb.oeb911= g_oeb[l_ac].oeb911
    LET b_oeb.oeb912= g_oeb[l_ac].oeb912
@@ -15049,6 +15229,7 @@ FUNCTION t400_b_move_back()
    LET b_oeb.oeb917= g_oeb[l_ac].oeb917
    LET b_oeb.oeb906= g_oeb[l_ac].oeb906
    LET b_oeb.oeb930= g_oeb[l_ac].oeb930 #FUN-670063
+   LET b_oeb.oeb907= g_oeb[l_ac].oeb907 #240617 add by ruby
    LET b_oeb.oebud01= g_oeb[l_ac].oebud01
    LET b_oeb.oebud02= g_oeb[l_ac].oebud02
    LET b_oeb.oebud03= g_oeb[l_ac].oebud03
@@ -17338,6 +17519,8 @@ FUNCTION t400_b_more()
          l_oah02  LIKE oah_file.oah02,
          l_n      LIKE type_file.num5,    #No.FUN-680137 SMALLINT
          l_qty    LIKE img_file.img10    #No.FUN-680137 INTEGER
+  DEFINE l_cnt    LIKE type_file.num10     #240806 add by ruby  
+  DEFINE l_occ74  LIKE occ_file.occ74      #240806 add by ruby         
 #FUN-A60035 ---MARK BEGIN
 #  DEFINE l_oeb03_old   LIKE oeb_file.oeb03  #FUN-A60035 add
 #  DEFINE l_oeb12_old   LIKE oeb_file.oeb12  #FUN-A60035 add
@@ -17521,7 +17704,19 @@ FUNCTION t400_b_more()
             DISPLAY l_oah02 TO FORMONLY.oah02
          END IF
 
-       AFTER FIELD oeb11       
+       AFTER FIELD oeb11    
+            #240806 add by ruby --s--
+            LET l_occ74='N'
+            SELECT occ74 INTO l_occ74 FROM occ_file WHERE occ01=g_oea.oea03
+            IF l_occ74='Y' AND NOT cl_null(b_oeb.oeb11) THEN
+               LET l_cnt=0
+               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=b_oeb.oeb11 AND obk02=g_oea.oea03 AND obk01<>b_oeb.oeb04 
+               IF l_cnt>0 THEN
+                  CALL cl_err('','cxm-041',1)                
+                  NEXT FIELD oeb11
+               END IF
+            END IF
+            #240806 add by ruby --e--          
           LET g_oeb[l_ac].oeb11 = b_oeb.oeb11
 
        #No.FUN-AA0048  --Begin
@@ -28490,6 +28685,13 @@ DEFINE l_azp02 LIKE azp_file.azp02 #No.FUN-870007
        WHERE azp01 = g_plant
        DISPLAY l_azp02 TO oeaplant_desc
    END IF
+      #241209 add by ruby --s--
+      IF g_plant='TY' THEN
+        LET g_oea.oeaud05 = 'Y'   
+      ELSE
+        LET g_oea.oeaud05 = 'N'
+      END IF
+      #241209 add by ruby --e--
 END FUNCTION
 
 FUNCTION t400_undo_dis()
@@ -32278,7 +32480,7 @@ FUNCTION t400_g_b3()
       LET l_oeb.oeb904 = 0              #议价单价(BI)
       LET l_oeb.oeb905 = 0              #己备置量
       LET l_oeb.oeb906 = 'N'            #检验否
-      LET l_oeb.oeb907 = NULL           #No Use
+      LET l_oeb.oeb907 = NULL           #特價單號
       LET l_oeb.oeb908 = l_ohb.ohb52    #海关手册编号
       LET l_oeb.oeb909 = NULL           #No Use
       LET l_oeb.oeb910 = l_ohb.ohb910   #单位一
@@ -32293,7 +32495,7 @@ FUNCTION t400_g_b3()
       LET l_oeb.oeb1002= l_ohb.ohb1001  #订价编号
       LET l_oeb.oeb1003= '1'            #作业方式
       LET l_oeb.oeb1004= l_ohb.ohb1002  #提案编号
-      LET l_oeb.oeb1005= NULL           #订价群组
+      LET l_oeb.oeb1005= NULL           #订价群组 #變更為新地址碼
       LET l_oeb.oeb1006= l_ohb.ohb1003  #折扣率
       LET l_oeb.oeb1007= l_ohb.ohb1007  #现金折扣单号
       LET l_oeb.oeb1008= l_ohb.ohb1008  #税别
@@ -33345,7 +33547,7 @@ DEFINE   l_ima08     LIKE ima_file.ima08   #FUN-D30039 add
       LET  l_oeb.oeb903 = null
       LET  l_oeb.oeb904 = null
       LET  l_oeb.oeb905 = '0'
-      LET  l_oeb.oeb907 = null
+     #LET  l_oeb.oeb907 = null    #240617 mark by ruby
       LET  l_oeb.oeb908 = null
       LET  l_oeb.oeb909 = null  
       SELECT ima25,ima31,ima906,ima907
@@ -33430,6 +33632,7 @@ DEFINE   l_ima08     LIKE ima_file.ima08   #FUN-D30039 add
       LET  l_oeb.oeb932 = null
       LET  l_oeb.oeb933 = null
       LET  l_oeb.oeb934 = null
+      LET  l_oeb.oeb907 = null    #240617 add by ruby
       LET  l_oeb.oebud01 = null
       LET  l_oeb.oebud02 = null
       LET  l_oeb.oebud03 = null
@@ -33446,7 +33649,8 @@ DEFINE   l_ima08     LIKE ima_file.ima08   #FUN-D30039 add
       LET  l_oeb.oebud14 = null
       LET  l_oeb.oebud15 = null
       LET  l_oeb.oebplant = g_plant
-      LET  l_oeb.oeblegal = g_legal
+      LET  l_oeb.oeblegal = g_legal     
+      LET  l_oeb.oeb909 =  null #240515 add by ruby
       #LET  l_oeb.oeb44 = '1'   #FUN-AA0089 mark
       #LET  l_oeb.oeb45 = null  #FUN-AA0089 mark
       #LET  l_oeb.oeb46 = null  #FUN-AA0089 mark
@@ -34391,7 +34595,7 @@ FUNCTION t400_bp3(p_ud)
 
    CALL cl_set_act_visible("accept,cancel", FALSE)
    IF g_argv1 != '1' THEN
-      CALL cl_set_act_visible("carry_pr,carry_po", FALSE)  
+      CALL cl_set_act_visible("carry_pr,carry_po,carry_po1", FALSE)   #240515 add carry_po1 by ruby
    END IF
    IF g_argv1 = '0' THEN
       CALL cl_set_act_visible("allocate", FALSE)
@@ -34414,7 +34618,7 @@ FUNCTION t400_bp3(p_ud)
          BEFORE DISPLAY
             LET g_chr='@'
             IF g_argv1 <> '1' THEN
-               CALL cl_set_act_visible("carry_pr,carry_po",FALSE) 
+               CALL cl_set_act_visible("carry_pr,carry_po,carry_po1",FALSE)     #240515 add carry_po1 by ruby
             END IF
             IF g_prog != 'axmt410' OR g_aza.aza50 = 'N' THEN
                CALL cl_set_act_visible("obj_return_close,cash_return,obj_return",FALSE)
@@ -34598,6 +34802,11 @@ FUNCTION t400_bp3(p_ud)
          LET g_action_choice="carry_po"
          EXIT DIALOG
 
+#@    ON ACTION 拋轉採購單(依單身供應商)
+      ON ACTION carry_po1
+         LET g_action_choice="carry_po1"
+         EXIT DIALOG
+         
 #@    ON ACTION 備置
       ON ACTION allocate
          LET g_action_choice="allocate"
@@ -35634,6 +35843,7 @@ FUNCTION t400_b2()
     DEFINE l_ac,l_sl	   LIKE type_file.num5,      #No.FUN-680137 SMALLINT
            l_sn1,l_sn2     LIKE type_file.num5,      #No.FUN-680137      #No:7576 add  SMALLINT
            l_cnt           LIKE type_file.num5
+    DEFINE l_pmc03_2       LIKE pmc_file.pmc03       #250422 add by ruby     
  
     CALL cl_opmsg('b')
     CALL SET_COUNT(g_rec_b)   #告訴I.單身筆數
@@ -35657,9 +35867,15 @@ FUNCTION t400_b2()
         #CHI-E60011 add end-----------------------------------------------------
 
         AFTER FIELD oebud06  
- 
            DISPLAY BY NAME g_oeb[l_ac].oeb16              #No.MOD-730118
 
+        #250422 add by ruby --s--
+        AFTER FIELD oeb909
+           SELECT pmc03 INTO l_pmc03_2 FROM pmc_file WHERE pmc01=g_oeb[l_ac].oeb909 
+           LET g_oeb[l_ac].pmc03_2 = l_pmc03_2                                      
+           DISPLAY BY NAME g_oeb[l_ac].pmc03_2
+        #250422 add by ruby --e--
+        
         ##---- 20190828 By momo 多角交運方式調整(S)
         BEFORE FIELD oeb20
           IF g_oea.oea11 <> '6' THEN
@@ -35677,9 +35893,13 @@ FUNCTION t400_b2()
              UPDATE oeb_file SET
                 oeb49   = g_oeb[l_ac].oeb49,
                 oeb50   = g_oeb[l_ac].oeb50,
+                oeb907  = g_oeb[l_ac].oeb907,   #240904 add by ruby
+                oeb909  = g_oeb[l_ac].oeb909,   #250422 add by ruby
+                oeb1005 = g_oeb[l_ac].oeb1005,  #241212 add by ruby
                 oebud06 = g_oeb[l_ac].oebud06,
                 oebud02 = g_oeb[l_ac].oebud02,  #20201105 add
                 oebud05 = g_oeb[l_ac].oebud05,  #230418 add by ruby
+                oebud10 = g_oeb[l_ac].oebud10,  #240614 add by ruby
                 oeb20   = g_oeb[l_ac].oeb20     #20190828
                 WHERE oeb01=g_oea.oea01 AND oeb03=g_oeb[l_ac].oeb03
             IF STATUS OR SQLCA.SQLCODE THEN
@@ -35721,6 +35941,15 @@ FUNCTION t400_b2()
                LET g_qryparam.default1 = g_oeb[l_ac].oeb20
                CALL cl_create_qry() RETURNING g_oeb[l_ac].oeb20
                DISPLAY BY NAME g_oeb[l_ac].oeb20 NEXT FIELD oeb20
+          WHEN INFIELD(oeb1005)
+               CALL cl_init_qry_var()
+               LET g_qryparam.form = "cq_ocd1"
+                 LET g_qryparam.default1 = g_oeb[l_ac].oeb1005
+                 LET g_qryparam.arg1     = g_oea.oea03
+                 LET g_qryparam.arg2     = g_oea.oea04               
+               CALL cl_create_qry() RETURNING g_oeb[l_ac].oeb1005
+               DISPLAY BY NAME g_oeb[l_ac].oeb1005
+               NEXT FIELD oeb1005               
           END CASE
        ##---- 20190828 add by momo 交運方式開窗(S)
           
@@ -35743,4 +35972,33 @@ END FUNCTION
 
 ##----- 20180413 add(E)
 
+#241226 add by ruby --s--
+FUNCTION t410_ins_oao() 
+   DEFINE l_flag   LIKE type_file.num5
+   DEFINE l_cnt    LIKE type_file.num5
+   DEFINE l_item   LIKE type_file.num5
 
+   LET l_item=1
+   SELECT max(oao04) INTO l_item FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03
+   IF cl_null(l_item) THEN 
+     LET l_item=1
+   ELSE 
+     LET l_item=l_item+1
+   END IF     
+
+   #Default初植
+   LET g_oao.oao01  = g_oea.oea01           #訂單單號
+   LET g_oao.oao03  = g_oeb[l_ac].oeb03     #項次
+   LET g_oao.oao04  = l_item
+   LET g_oao.oao05  = '2'
+   LET g_oao.oao06  = '貨齊出'
+   LET g_oao.oao02  = ' '
+
+   INSERT INTO oao_file VALUES(g_oao.*)
+   IF SQLCA.sqlcode OR SQLCA.sqlerrd[3] = 0 THEN
+      CALL s_errmsg('','',"p413_ins_oao():",SQLCA.sqlcode,1)  
+      LET g_success = 'N'
+      RETURN
+   END IF  
+END FUNCTION
+#241226 add by ruby --e--
