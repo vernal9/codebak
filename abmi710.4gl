@@ -2562,12 +2562,16 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
             END IF
  
             CALL i710_b_move_back()
- 
+
+            ##---- 20250828 (S) MARK 移至單身處理不需每行開窗 
             IF b_bmy.bmy03 MATCHES '[2345]' THEN    #CHI-960004 add 5
                LET g_flag3 = 'Y'         #MOD-D90028 add
                CALL i710_b_more('w') #No:7826      #No.MOD-670125 modify
                LET g_flag3 = 'N'         #MOD-D90028 add
             END IF
+            ##---- 20250828 (E) 
+
+
             IF b_bmy.bmy03 MATCHES '[2456]' THEN    #No.MOD-840026 add #CHI-960004 add 5 #CHI-C20060
                IF cl_null(b_bmy.bmy23) THEN LET b_bmy.bmy23 = 0 END IF #FUN-560201
             END IF                                #No.MOD-840026 add
@@ -4351,13 +4355,15 @@ FUNCTION i710_b_more(p_cmd)
               LET b_bmy.bmy082=1
               LET b_bmy_t.bmy082=1
            END IF
+           ##---- 20250828 (S) --- 移至單身處理
            IF NOT cl_null(l_bmb.bmb09) THEN
               LET b_bmy.bmy09=l_bmb.bmb09
               LET b_bmy_t.bmy09=l_bmb.bmb09
-           ELSE
-              LET b_bmy.bmy09=''
-              LET b_bmy_t.bmy09=''
+           #ELSE
+           #   LET b_bmy.bmy09=''
+           #   LET b_bmy_t.bmy09=''
            END IF
+           ##---- 20250828 (S) --- 
          #TQC-DA0052-End-Add
 
          #TQC-DA0052-Start-Mark

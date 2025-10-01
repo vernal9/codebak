@@ -782,6 +782,9 @@
 # Modify.........: NO:1907183353 20190723 ASRS倉不可還原
 # Modify.........: NO:2004084478 20200410 增加顯示「上站發料否」
 # Modify.........:               20200814 By momo 相同料件，區分不同作業編號時，修正手動修改作業編號時需一併更新製程序號
+# Modify.........: NO:23070054   20230731 By momo 料件相關文件下載，調整為只可下載PDf
+# Modify.........: NO:23090003   20231120 By momo 料件相關文件PDF，改為直接下載
+# Modify.........: No:25090050   20251001 By momo 套數區塊，增加顯示 ta_sb01 訂單單號序號
 
 DATABASE ds
  
@@ -2435,12 +2438,14 @@ FUNCTION i501_menu()
               END IF
 
          ##---- 20220804 add by momo (S)
-         WHEN "related_document2"  #料件相關文件
+         WHEN "item_pdf"  #料件PDF
               IF cl_chk_act_auth() THEN
                  IF g_sfp.sfp01 IS NOT NULL THEN
-                    LET g_doc.column1 = "ima01"
-                    LET g_doc.value1 = g_sfq[g_cnt].sfb05
-                    CALL cl_doc()
+                   # LET g_doc.column1 = "ima01"             bb #20230731
+                   # LET g_doc.value1 = g_sfq[g_cnt].sfb05  bb  #20230731
+                   # CALL cl_doc()                        bb    #20230731
+                   # CALL ccl_open(g_sfq[g_cnt].sfb05)   b      #20230731
+                    CALL ccl_download(g_sfq[g_cnt].sfb05,'pdf') #20231120
                   END IF
                END IF 
          ##---- 20220804 add by momo (E)
@@ -4229,9 +4234,11 @@ FUNCTION i501_d_i()
  
             END IF
  
-            SELECT sfb05,sfb04,sfb23,sfb08,sfb06,sfb81,sfb02
+            SELECT sfb05,sfb04,sfb23,sfb08,sfb06,sfb81,sfb02,
+                   ta_sfb01                                     #20251001
               INTO g_sfq[i].sfb05, l_sfb04, l_sfb23, l_sfb08,
-                   l_sfb06,l_sfb81,l_sfb02
+                   l_sfb06,l_sfb81,l_sfb02,
+                   g_sfq[i].ta_sfb01                            #20251001
               FROM sfb_file
              WHERE sfb01 = g_sfq[i].sfq02
                AND sfb87 ='Y'
@@ -13702,6 +13709,7 @@ FUNCTION i501_d_fill(p_wc2)              #BODY FILL UP
            ",sfqud01,sfqud02,sfqud03,sfqud04,sfqud05,",
            "sfqud06,sfqud07,sfqud08,sfqud09,sfqud10,",
            "sfqud11,sfqud12,sfqud13,sfqud14,sfqud15", 
+           ",'' ",                                          #20251001
            " FROM sfq_file WHERE sfq01 ='",g_sfp.sfp01,"' ",
            " ORDER BY sfq02"
     ELSE
@@ -13710,6 +13718,7 @@ FUNCTION i501_d_fill(p_wc2)              #BODY FILL UP
            ",sfqud01,sfqud02,sfqud03,sfqud04,sfqud05,",
            "sfqud06,sfqud07,sfqud08,sfqud09,sfqud10,",
            "sfqud11,sfqud12,sfqud13,sfqud14,sfqud15", 
+           ",ta_sfb01 ",                                    #20251001
            " FROM sfq_file LEFT OUTER JOIN sfb_file ON sfq02 = sfb01 ",                     #09/10/21 xiaofeizhu Add
            " WHERE sfq01 ='",g_sfp.sfp01,"' ",
            " ORDER BY sfq02"                                                                #09/10/21 xiaofeizhu Add
@@ -14512,11 +14521,11 @@ FUNCTION i501_bp(p_ud)
          LET g_action_choice = 'exporttoexcel'
          EXIT DIALOG
 
-      ##---- 20220804 add by momo 料件相關文件(S)
-      ON ACTION related_document2               
-         LET g_action_choice="related_document2"          
+      ##---- 20231120 add by momo 料件PDF(S)
+      ON ACTION item_pdf               
+         LET g_action_choice="item_pdf"          
          EXIT DIALOG 
-      ##---- 20220804 add by momo 料件相關文件(E)
+      ##---- 20231120 add by momo 料件PDF(E)
 
       ON ACTION related_document                #No.FUN-6A0166  相關文件
          LET g_action_choice="related_document"          

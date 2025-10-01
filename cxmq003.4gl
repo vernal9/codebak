@@ -7,6 +7,8 @@
 # Modify.........: No:2106116378 20210611 By momo 查詢增加 oeb04 欄位
 # Modify.........: No:2110127090 20211013 By momo 增加顯示終端客戶簡稱
 # Modify.........: No:2112097280 20211210 By momo 增加顯示 oebud05客戶設備編號
+# Modify.........: No:23030003   20230306 By momo 增加顯示 oeb11 客戶產品編號、oebud02 客戶專案號、oebud01 單身備註
+# Modify.........: No:23030016   20230310 By momo 增加顯示 ta_ima02 軸數
  
 DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
@@ -36,7 +38,11 @@ GLOBALS "../../../tiptop/config/top.global"
            oeb15_1       LIKE oeb_file.oeb01,  #約交月份
            oga02_2       LIKE ogb_file.ogb01,  #出貨月份
            oeaud01       LIKE oea_file.oeaud01,#訂單備註
-           oebud05       LIKE oeb_file.oebud05 #客戶設備編號 20211210
+           oebud05       LIKE oeb_file.oebud05, #客戶設備編號 20211210
+           oeb11         LIKE oeb_file.oeb11,  #客戶產品編號 20230306
+           oebud02       LIKE oeb_file.oebud02,#客戶專案號 20230306
+           oebud01       LIKE oeb_file.oebud01,#單身備註 20230306
+           ta_ima02      LIKE ima_file.ta_ima02 #軸數 202303010
                      END RECORD
      DEFINE ga_color DYNAMIC ARRAY OF RECORD
            oeb01         LIKE oeb_file.oeb01,  #訂單單號
@@ -62,7 +68,11 @@ GLOBALS "../../../tiptop/config/top.global"
            oeb15_1       LIKE oeb_file.oeb15,  #約交月份
            oga02_2       LIKE oga_file.oga02,  #出貨月份
            oeaud01       LIKE oea_file.oeaud01,#訂單備註
-           oebud05       LIKE oeb_file.oebud05 #客戶設備編號 20211210
+           oebud05       LIKE oeb_file.oebud05,#客戶設備編號 20211210
+           oeb11         LIKE oeb_file.oeb11,  #客戶產品編號 20230306
+           oebud02       LIKE oeb_file.oebud02,#客戶專案號 20230306
+           oebud01       LIKE oeb_file.oebud01,#單身備註 20230306
+           ta_ima02      LIKE ima_file.ta_ima02 #軸數 202303010
                      END RECORD
     DEFINE g_argv1       LIKE rva_file.rva01    # INPUT ARGUMENT - 1
     DEFINE g_wc,g_sql 	 string                 #WHERE CONDITION  #No.FUN-580092 HCN
@@ -239,7 +249,9 @@ FUNCTION q003_b_fill()
               "        oea02,oea10,pmm02,oeb01||LPAD(oeb03,3,'0'),ima021,",
               "        oeb12,oeb15,0,pmm01,",
               "        oga02,'',pmn33,pmmud04,oeb12,gen02, ",
-              "        '','',oeaud01,oebud05               ",                  #20211210 add
+              "        '','',oeaud01,oebud05,              ",                  #20211210 add
+              "        oeb11,oebud02,oebud01, ",                               #20230306
+              "        ta_ima02 ",                                             #20230310
               " FROM gen_file,ima_file,oea_file , oeb_file ",
               "  LEFT JOIN pmn_file ON pmn24=oeb01 and pmn25=oeb03 ",
               "                          and pmn16 in ('0','1','2','S','W','R','6')",

@@ -517,7 +517,11 @@
 # Modify.........: No:23070017   20230710 By momo 請購單複製時，pmkud13採購接受日期應為空
 # Modify.........: NO:23070055   20230801 By momo 增加 料件PDF開啟功能
 # Modify.........: NO:24010014   20240111 By momo 增加顯示CH類別，行序1品名2規格
-
+# Modify.........: NO:24060006   20240605 By momo 「主要供應商」、「採購員」預設值 帶入條件變更，只剔除MISC開頭料件
+# Modify.........:               20240605 By momo 匯率抓取改為 s_curr3 副程式，若當日匯率尚無產生會抓取最近匯率
+# Modify.........: NO:24070013   20240717 By momo 「依分量計價更新供應商」時，只更新/抓取apmi600供應商交易狀況[pmc05]為1：確認 的供應商
+# Modify.........: No:25010008   20250107 By momo 「依分量計價更新供應商」卡控 確認與送簽中時不可使用
+# Modify.........: NO:25090026   20250919 By momo pmkud04 增加 「補單」功能
 
 DATABASE ds
  
@@ -534,11 +538,11 @@ DEFINE g_sum2        LIKE afc_file.afc07  #No.FUN-830161
 DEFINE g_pml02       LIKE type_file.chr20  #FUN-890118
 DEFINE g_cnt1        LIKE type_file.num5   #FUN-9A0065
 DEFINE g_rec_b1      LIKE type_file.num5
-DEFINE   g_b_flag       LIKE type_file.chr1   #TQC-D40025
+DEFINE g_b_flag       LIKE type_file.chr1   #TQC-D40025
 DEFINE chyn          LIKE type_file.chr1  #20210202
 DEFINE g_multi_ima01 STRING               #MOD-AC0309    #FUN-D60099 remark 
 DEFINE g_multi_ima01_flag LIKE type_file.chr1            #FUN-D60099 add
-DEFINE  g_pml1  DYNAMIC ARRAY OF RECORD
+DEFINE g_pml1  DYNAMIC ARRAY OF RECORD
                 ch     LIKE  type_file.chr1,  #選擇 
                 wpc10  LIKE  wpc_file.wpc10,  #No.FUN-A90009
                 pml33  LIKE  pml_file.pml33,  #No.FUN-A90009
@@ -558,19 +562,19 @@ DEFINE  g_pml1_t  DYNAMIC ARRAY OF RECORD
                 pml07  LIKE  pml_file.pml07,  #請購單位
                 pml20  LIKE  pml_file.pml20  #訂購量
                 END RECORD
-DEFINE g_renew      LIKE  type_file.num5   
-DEFINE g_ac         LIKE  type_file.num5    
-DEFINE   g_c            DYNAMIC ARRAY OF RECORD
-               pmk09       LIKE pmk_file.pmk09, 
-               pmc03       LIKE pmc_file.pmc03
-                           END RECORD   
-DEFINE   g_wpc         RECORD LIKE wpc_file.*
+DEFINE g_renew         LIKE  type_file.num5   
+DEFINE g_ac            LIKE  type_file.num5    
+DEFINE g_c    DYNAMIC ARRAY OF RECORD
+               pmk09   LIKE pmk_file.pmk09, 
+               pmc03   LIKE pmc_file.pmc03
+               END RECORD   
+DEFINE g_wpc         RECORD LIKE wpc_file.*
 DEFINE g_channel        base.Channel
 DEFINE g_tmpstr         STRING     
 DEFINE g_pml07_t         LIKE pml_file.pml07   #No.FUN-BB0086
 DEFINE g_pml80_t         LIKE pml_file.pml80   #No.FUN-BB0086
 DEFINE g_pml83_t         LIKE pml_file.pml83   #No.FUN-BB0086
-DEFINE g_pml86_t        LIKE pml_file.pml86   #No.FUN-BB0086
+DEFINE g_pml86_t         LIKE pml_file.pml86   #No.FUN-BB0086
 #MOD-F80064 ---start add---
 DEFINE g_pml02_1         LIKE pml_file.pml02
 DEFINE g_pml04           LIKE pml_file.pml04
@@ -739,7 +743,7 @@ FUNCTION t420(p_argv1,p_argv2,p_argv3,p_argv4) #No.FUN-630010
  
    ##傳入簽核模式時不應執行的 action 清單
    #CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail, query, locale, void, confirm, undo_confirm,easyflow_approval, aps_related_data")  #TQC-740281 #FUN-D20025 mark
-   CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail, query, locale, void, undo_void, confirm, undo_confirm,easyflow_approval, aps_related_data, e_proc_require") #FUN-D20025 add aps_related_data #FUN-E40003 add e_proc_require
+   CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail, query, locale, void, undo_void, confirm, undo_confirm,easyflow_approval, aps_related_data, e_proc_require,updatepmr") #FUN-D20025 add aps_related_data #FUN-E40003 add e_proc_require
          RETURNING g_laststage
  
    CALL t420_menu()
@@ -2906,6 +2910,7 @@ DEFINE l_pmo            DYNAMIC ARRAY OF RECORD LIKE pmo_file.*
     CALL cl_set_head_visible("","YES")           #No.FUN-6B0032
     INPUT BY NAME g_pmk.pmkoriu,g_pmk.pmkorig,
          g_pmk.pmk01,g_pmk.pmk03,g_pmk.pmk04,g_pmk.pmk48,g_pmk.pmk02, #No.FUN-870007-add-pmk48
+         g_pmk.pmkud04,
          g_pmk.pmk09,g_pmk.pmk05,g_pmk.pmk49,g_pmk.pmk18,              #FUN-810045 add pmk05  #No.FUN-830161  #FUN-A50071 add pmk49
          g_pmk.pmk20,g_pmk.pmk41,g_pmk.pmk10,g_pmk.pmk11,
          g_pmk.pmk12,g_pmk.pmk13,g_pmk.pmk21,g_pmk.pmk43,
@@ -2914,7 +2919,7 @@ DEFINE l_pmo            DYNAMIC ARRAY OF RECORD LIKE pmo_file.*
         #g_pmk.pmk14,g_pmk.pmk15,g_pmk.pmk16,g_pmk.pmk17,g_pmk.pmk30,  #MOD-E50116 mark
          g_pmk.pmk14,g_pmk.pmk15,g_pmk.pmk16,g_pmk.pmk17,              #MOD-E50116
          chyn,                                                         #20210202
-         g_pmk.pmkud01,g_pmk.pmkud02,g_pmk.pmkud03,g_pmk.pmkud04,g_pmk.pmkud05,
+         g_pmk.pmkud01,g_pmk.pmkud02,g_pmk.pmkud03,g_pmk.pmkud05,
          g_pmk.pmkud06,g_pmk.pmkud07,g_pmk.pmkud08,g_pmk.pmkud09,g_pmk.pmkud10,
          g_pmk.pmkud11,g_pmk.pmkud12,g_pmk.pmkud13,g_pmk.pmkud14,g_pmk.pmkud15,
          g_pmk.pmkuser,g_pmk.pmkgrup,g_pmk.pmkmodu,g_pmk.pmkdate,
@@ -3030,6 +3035,11 @@ DEFINE l_pmo            DYNAMIC ARRAY OF RECORD LIKE pmo_file.*
              #TQC-C30165--end
              LET g_pmk_o.pmk04 = g_pmk.pmk04
            END IF
+           ##----- 20250919 (S) 費用類卡控補單否
+            IF g_pmk.pmk02='EXP' AND cl_null(g_pmk.pmkud04) THEN
+               NEXT FIELD pmkud04
+            END IF
+            ##----- 20250919 (E)
  
           AFTER FIELD pmk05
            IF NOT cl_null(g_pmk.pmk05) THEN
@@ -3434,7 +3444,14 @@ DEFINE l_pmo            DYNAMIC ARRAY OF RECORD LIKE pmo_file.*
         AFTER FIELD pmkud03
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD pmkud04
-           IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           ##---- 20250919 (S) -- 補單否
+           #IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+           IF g_pmk.pmk02='EXP' THEN
+              IF cl_null(g_pmk.pmkud04) THEN
+                 NEXT FIELD pmkud04
+              END IF
+           END IF
+           ##---- 20250919 (E) --
         AFTER FIELD pmkud05
            IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
         AFTER FIELD pmkud06
@@ -5864,7 +5881,9 @@ DEFINE l_n          LIKE type_file.num5     #MOD-F80064 add
             pmkcont='',       #審核時間     #No.FUN-870007
             pmkacti='Y',      #有效資料
             pmkud13='',       #採購接受日期 20230710 
-            pmkud01=''        #備註 20230710    
+            pmkud01='',       #備註 20230710  
+            pmkud03='',       #加簽 20250919 
+            pmkud04=''        #補單 20250919 
     INSERT INTO pmk_file
         SELECT * FROM y
     IF SQLCA.sqlcode THEN
@@ -7630,17 +7649,16 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
               IF NOT cl_null(g_pml[l_ac].ta_pml05) THEN 
                  SELECT azi03,azi04 INTO t_azi03,t_azi04 FROM azi_file    
                   WHERE azi01 = g_pml[l_ac].ta_pml05  AND aziacti= 'Y'  #原幣
+                  ##---- 20180528 add by momo (S) 計算本幣未稅金額
+                  CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052   #20240605 modify
+                  IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+                  LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
+                  LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
+                  LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
+                  LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
+                  ##---- 20180528 add by momo (E)
               END IF
               #M003 171120 By TSD.Nic -----(E)
-              LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
-              LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
-              ##---- 20180528 add by momo (S) 計算本幣未稅金額
-              SELECT azk052 INTO l_azk052 FROM azk_file
-               WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-              IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-              LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
-              LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
-              ##---- 20180528 add by momo (E)
               LET g_pml2.pml930=g_pml[l_ac].pml930 #FUN-670051
               IF cl_null(g_pml[l_ac].pml12) THEN     #No:8841
                  LET g_pml[l_ac].pml12=' '
@@ -8172,7 +8190,8 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
          ##---- 20180619 add by momo (E)--------------------------
 
          #M003 171120 By TSD.Nic -----(S)
-         IF g_pmk.pmk02 = 'REG' THEN
+         #IF g_pmk.pmk02 = 'REG' OR THEN               #20240605 mark
+          IF g_pml[l_ac].pml04[1,4] != 'MISC' THEN     #20240605 modify
             LET l_ima43 = ''
             LET l_ima54 = ''
             SELECT ima43,ima54 INTO l_ima43,l_ima54
@@ -8463,6 +8482,7 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                 LET g_pml[l_ac].ta_pml05 = l_pmc22                             
              END IF
              #180516 add by ruby  --e-- 
+             DISPLAY BY NAME g_pml[l_ac].pml52
 
           #採購員
           AFTER FIELD ta_pml06
@@ -8558,6 +8578,8 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
              ELSE
                 NEXT FIELD pml07
              END IF
+             DISPLAY BY NAME g_pml[l_ac].pml07
+           
          AFTER FIELD pml48
             IF NOT cl_null(g_pml[l_ac].pml48) THEN   
                IF g_pml_t.pml48 IS NULL OR g_pml[l_ac].pml48 !=g_pml_t.pml48 THEN
@@ -8618,14 +8640,18 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
           AFTER FIELD pml20   #請購數量
              IF NOT t420_pml20_check(p_cmd) THEN NEXT FIELD pml20 END IF   #No.FUN-BB0086
              ##---- 20180528 add by momo (S) 計算本幣未稅金額
-             SELECT azk052 INTO l_azk052 FROM azk_file
-              WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-             IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-             LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml[l_ac].pml20*g_pml[l_ac].pml31*l_azk052,t_azi04)
-             UPDATE pml_file set pmlud07=g_pml[l_ac].pmlud07
-              WHERE pml01 = g_pmk.pmk01 AND
-                    pml02 = g_pml[l_ac].pml02
+             #SELECT azk052 INTO l_azk052 FROM azk_file                                       #20240605 mark
+             # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                         #20240605 mark
+             IF NOT cl_null(g_pml[l_ac].ta_pml05) THEN
+                CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052   #20240605 modify
+                IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+                LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml[l_ac].pml20*g_pml[l_ac].pml31*l_azk052,t_azi04)
+             #UPDATE pml_file set pmlud07=g_pml[l_ac].pmlud07
+             # WHERE pml01 = g_pmk.pmk01 AND
+             #       pml02 = g_pml[l_ac].pml02
              CALL t420_update()
+             END IF
+             DISPLAY BY NAME g_pml[l_ac].pml20
              ##---- 20180528 add by momo (E)
              #No.FUN-BB0086--mark--begin--
              #IF g_pml_t.pml20 IS NULL AND g_pml[l_ac].pml20 IS NOT NULL OR
@@ -9453,8 +9479,9 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                   NEXT FIELD pml31 
                END IF
                ##---- 20180528 add by momo (S) 計算本幣未稅金額
-               SELECT azk052 INTO l_azk052 FROM azk_file
-                WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
+               #SELECT azk052 INTO l_azk052 FROM azk_file                                      #20240605 mark
+               # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                        #20240605 mark
+               CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052  #20240605 modify
                IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
                LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml[l_ac].pml20*g_pml[l_ac].pml31*l_azk052,t_azi04)
                LET g_pml[l_ac].pmlud03 = '單價手動'      #20211022
@@ -9488,6 +9515,7 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                #MOD-C10008 ----- add end ----
                   LET g_pml2.pml44=g_pml[l_ac].pml31*g_pmk.pmk42             #No.TQC-630043 add
                END IF #MOD-C10008 add
+               DISPLAY BY NAME g_pml[l_ac].*
            END IF
  
           AFTER FIELD pml06
@@ -9848,16 +9876,17 @@ DEFINE l_ac_t,l_cnt    LIKE type_file.num5,    #No.FUN-680136 SMALLINT          
                  IF NOT cl_null(g_pml[l_ac].ta_pml05) THEN 
                     SELECT azi03,azi04 INTO t_azi03,t_azi04 FROM azi_file    
                      WHERE azi01 = g_pml[l_ac].ta_pml05  AND aziacti= 'Y'  #原幣
+                     ##---- 20180528 add by momo (S) 計算本幣未稅金額
+                     #SELECT azk052 INTO l_azk052 FROM azk_file                                       #20240605 mark
+                     # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                         #20240605 mark
+                     CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052   #2040605 modify
+                     IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+                     LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
+                     LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
+                     LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
+                     LET g_pml[l_ac].pmlud07 = g_pml2.pmlud07
                  END IF
                  #M003 171127 By TSD.Jin--end----
-                 LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
-                 LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
-                 ##---- 20180528 add by momo (S) 計算本幣未稅金額
-                 SELECT azk052 INTO l_azk052 FROM azk_file
-                  WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-                 IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-                 LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
-                 LET g_pml[l_ac].pmlud07 = g_pml2.pmlud07
                  ##---- 20180528 add by momo (E)
                  LET g_pml2.pml930=g_pml[l_ac].pml930 #FUN-670051
                  IF g_pml[l_ac].pml20 <= 0  THEN
@@ -13130,19 +13159,20 @@ FUNCTION t420_set_origin_field()
     IF NOT cl_null(g_pml[l_ac].ta_pml05) THEN 
        SELECT azi03,azi04 INTO t_azi03,t_azi04 FROM azi_file    
         WHERE azi01 = g_pml[l_ac].ta_pml05  AND aziacti= 'Y'  #原幣
+        ##---- 20180528 add by momo (S) 計算本幣未稅金額
+        #SELECT azk052 INTO l_azk052 FROM azk_file                                      #20240605 mark
+        # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                        #20240605 mark
+        CALL s_curr3(g_pml2.ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052       #20240605 modify
+        IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+        IF g_sma.sma116 MATCHES '[13]' THEN    #No.FUN-610076
+          LET g_pml2.pml88 =cl_digcut(g_pml2.pml31*g_pml2.pml87,t_azi04)  #MOD-730047
+        ELSE
+          LET g_pml2.pml88 =cl_digcut(g_pml2.pml31*g_pml2.pml20,t_azi04)  #MOD-730047
+        END IF
+        LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
+    ##---- 20180528 add by momo (E)
     END IF
     #M003 171127 By TSD.Jin--end----
-    IF g_sma.sma116 MATCHES '[13]' THEN    #No.FUN-610076
-       LET g_pml2.pml88 =cl_digcut(g_pml2.pml31*g_pml2.pml87,t_azi04)  #MOD-730047
-    ELSE
-       LET g_pml2.pml88 =cl_digcut(g_pml2.pml31*g_pml2.pml20,t_azi04)  #MOD-730047
-    END IF
-    ##---- 20180528 add by momo (S) 計算本幣未稅金額
-    SELECT azk052 INTO l_azk052 FROM azk_file
-     WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-    IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-    LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
-    ##---- 20180528 add by momo (E)
 END FUNCTION
  
 #兩組雙單位資料不是一定要全部KEY,如果沒有KEY單位,則把換算率/數量清空
@@ -14425,7 +14455,7 @@ FUNCTION t420_update()
    DISPLAY l_ttl2 TO FORMONLY.ttl2    
    LET l_tax = l_ttl2 - g_pmk.pmk40
    DISPLAY l_tax TO FORMONLY.tax                                                                             
-   ##----20181224 新增顯示 稅額與含稅總額 (E)                                                                                                                         
+   ##----20181224 新增顯示 稅額與含稅總額 (E)    
                                                                                                                                     
 END FUNCTION             
                                                                                                            
@@ -15307,13 +15337,16 @@ FUNCTION t420_pml20_check(p_cmd)
        #M003 171120 By TSD.Nic -----(E)
    END IF
        ##---- 20180628 add by momo (S)
-       SELECT azk052 INTO l_azk052 FROM azk_file
-        WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-       IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-       LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml[l_ac].pml20*g_pml[l_ac].pml31*l_azk052,t_azi04)
-       UPDATE pml_file SET pmlud07=g_pml[l_ac].pmlud07
-        WHERE pml01 = g_pmk.pmk01 AND
-              pml02 = g_pml[l_ac].pml02
+       #SELECT azk052 INTO l_azk052 FROM azk_file                                           #20240605 mark
+       # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                             #20240605 mark
+       IF NOT cl_null(g_pml[l_ac].ta_pml05) THEN
+          CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052       #20240605 modify
+          IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+          LET g_pml[l_ac].pmlud07 =cl_digcut(g_pml[l_ac].pml20*g_pml[l_ac].pml31*l_azk052,t_azi04)
+          UPDATE pml_file SET pmlud07=g_pml[l_ac].pmlud07
+           WHERE pml01 = g_pmk.pmk01 AND
+                 pml02 = g_pml[l_ac].pml02
+       END IF
        ##---- 20180628 add by momo (E)
    RETURN TRUE 
 END FUNCTION 
@@ -15785,12 +15818,6 @@ DEFINE   l_azk052     LIKE azk_file.azk052     #20180528
       LET l_pml.pml87 = l_pml.pml20                                    #FUN-D60099 add
       LET l_pml.pml88 = l_pml.pml31 * l_pml.pml87 
       LET l_pml.pml88t= l_pml.pml31t* l_pml.pml87   
-      ##---- 20180528 add by momo (S) 計算本幣未稅金額
-      SELECT azk052 INTO l_azk052 FROM azk_file
-       WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-      IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-      LET l_pml.pmlud07 =cl_digcut(l_pml.pml88*l_azk052,t_azi04)
-      ##---- 20180528 add by momo (E)
  
       LET l_pml.pml91 = ' '
       LET l_pml.pml92 = ' '
@@ -16497,16 +16524,19 @@ FUNCTION t420_update_pml31()
             LET l_pml.pml88t = l_pml_o.pml20 * l_pml.pml31t
             LET l_pml.pml88  = cl_digcut(l_pml.pml88,t_azi04)
             LET l_pml.pml88t  = cl_digcut(l_pml.pml88t,t_azi04)
-            SELECT azk052 INTO l_azk052 FROM azk_file
-              WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
-            IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
-            LET l_pml.pmlud07 = l_pml.pml88 * l_azk052
-            UPDATE pml_file SET pml31= l_pml.pml31,
-                                pml31t=l_pml.pml31t,
-                                pml88=l_pml.pml88,
-                                pml88t=l_pml.pml88t,
-                                pmlud07=l_pml.pmlud07
-             WHERE pml01=l_pml_o.pml01 AND pml02=l_pml_o.pml02    
+            #SELECT azk052 INTO l_azk052 FROM azk_file                                #20240605 mark
+            #  WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                 #20240605 mark
+            IF NOT cl_null(l_pml.ta_pml05) THEN
+               CALL s_curr3(l_pml.ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052  #20240605 modify
+               IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
+               LET l_pml.pmlud07 = l_pml.pml88 * l_azk052
+               UPDATE pml_file SET pml31= l_pml.pml31,
+                                   pml31t=l_pml.pml31t,
+                                   pml88=l_pml.pml88,
+                                   pml88t=l_pml.pml88t,
+                                   pmlud07=l_pml.pmlud07
+                WHERE pml01=l_pml_o.pml01 AND pml02=l_pml_o.pml02    
+            END IF
           END IF
           END IF
           END IF
@@ -16833,8 +16863,9 @@ FUNCTION t420_pmh11()
              LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
              LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
              # 計算本幣未稅金額
-             SELECT azk052 INTO l_azk052 FROM azk_file
-              WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
+             #SELECT azk052 INTO l_azk052 FROM azk_file                                  #20240605 mark
+             # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                    #20240605 mark
+             CALL s_curr3(g_pml[l_ac].ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052   #20240605 modify
              IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
              LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
              UPDATE pml_file SET pml20 = g_pml2.pml20,
@@ -16864,8 +16895,9 @@ FUNCTION t420_pmh11()
              LET g_pml2.pml88 =cl_digcut(g_pml2.pml87*g_pml2.pml31,t_azi04)
              LET g_pml2.pml88t=cl_digcut(g_pml2.pml87*g_pml2.pml31t,t_azi04)
              # 計算本幣未稅金額
-             SELECT azk052 INTO l_azk052 FROM azk_file
-              WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
+             #SELECT azk052 INTO l_azk052 FROM azk_file                                  #20240605 mark
+             # WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                    #20240605 mark
+             CALL s_curr3(g_pml2.ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052   #20240605 modify
              IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
              LET g_pml2.pmlud07 =cl_digcut(g_pml2.pml88*l_azk052,t_azi04)
              LET g_pml2.pml33=''
@@ -16889,7 +16921,11 @@ FUNCTION t420_update_pmr()
    DEFINE l_azk052      LIKE azk_file.azk052
    DEFINE l_pmi03       LIKE pmi_file.pmi03
 
-   
+   #---- 20250108 (S) 確認時不可使用
+   IF g_pmk.pmk18 ='Y' OR g_pmk.pmk25='S' THEN 
+      CALL cl_err('','apm-242',1) RETURN  
+   END IF  
+   #---- 20250108 (E) 確認時不可使用
 
    DECLARE t420sum_pml20_pmr CURSOR FOR 
           SELECT * FROM pml_file WHERE pml01 = g_pmk.pmk01
@@ -16902,8 +16938,9 @@ FUNCTION t420_update_pmr()
             
          LET l_pmi03=''
          SELECT pmi03 INTO l_pmi03 
-           FROM pmi_file a,pmj_file,pmr_file
-           WHERE pmi01=pmj01 
+           FROM pmc_file,pmi_file a,pmj_file,pmr_file   #20240717 modify
+           WHERE pmc01 = pmi03 AND pmc05='1'            #20240717
+            AND  pmi01=pmj01 
             AND  pmj01=pmr01 AND pmj02=pmr02 
             AND  pmi05='Y' AND pmi03 != l_pml_o.ta_pml03 
             AND  pmr05 < l_pml_o.pml31
@@ -16934,8 +16971,9 @@ FUNCTION t420_update_pmr()
             LET l_pml.pml88t = l_pml_o.pml20 * l_pml.pml31t
             LET l_pml.pml88  = cl_digcut(l_pml.pml88,t_azi04)
             LET l_pml.pml88t  = cl_digcut(l_pml.pml88t,t_azi04)
-            SELECT azk052 INTO l_azk052 FROM azk_file
-              WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04
+            #SELECT azk052 INTO l_azk052 FROM azk_file                                  #20240605 mark
+            #  WHERE azk01=g_pml[l_ac].ta_pml05 AND azk02=g_pmk.pmk04                   #20240605 mark
+            CALL s_curr3(l_pml.ta_pml05,g_pmk.pmk04,g_sma.sma904) RETURNING l_azk052    #20240605 modify
             IF cl_null(l_azk052) OR l_azk052=0 THEN LET l_azk052='1' END IF
             LET l_pml.pmlud07 = l_pml.pml88 * l_azk052
             UPDATE pml_file SET ta_pml03 = l_pmi03,

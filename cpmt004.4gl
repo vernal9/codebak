@@ -4,6 +4,8 @@
 # Descriptions...: 採購未交排程維護作業
 # Input parameter: 
 # Date & Author..: 2025/02/17 By Momo
+# Modify.........: No.25050038  20250604 by momo 依批號抓取客戶採購順序cxmi202
+# Modify.........: No.25080030  20250828 By momo
 
 DATABASE ds
  
@@ -28,7 +30,11 @@ DEFINE
         tc_pro03    LIKE tc_pro_file.tc_pro03, #機器編號
         tc_pro04    LIKE tc_pro_file.tc_pro04, #狀態
         tc_pro05    LIKE tc_pro_file.tc_pro05, #備註說明
-        tc_pro06    LIKE tc_pro_file.tc_pro06  #裁切否
+        tc_pro06    LIKE type_file.dat,        #預計完成日
+        tc_oao05    LIKE tc_oao_file.tc_oao05, #客戶重要備註 20250604
+        sfa05       LIKE sfa_file.sfa05,       #未發工單備料 20250828
+        ecb19       LIKE ecb_file.ecb19,       #標準人工工時 20250828
+        ecb21       LIKE ecb_file.ecb21        #標準機器工時 20250828
                     END RECORD,
     g_pmn_t         RECORD                     #程式變數 (舊值)
         pmm09       LIKE pmm_file.pmm09,       #供應商編號
@@ -46,7 +52,11 @@ DEFINE
         tc_pro03    LIKE tc_pro_file.tc_pro03, #機器編號
         tc_pro04    LIKE tc_pro_file.tc_pro04, #狀態
         tc_pro05    LIKE tc_pro_file.tc_pro05, #備註說明
-        tc_pro06    LIKE tc_pro_file.tc_pro06  #裁切否
+        tc_pro06    LIKE type_file.dat,        #預計完成日
+        tc_oao05    LIKE tc_oao_file.tc_oao05, #客戶重要備註 20250604
+        sfa05       LIKE sfa_file.sfa05,       #未發工單備料 20250828
+        ecb19       LIKE ecb_file.ecb19,       #標準人工工時 20250828
+        ecb21       LIKE ecb_file.ecb21        #標準機器工時 20250828
                     END RECORD,
     g_ima           RECORD
         unavl_stk   LIKE type_file.num15_3,  
@@ -144,19 +154,20 @@ FUNCTION t004_curs()
          BEFORE CONSTRUCT
             CALL cl_qbe_init()
            
-            ON ACTION controlp
-               CASE                
-                  WHEN INFIELD(ima06) #分群碼
-                       CALL cl_init_qry_var()
-                       LET g_qryparam.form     = "q_imz"
-                       LET g_qryparam.state    = "c"
-                       CALL cl_create_qry() RETURNING g_qryparam.multiret
-                       DISPLAY g_qryparam.multiret TO ima06
-                       NEXT FIELD ima06
-                END CASE
-                ON IDLE g_idle_seconds
-                   CALL cl_on_idle()
-                   CONTINUE CONSTRUCT
+      ON ACTION controlp
+         CASE                
+         WHEN INFIELD(ima06) #分群碼
+          CALL cl_init_qry_var()
+          LET g_qryparam.form     = "q_imz"
+          LET g_qryparam.state    = "c"
+          CALL cl_create_qry() RETURNING g_qryparam.multiret
+          DISPLAY g_qryparam.multiret TO ima06
+          NEXT FIELD ima06
+          END CASE
+
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE CONSTRUCT
  
       ON ACTION about         
          CALL cl_about()      
@@ -173,19 +184,21 @@ FUNCTION t004_curs()
          CALL cl_qbe_save()
      END CONSTRUCT
 
-             LET g_wc = g_wc CLIPPED,cl_get_extra_cond('pmmuser', 'pmmgrup') 
+     LET g_wc = g_wc CLIPPED,cl_get_extra_cond('pmmuser', 'pmmgrup') 
  
-             LET g_wc2 = g_wc2 CLIPPED
+     LET g_wc2 = g_wc2 CLIPPED
  
-             IF INT_FLAG THEN RETURN END IF
+     IF INT_FLAG THEN RETURN END IF
  
-    IF NOT cl_null(g_argv1) THEN 
-       LET g_wc = g_wc CLIPPED," AND pmm09 ='",g_argv1,"'"
-    ELSE
+     IF NOT cl_null(g_argv1) THEN 
+        LET g_wc = g_wc CLIPPED," AND pmm09 ='",g_argv1,"'"
+     ELSE
         CONSTRUCT g_wc ON pmm09,pmn01,pmn02,pmn04,pmn33,
-                          tc_pro03,tc_pro04,tc_pro05,tc_pro06
+                          tc_pro03,tc_pro04,tc_pro05,tc_pro06,
+                          ima021                                                             #20250828
             FROM s_pmn[1].pmm09,s_pmn[1].pmn01,s_pmn[1].pmn02,s_pmn[1].pmn04,s_pmn[1].pmn33,
-                 s_pmn[1].tc_pro03,s_pmn[1].tc_pro04,s_pmn[1].tc_pro05,s_pmn[1].tc_pro06
+                 s_pmn[1].tc_pro03,s_pmn[1].tc_pro04,s_pmn[1].tc_pro05,s_pmn[1].tc_pro06,
+                 s_pmn[1].ima021                                                             #20250828
             
             BEFORE CONSTRUCT
                CALL cl_qbe_init()
@@ -322,7 +335,7 @@ DEFINE
     l_lock_sw       LIKE type_file.chr1,                #單身鎖住否        
     p_cmd           LIKE type_file.chr1,                #處理狀態          
     l_allow_insert  LIKE type_file.num5,                #可新增否          
-    l_allow_delete  LIKE type_file.num5                #可刪除否          
+    l_allow_delete  LIKE type_file.num5                 #可刪除否          
 DEFINE   l_cnt      LIKE type_file.num10     
  
     LET g_action_choice = ""
@@ -331,7 +344,8 @@ DEFINE   l_cnt      LIKE type_file.num10
     CALL cl_opmsg('b')
  
     LET g_forupd_sql = 
-        "SELECT pmm09,pmm02,pmn01,pmn02,pmn04,'','',pmn20,pmn50,pmn33,'',0,tc_pro03,tc_pro04,tc_pro05,tc_pro06 ",                           
+        "SELECT pmm09,pmm02,pmn01,pmn02,pmn04,'','',pmn20,pmn50,pmn33,'',0,tc_pro03,tc_pro04,tc_pro05,tc_pro06,'' ",  #20250604     
+        "       ,0,0,0 ",     #20250828                    
         "  FROM pmm_file,pmn_file ",     
         "  LEFT JOIN tc_pro_file ON pmn01=tc_pro01 AND pmn02=tc_pro02  ",     
         " WHERE pmm01=pmn01 ",
@@ -419,10 +433,6 @@ DEFINE   l_cnt      LIKE type_file.num10
                END IF
             END IF
 
-        BEFORE FIELD tc_pro06
-            IF cl_null(g_pmn[l_ac].tc_pro06) THEN
-               LET g_pmn[l_ac].tc_pro06 = 'N'
-            END IF
  
         ON ROW CHANGE
             IF INT_FLAG THEN
@@ -586,10 +596,11 @@ DEFINE
 DEFINE l_ima44_fac  LIKE ima_file.ima44_fac  #庫存採購換算
  
     LET l_sql ="SELECT pmm09,pmm02,pmn01,pmn02,pmn04,ima02,ima021,pmn20,pmn20-pmn53+pmn58,pmn33,'',0,",
-               "       tc_pro03,tc_pro04,tc_pro05,tc_pro06 ", 
+               "       tc_pro03,tc_pro04,tc_pro05,tc_pro06,'' ",                                           #20250604
+               "       ,0,0,0 ",   #20250828
                " FROM ima_file,pmm_file,pmn_file ",
                " LEFT JOIN tc_pro_file ON tc_pro01=pmn01 AND tc_pro02=pmn02 ",
-               " WHERE pmm01=pmn01 AND pmm18='Y' AND pmn04=ima01 AND pmn16 in ('1','2')",
+               " WHERE pmm01=pmn01 AND pmm18='Y' AND pmn04=ima01 AND pmn16 <='2'",
                "   AND pmn20-pmn53+pmn58 > 0 AND ima08 <> 'Z' AND ",g_wc CLIPPED ,
                " ORDER BY pmn33 "
     PREPARE t004_p2 FROM l_sql      #預備一下
@@ -603,6 +614,16 @@ DEFINE l_ima44_fac  LIKE ima_file.ima44_fac  #庫存採購換算
             CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
             EXIT FOREACH
         END IF
+
+        ##--20250604 抓順序 (S) ---
+        SELECT tc_oao05 INTO g_pmn[g_cnt].tc_oao05
+          FROM tc_oao_file,oea_file,pmn_file
+         WHERE tc_oao02 = '5' AND oea03=tc_oao01
+           AND tc_oao06 IS NULL
+           AND oea01 = SUBSTR(pmn56,1,15)
+           AND pmn01 = g_pmn[g_cnt].pmn01
+           AND pmn02 = g_pmn[g_cnt].pmn02
+        ##--20250604 抓順序 (E) ---
 
         #--抓工單
         IF g_pmn[g_cnt].pmm02 = 'SUB' THEN
@@ -639,7 +660,17 @@ DEFINE l_ima44_fac  LIKE ima_file.ima44_fac  #庫存採購換算
              RETURNING g_ima.oeb_q, g_ima.sfa_q1, g_ima.sfa_q2, g_ima.sie_q,  g_ima.pml_q,
              g_ima.pmn_q, g_ima.rvb_q2, g_ima.rvb_q,  g_ima.sfb_q1, g_ima.sfb_q2,
              g_ima.qcf_q, g_ima.atp_qty,g_ima.misc_q1,g_ima.sfs_q2
+        LET g_pmn[g_cnt].sfa05 = g_ima.sfa_q1   #20250828
         LET g_pmn[g_cnt].img10 = (g_ima.atp_qty - l_sfb08 - g_ima.pml_q-g_ima.pmn_q)/l_ima44_fac
+
+        #20250828 (S)
+        SELECT ecb19,ecb21 INTO g_pmn[g_cnt].ecb19,g_pmn[g_cnt].ecb21
+          FROM ecb_file
+         WHERE ecb01 = g_pmn[g_cnt].bmb01
+           AND ecb08 IN ('MM001','SA002')
+           AND ecb19 > 0
+           AND rownum = 1
+        #20250828 (E)
 
         LET g_cnt = g_cnt + 1
       

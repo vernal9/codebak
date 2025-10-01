@@ -9,6 +9,7 @@
 # Modify.........: No.23100015   20231013 modify by momo tc_oga07 = '2', tc_oga06 時間欄位不可為空
 # Modify.........: No.24080020   20240815 modify by momo 增加 狀態4：不需處理
 # Modify.........: No.24120001   20241205 modify by momo 增加 asfp304 訂單轉工單串聯
+# Modify.........: No.25020019   20250214 modify by momo 研發匯出時增加檢核是否需建立群組取替功能
 
 DATABASE ds
  
@@ -56,7 +57,8 @@ DEFINE
             tc_ogauser LIKE tc_oga_file.tc_ogauser,
             tc_oga05   LIKE tc_oga_file.tc_oga05,  #時間
             tc_oga06   LIKE tc_oga_file.tc_oga06,  #日期
-            tc_oga07   LIKE tc_oga_file.tc_oga07   #訂單狀態 
+            tc_oga07   LIKE tc_oga_file.tc_oga07,  #訂單狀態 
+            tc_mpn16   LIKE tc_mpn_file.tc_mpn16   #cxmp412 生管備註欄 20250722
         END RECORD,
     g_argv1              LIKE oea_file.oea02,
     g_before_input_done  LIKE type_file.num5,   
@@ -326,7 +328,8 @@ FUNCTION p411_b_fill(p_wc2)
         "       sfb01, ",
         "       pmn01, ",                             #20230724
         "       '',",
-        "       tc_ogauser,tc_oga05,tc_oga06,tc_oga07 ",                                   #20220627 mark
+        "       tc_ogauser,tc_oga05,tc_oga06,tc_oga07 ",                                   
+        "       ,'' ",                                                                     #20250722 add
        #"  FROM oea_file ",                                                                #20230523 mark by momo 
        #"  LEFT JOIN occ_file ON oea04=occ01 , ",                                          #20230523 mark by momo                                   
        #"       oeb_file ",                                                                #20230523 mark by momo 
@@ -398,6 +401,22 @@ FUNCTION p411_b_fill(p_wc2)
             CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
             PREPARE sel_occ02_pre FROM l_sql
             EXECUTE sel_occ02_pre INTO g_oeb[g_cnt].occ02
+        END IF
+
+        ##20250722 cxmp412 生管備註
+        IF cl_null(g_oeb[g_cnt].tc_mpn16) THEN
+           LET l_sql = "SELECT tc_mpn16 ",
+                       "  FROM ",cl_get_target_table(g_plant_new,'tc_mpn_file'),
+                       "      ,",cl_get_target_table(g_plant_new,'oea_file'),
+                       "      ,",cl_get_target_table(g_plant_new,'oeb_file'),
+                       " WHERE oea01=oeb01 AND oea10=tc_mpn01 AND tc_mpn02=oeb71 ",
+                       "   AND oea03 = tc_mpn03 AND tc_mpn10 = 'N' ",
+                       "   AND oea01 =  '",g_oeb[g_cnt].oeb01,"' ",
+                       "   AND oeb03 =  '",g_oeb[g_cnt].oeb03,"' "
+            CALL cl_replace_sqldb(l_sql) RETURNING l_sql
+            CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
+            PREPARE sel_tc_mpn16_pre FROM l_sql
+            EXECUTE sel_tc_mpn16_pre INTO g_oeb[g_cnt].tc_mpn16
         END IF
 
         ##選配件
@@ -525,6 +544,7 @@ FUNCTION p411_b_fill(p_wc2)
            LET g_oeb[g_cnt].tc_oga05=g_today
            LET g_oeb[g_cnt].tc_oga06=TIME
 
+           CALL cs_insboa(g_oeb[g_cnt].oeb04)   #20250214 檢核是否需建立群組取替
            LET l_sql = "INSERT INTO  ",cl_get_target_table(g_plant_new,'tc_oga_file'),
                        "  (tc_oga00,tc_oga01,tc_oga02,tc_oga03,tc_oga04,tc_oga05,tc_oga06,tc_ogauser,tc_oga07) ",
                        "   VALUES('R','",g_oeb[g_cnt].oeb01,"', ",
@@ -552,6 +572,7 @@ FUNCTION p411_b_fill(p_wc2)
            CALL cl_parse_qry_sql(l_sql,g_plant_new) RETURNING l_sql
            PREPARE upd_tc_oga FROM l_sql
            EXECUTE upd_tc_oga USING g_oeb[g_cnt].oeb01,g_oeb[g_cnt].oeb03
+           CALL cs_insboa(g_oeb[g_cnt].oeb04)   #20250214 檢核是否需建立群組取替
         END IF
         ##-- 20221122 add by momo (E)
 

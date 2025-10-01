@@ -314,6 +314,7 @@
 # Modify.........: No:24110010   20241108 By momo 追加提醒
 # Modify.........: No:24120032   20241227 By momo 變異別為 取代時，底數bmy07與組成用量bmy06不帶入預設1
 # MOdify.........: No:25030016 　20250325 By momo 增加判斷BOM是否存在KS 
+# Modify.........: No:25090016   20250910 By momo 單身輸入切換功能，無下拉可貼上
 
 DATABASE ds
  
@@ -520,6 +521,7 @@ MAIN
 DEFINE   p_sma124      LIKE sma_file.sma124         #No.FUN-810014
 DEFINE   l_argv5       STRING                       #FUN-B80071
 
+
     IF FGL_GETENV("FGLGUI") <> "0" THEN
        OPTIONS                                #改變一些系統預設值
            INPUT NO WRAP
@@ -594,6 +596,15 @@ DEFINE   l_argv5       STRING                       #FUN-B80071
  
        OPEN WINDOW i720_w WITH FORM "cbm/42f/abmi720"
           ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
+
+       ##----20250910 (S) -----切換輸入模式畫面 ---
+       ##----預先載入可能要切換的 FORM 
+       OPEN FORM f_abmi720 FROM "cbm/42f/abmi720"   
+       OPEN FORM f_cbmi720 FROM "cbm/42f/cbmi720"   
+
+       ##--- 顯示預設 FORM
+       DISPLAY FORM f_abmi720
+       ##----20250910 (E) -------------------------
     
        CALL cl_ui_init()
        CALL cl_set_toolbaritem_visible('output',TRUE)   #FUN-D60005 add 
@@ -717,7 +728,7 @@ DEFINE   l_argv5       STRING                       #FUN-B80071
     #設定簽核功能及哪些 action 在簽核狀態時是不可被執行的
     #CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,#FUN-B80071 mark
     #      query,locale, void, confirm, undo_confirm,easyflow_approval")  #FUN-B80071 mark
-	 CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,query,locale, void, undo_void, confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo")  #FUN-B80071  #CHI-D20010 add undo_void
+	 CALL aws_efapp_flowaction("insert, modify, delete, reproduce, detail,query,locale, void, undo_void, confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo,change_detail")  #FUN-B80071  #CHI-D20010 add undo_void
           RETURNING g_laststage
  
     IF NOT s_industry('slk') THEN
@@ -1067,6 +1078,27 @@ DEFINE l_cmd        LIKE type_file.chr1000 #No.FUN-820027
                CALL i720_carry()                                                                                                    
                ERROR ""                                                                                                             
             END IF
+         ##---20250910 (S) ----切換畫面
+         WHEN "change_detail"
+            IF cl_chk_act_auth() THEN
+               IF l_action = 'Y' THEN
+                  LET l_action = 'N'
+                  DISPLAY FORM f_abmi720
+               ELSE
+                  LET l_action = 'Y'
+                  DISPLAY FORM f_cbmi720
+               END IF
+               CALL i720_initwin()
+            END IF
+         ##---20250910 (E) ----
+
+         ##---20241108 add (S)
+         WHEN "check_sub"
+            IF cl_chk_act_auth() THEN
+               CALL cs_check_ecn(g_bmx.bmx01)
+            END IF                                                                                                                  
+         ##---20241108 add (E)                                                                                                                  
+                                                                                                                                    
 
          ##---20241108 add (S)
          WHEN "check_sub"
@@ -1151,6 +1183,13 @@ DEFINE l_cmd        LIKE type_file.chr1000 #No.FUN-820027
  
          WHEN "easyflow_approval"     #FUN-550040
             IF cl_chk_act_auth() THEN
+              ##---20250910 (S) --- 貼上單身需為有下拉單身畫面
+              IF l_action = 'Y' THEN
+                 LET l_action = 'N'
+                 DISPLAY FORM f_abmi720
+                 CALL i720_initwin()
+              END IF
+              ##---20250910 (E) ---
               #FUN-C20011 add str---
                SELECT * INTO g_bmx.* FROM bmx_file
                 WHERE bmx01 = g_bmx.bmx01
@@ -1185,7 +1224,7 @@ DEFINE l_cmd        LIKE type_file.chr1000 #No.FUN-820027
                                 #CALL aws_efapp_flowaction("insert, modify,	    #FUN-B80071 mark
                                 #delete, reproduce, detail, query, locale,	    #FUN-B80071 mark
                                 #void,confirm, undo_confirm,easyflow_approval")	#FUN-B80071 mark
-								 CALL aws_efapp_flowaction("insert, modify,delete, reproduce, detail, query, locale,void,undo_void, confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo")  #FUN-B80071  #CHI-D20010 add undo_void
+								 CALL aws_efapp_flowaction("insert, modify,delete, reproduce, detail, query, locale,void,undo_void, confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo,change_detail")  #FUN-B80071  #CHI-D20010 add undo_void
                                       RETURNING g_laststage
 ELSE
                               EXIT WHILE
@@ -1216,7 +1255,7 @@ ELSE
                                 #CALL aws_efapp_flowaction("insert, modify,	   #FUN-B80071 mark
                                 #delete,reproduce, detail, query, locale,void, #FUN-B80071 mark
                                 #confirm, undo_confirm,easyflow_approval")	   #FUN-B80071 mark	
-								 CALL aws_efapp_flowaction("insert, modify,delete,reproduce, detail, query, locale,void,undo_void,confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo")  #FUN-B80071  #CHI-D20010 add undo_void
+								 CALL aws_efapp_flowaction("insert, modify,delete,reproduce, detail, query, locale,void,undo_void,confirm, undo_confirm,easyflow_approval,carry,mntn_insert_loc,memo,change_detail")  #FUN-B80071  #CHI-D20010 add undo_void
                                       RETURNING g_laststage
                           ELSE
                                 EXIT WHILE
@@ -2718,13 +2757,20 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                        IF l_cnt = 1 THEN
                        ELSE
                           LET g_exit_flag = 'N'
-                          CALL cl_init_qry_var()
-                          LET g_qryparam.state = "c"      
-                          LET g_qryparam.form = "cq_bma01"
-                          LET g_qryparam.default1 = ''
-                          LET g_qryparam.arg1 = g_bmy[l_ac].bmy05
-                          LET g_qryparam.arg2 = g_bmx.bmx07
-                          CALL cl_create_qry() RETURNING g_qryparam.multiret
+                          ##---- 20250910 增加貼上模式判斷處理方式 (S)
+                          IF l_action ='Y' THEN
+                             LET g_qryparam.multiret = g_bmy[l_ac].bmy14
+                          ELSE
+                             CALL cl_init_qry_var()
+                             LET g_qryparam.state = "c"      
+                             LET g_qryparam.form = "cq_bma01"
+                             LET g_qryparam.default1 = ''
+                             LET g_qryparam.arg1 = g_bmy[l_ac].bmy05
+                             LET g_qryparam.arg2 = g_bmx.bmx07
+                             CALL cl_create_qry() RETURNING g_qryparam.multiret
+                          END IF
+                          ##---- 20250910 增加貼上模式判斷處理方式 (E)
+                         
                           IF NOT cl_null(g_qryparam.multiret) THEN
                              LET l_str_tok = base.StringTokenizer.create(g_qryparam.multiret,'|');
                              LET l_i = 1              #每隔一個token取一個作為屬性
@@ -4651,11 +4697,16 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
     
            BEFORE FIELD bmy16
              IF g_bmy[l_ac].bmy03 MATCHES '[123]' THEN
+               ##---20250910 (S) ---------增加畫面判斷 
+               IF l_action = 'Y' THEN
+               ELSE
                #MOD-AC0029---add---start---
                 LET comb_value = '0,1,2,5,7,9'  #FUN-C30035 add 7,9
                 CALL cl_getmsg('abm-076',g_lang) RETURNING comb_item
                 CALL cl_set_combo_items('bmy16',comb_value,comb_item)
                #MOD-AC0029---add---end---
+               END IF
+               ##---20250910 (E) ---------增加畫面判斷 
                 IF cl_null(g_bmy[l_ac].bmy16) THEN
                    IF g_bmy[l_ac].bmy03 = '2' THEN
                       LET g_bmy[l_ac].bmy16 = '0'
@@ -5757,6 +5808,7 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
            ON ACTION CONTROLG CALL cl_cmdask()
     
            ON ACTION mntn_item_detail
+              LET g_action_choice = 'mntn_item_detail' #20250910
               CALL i720_b_more(p_cmd) #No:7826
     
            ON ACTION mntn_insert_loc
@@ -5810,6 +5862,13 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
     SELECT COUNT(*) INTO g_cnt FROM bmy_file WHERE bmy01=g_bmx.bmx01
     IF g_cnt>0 THEN
        CALL i720_out()       #列印報表
+       ##---20250910 (S) --- 貼上單身需為有下拉單身畫面
+       IF l_action = 'Y' THEN
+          LET l_action = 'N'
+          DISPLAY FORM f_abmi720
+          CALL i720_initwin()
+       END IF
+       ##---20250910 (E) ---
     ELSE
 #      CALL i720_delall()    #單身無資料,單據刪除 #CHI-C30002 mark
        CALL i720_delHeader()  #CHI-C30002 add
@@ -6050,12 +6109,12 @@ FUNCTION i720_b_move_back()
    #No.FUN-A60031--end 
    LET b_bmy.bmy36 = g_bmy[l_ac].bmy36  #FUN-BB0075
    IF b_bmy.bmy03 MATCHES '[2345]' THEN  #CHI-960004 add 5
-       LET g_flag3 = 'Y'         #MOD-D90028 add
+       LET g_flag3 = 'Y'         #MOD-D90028 add  
        #M014 180327 By TSD.Tim mark---(S)
        #IF g_bmy05_flag = 'Y' THEN #M014 180206 By TSD.Andy
        #ELSE                       #M014 180207 By TSD.Andy
        #M014 180327 By TSD.Tim mark---(E)
-          CALL i720_b_more('u')
+          CALL i720_b_more('u')   #20250828 mark 不需開窗維護
        #M014 180327 By TSD.Tim mark---(S)
        #END IF                      #M014 180206 By TSD.Andy
        #M014 180327 By TSD.Tim mark---(E)
@@ -6098,9 +6157,13 @@ FUNCTION i720_b_more(p_cmd)
    IF g_flag3 ='Y' THEN                                       #MOD-D90028 add
       CALL cl_set_act_visible("exit,cancel,close", FALSE)     #MOD-D90028 add
    END IF                                                     #MOD-D90028 add
- 
-   OPEN WINDOW i720_b_more_w WITH FORM "abm/42f/abmi710b"
-    ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
+
+   #--- 20250910 執行ACTION時才開畫面 (S)
+   IF g_action_choice = 'mntn_item_detail' THEN
+      OPEN WINDOW i720_b_more_w WITH FORM "abm/42f/abmi710b"           
+       ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN    
+   END IF  
+   #--- 20250910 執行ACTION時才開畫面 (E)
  
    CALL cl_ui_locale("abmi710b")
    IF g_argv1_str='2' THEN #FUN-AC0060(110705)  #CHI-CA0035 mod g_argv3->g_argv1
@@ -6200,13 +6263,15 @@ FUNCTION i720_b_more(p_cmd)
               LET b_bmy_t.bmy082=1
            END IF
            #End Add No:TQC-AC0300
+           ##---- 20250828 mark bmy09 已移出單身 (S)
            IF NOT cl_null(l_bmb.bmb09) THEN
               LET b_bmy.bmy09=l_bmb.bmb09
               LET b_bmy_t.bmy09=l_bmb.bmb09
-           ELSE
-              LET b_bmy.bmy09=''
-              LET b_bmy_t.bmy09=''
+           #ELSE
+           #   LET b_bmy.bmy09=''
+           #   LET b_bmy_t.bmy09=''
            END IF
+           ##---- 20250828 mark bmy09 已移出單身 (S)
           #LET b_bmy.bmy18=0
           #LET b_bmy_t.bmy18=0
           #LET b_bmy.bmy08=0
@@ -6589,8 +6654,10 @@ FUNCTION i720_b_more(p_cmd)
       CALL cl_set_act_visible("exit,cancel,close", TRUE)  #MOD-D90028 add
    END IF                                                 #MOD-D90028 add
 
-   
-   CLOSE WINDOW i720_b_more_w
+   IF g_action_choice = 'mntn_item_detail' THEN           #20250910
+      CLOSE WINDOW i720_b_more_w                                    
+   END IF                                                 #20250910
+
    LET g_bmy[l_ac].bmy22 = b_bmy.bmy22
    DISPLAY g_bmy[l_ac].bmy22 TO s_bmy[l_sl].bmy22
 END FUNCTION
@@ -6742,7 +6809,7 @@ FUNCTION i720_bp(p_ud)
       BEFORE DISPLAY
          CALL DIALOG.setCellAttributes(ga_color)  #20190122 add
          CALL cl_navigator_setting( g_curs_index, g_row_count )
- 
+
 
       BEFORE ROW
          LET l_ac = ARR_CURR()
@@ -6862,6 +6929,12 @@ FUNCTION i720_bp(p_ud)
          LET g_action_choice = "carry"                                                                                              
         #EXIT DISPLAY #FUN-E70037 mark
          EXIT DIALOG  #FUN-E70037 modify
+
+      ##---- 20250910 (S) 切換畫面
+      ON ACTION change_detail
+         LET g_action_choice = "change_detail"
+         EXIT DIALOG 
+      ##---- 20250910 (E) 切換畫面
 
       ##---- 20241108 (S)
       ON ACTION check_sub
@@ -12686,3 +12759,28 @@ DEFINE l_cnt      LIKE type_file.num5
 END FUNCTION
 
 #MOD-FA0119--add--end--------------------------------------------------------------------
+
+##----- 20250910 (S)---切換FORM後需重新初始畫面
+FUNCTION i720_initwin()
+
+   CALL cl_ui_init()
+   CALL cl_set_toolbaritem_visible('output',TRUE)     
+
+   IF g_argv3_str <> 'abmp701' OR cl_null(g_argv3_str) THEN    
+      CALL cl_set_comp_visible("bmy361,bmy37",g_aza.aza121='Y')  #當aoos010欄位"是否與PLM整合[aza1
+   END IF    
+   IF g_argv3_str <> 'abmp701' OR cl_null(g_argv3_str) THEN    
+      IF g_argv1_str='2' THEN  
+         CALL cl_set_comp_visible('bmy011,bmy012,bmy013',TRUE)
+      ELSE 
+         CALL cl_set_comp_visible('bmy011,bmy012,bmy013,bmy30',FALSE)
+      END IF 
+   END IF    
+   CALL cl_set_comp_visible('s_bmya_a,s_bmyb_b,s_bmyc_c,s_bmyd_d',FALSE)
+   CALL cl_set_act_visible("define_color_size", FALSE)
+   CALL cl_set_comp_visible("bmy29,bmy30",g_sma.sma118='Y')     
+   CALL cl_set_comp_visible("vlr13,vlr16,vlr17,vlr18,vls11",g_sma.sma901 = 'Y')   
+   CALL i720_show()
+
+END FUNCTION
+##----- 20250910 (E)------

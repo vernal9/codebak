@@ -2,7 +2,7 @@
 #
 # Pattern name...: cooi180.4gl
 # Descriptions...: 待辦清單維護作業
-# Date & Author..: 2025/07/25 By momo
+# Date & Author..: 2025/08/04 By momo
 # Modify 		 : 
 
 
@@ -11,7 +11,7 @@ DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
  
 DEFINE 
- 
+
     g_tc_tdi        DYNAMIC ARRAY OF RECORD    #程式變數(Program Variables)
         tc_tdi01     LIKE tc_tdi_file.tc_tdi01,      #編號
         tc_tdi02     LIKE tc_tdi_file.tc_tdi02,      #類別
@@ -19,13 +19,13 @@ DEFINE
         tc_tdi04     LIKE tc_tdi_file.tc_tdi04,      #開始日期
         tc_tdi05     LIKE tc_tdi_file.tc_tdi05,      #結束日期
         tc_tdi06     LIKE tc_tdi_file.tc_tdi06,      #週期
-        tc_tdi07     LIKE tc_tdi_file.tc_tdi07,      #廠商代號
+        tc_tdi07     LIKE tc_tdi_file.tc_tdi07,      #廠商代號  
         tc_tdi08     LIKE tc_tdi_file.tc_tdi08,      #廠商名稱
-        tc_tdi09     LIKE tc_tdi_file.tc_tdi09,      #聯絡資訊
+        tc_tdi09     LIKE tc_tdi_file.tc_tdi09,      #聯絡資訊  
         tc_tdi10     LIKE tc_tdi_file.tc_tdi10,      #主要窗口
-        tc_tdi11     LIKE tc_tdi_file.tc_tdi11,      #次要窗口
+        tc_tdi11     LIKE tc_tdi_file.tc_tdi11,      #次要窗口  
         tc_tdi12     LIKE tc_tdi_file.tc_tdi12,      #備註說明
-        tc_tdi13     LIKE tc_tdi_file.tc_tdi13,      #處理狀態
+        tc_tdi13     LIKE tc_tdi_file.tc_tdi13,      #處理狀態  
         tc_tdiacti   LIKE tc_tdi_file.tc_tdiacti,    #有效否
         tc_tdidate   LIKE tc_tdi_file.tc_tdidate     #修改日
                     END RECORD,
@@ -36,24 +36,24 @@ DEFINE
         tc_tdi04     LIKE tc_tdi_file.tc_tdi04,      #開始日期
         tc_tdi05     LIKE tc_tdi_file.tc_tdi05,      #結束日期
         tc_tdi06     LIKE tc_tdi_file.tc_tdi06,      #週期
-        tc_tdi07     LIKE tc_tdi_file.tc_tdi07,      #廠商代號
+        tc_tdi07     LIKE tc_tdi_file.tc_tdi07,      #廠商代號  
         tc_tdi08     LIKE tc_tdi_file.tc_tdi08,      #廠商名稱
-        tc_tdi09     LIKE tc_tdi_file.tc_tdi09,      #聯絡資訊
+        tc_tdi09     LIKE tc_tdi_file.tc_tdi09,      #聯絡資訊  
         tc_tdi10     LIKE tc_tdi_file.tc_tdi10,      #主要窗口
-        tc_tdi11     LIKE tc_tdi_file.tc_tdi11,      #次要窗口
+        tc_tdi11     LIKE tc_tdi_file.tc_tdi11,      #次要窗口  
         tc_tdi12     LIKE tc_tdi_file.tc_tdi12,      #備註說明
-        tc_tdi13     LIKE tc_tdi_file.tc_tdi13,      #處理狀態
+        tc_tdi13     LIKE tc_tdi_file.tc_tdi13,      #處理狀態  
         tc_tdiacti   LIKE tc_tdi_file.tc_tdiacti,    #有效否
         tc_tdidate   LIKE tc_tdi_file.tc_tdidate     #修改日
                     END RECORD,
-    g_wc2,g_sql    string,  
+    g_wc2,g_sql    string,  #No.FUN-580092 HCN
     g_tit           LIKE type_file.chr20,             #No.FUN-680102 VARCHAR(10),
     g_tit1          LIKE type_file.chr20,             #No.FUN-680102 VARCHAR(16),
     g_rec_b         LIKE type_file.num5,              #No.FUN-680102 SMALLINT,              #單身筆數
     l_ac            LIKE type_file.num5               #No.FUN-680102 SMALLINT               #目前處理的ARRAY CNT
 DEFINE g_forupd_sql STRING                            #SELECT ... FOR UPDATE  SQL
 DEFINE g_cnt        LIKE type_file.num10              #No.FUN-680102 INTEGER   
-DEFINE g_i          LIKE type_file.num5               #No.FUN-680102 SMALLINT   #count/index for any purpose
+DEFINE l_cnt        LIKE type_file.num5               #
 DEFINE l_table      STRING                            #No.FUN-850016                                                                    
 DEFINE g_str        STRING                            #No.FUN-850016                                                                    
 DEFINE g_prog1      STRING                            #No.FUN-850016    
@@ -63,6 +63,7 @@ MAIN
         INPUT NO WRAP
     DEFER INTERRUPT                        #擷取中斷鍵, 由程式處理
  
+  
  
    IF (NOT cl_user()) THEN
       EXIT PROGRAM
@@ -82,12 +83,11 @@ MAIN
    CALL cl_set_locale_frm_name("cooi180")
    CALL cl_ui_init()
  
- 
    CALL i180_b_fill(g_wc2)
  
    CALL i180_menu()
  
-   CLOSE WINDOW i180_w                 #結束畫面
+   CLOSE WINDOW i300_w                 #結束畫面
  
    CALL cl_used(g_prog,g_time,2) RETURNING g_time 
 END MAIN
@@ -147,8 +147,8 @@ FUNCTION i180_b()
    LET g_action_choice = ""
  
                      
-   LET g_forupd_sql = " SELECT tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07, ",   
-                      "        tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi13,tc_tdiacti,tc_tdidate",
+   LET g_forupd_sql = " SELECT tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07,",
+                      "        tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi13,tc_tdiacti,tc_tdidate ",   
                       "        FROM tc_tdi_file ",  
                       "  WHERE tc_tdi01= ?  FOR UPDATE "
  
@@ -187,7 +187,8 @@ FUNCTION i180_b()
                   LET l_lock_sw = "Y"
                ELSE
                   UPDATE tc_tdi_file
-                     SET tc_tdi02 = g_tc_tdi[l_ac].tc_tdi02,
+                     SET tc_tdi01 = g_tc_tdi[l_ac].tc_tdi01,
+                         tc_tdi02 = g_tc_tdi[l_ac].tc_tdi02,
                          tc_tdi03 = g_tc_tdi[l_ac].tc_tdi03,
                          tc_tdi04 = g_tc_tdi[l_ac].tc_tdi04,
                          tc_tdi05 = g_tc_tdi[l_ac].tc_tdi05,
@@ -198,7 +199,7 @@ FUNCTION i180_b()
                          tc_tdi10 = g_tc_tdi[l_ac].tc_tdi10,
                          tc_tdi11 = g_tc_tdi[l_ac].tc_tdi11,
                          tc_tdi12 = g_tc_tdi[l_ac].tc_tdi12,
-                         tc_tdi13 = g_tc_tdi[l_ac].tc_tdi13,                    
+                         tc_tdi13 = g_tc_tdi[l_ac].tc_tdi13,
                          tc_tdiacti = g_tc_tdi[l_ac].tc_tdiacti,
                          tc_tdidate = g_today
                    WHERE tc_tdi01 = g_tc_tdi[l_ac].tc_tdi01
@@ -207,8 +208,7 @@ FUNCTION i180_b()
                      CALL cl_err3("upd","tc_tdi_file",g_tc_tdi_t.tc_tdi01,"",SQLCA.sqlcode,"","",1)
                   END IF
                
-                  DISPLAY BY NAME g_tc_tdi[l_ac].*
-
+                  
                END IF
             END IF
             CALL cl_show_fld_cont()  
@@ -229,10 +229,12 @@ FUNCTION i180_b()
             LET INT_FLAG = 0
             CANCEL INSERT
          END IF
-         INSERT INTO tc_tdi_file(tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdiuser,tc_tdidate,tc_tdicreate) 
-                       VALUES(g_tc_tdi[l_ac].tc_tdi01,g_tc_tdi[l_ac].tc_tdi02,
-                              g_tc_tdi[l_ac].tc_tdi03,g_tc_tdi[l_ac].tc_tdi04,
-                              g_user,g_today,g_today)  
+         INSERT INTO tc_tdi_file(tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07,
+                                 tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi13,tc_tdiacti,tc_tdidate) 
+              VALUES(g_tc_tdi[l_ac].tc_tdi01,g_tc_tdi[l_ac].tc_tdi02,g_tc_tdi[l_ac].tc_tdi03,g_tc_tdi[l_ac].tc_tdi04,
+                     g_tc_tdi[l_ac].tc_tdi05,g_tc_tdi[l_ac].tc_tdi06,g_tc_tdi[l_ac].tc_tdi07,g_tc_tdi[l_ac].tc_tdi08,
+                     g_tc_tdi[l_ac].tc_tdi09,g_tc_tdi[l_ac].tc_tdi10,g_tc_tdi[l_ac].tc_tdi11,g_tc_tdi[l_ac].tc_tdi12,
+                     g_tc_tdi[l_ac].tc_tdi13,g_tc_tdi[l_ac].tc_tdiacti,g_today)  
          IF SQLCA.sqlcode THEN
             CALL cl_err3("ins","tc_tdi_file",g_tc_tdi[l_ac].tc_tdi01,"",SQLCA.sqlcode,"","",1)  
             CANCEL INSERT
@@ -241,31 +243,23 @@ FUNCTION i180_b()
             LET g_rec_b=g_rec_b+1
             DISPLAY g_rec_b TO FORMONLY.cn2  
          END IF
-
-      AFTER FIELD tc_tdi02
-         IF cl_null(g_tc_tdi[l_ac].tc_tdi02) THEN
-            NEXT FIELD tc_tdi02
-         END IF
  
-      AFTER FIELD tc_tdi03                        #check 編號是否重複
-         IF NOT cl_null(g_tc_tdi[l_ac].tc_tdi03) THEN
-            IF g_tc_tdi[l_ac].tc_tdi03 != g_tc_tdi_t.tc_tdi03 
-               OR g_tc_tdi_t.tc_tdi03 IS NULL THEN
-               SELECT azf03 INTO g_tc_tdi[l_ac].azf03 FROM azf_file
-                WHERE azf01 = g_tc_tdi[l_ac].tc_tdi03
-                  AND azf02 = 'D'
-               IF cl_null(g_tc_tdi[l_ac].azf03 ) THEN
-                  CALL cl_err(g_tc_tdi[l_ac].tc_tdi03,'aic-004',0)
-                  LET g_tc_tdi[l_ac].azf03 = g_tc_tdi_t.azf03
-                  NEXT FIELD tc_tdi03
+      AFTER FIELD tc_tdi01                        #check 編號是否重複
+         IF NOT cl_null(g_tc_tdi[l_ac].tc_tdi01) AND p_cmd = 'a' THEN
+            IF g_tc_tdi[l_ac].tc_tdi01 != g_tc_tdi_t.tc_tdi01 
+               OR g_tc_tdi_t.tc_tdi01 IS NULL THEN
+               SELECT 1 INTO l_cnt FROM tc_tdi_file
+                WHERE azf01 = g_tc_tdi[l_ac].tc_tdi01
+                  AND rownum = 1
+               IF l_cnt = 1 THEN
+                  CALL cl_err(g_tc_tdi[l_ac].tc_tdi03,'atm-310',0)
+                  NEXT FIELD tc_tdi01
                END IF
             END IF
          END IF
 
       AFTER FIELD tc_tdi04
-         IF g_tc_tdi[l_ac].tc_tdi04 NOT MATCHES "[YN]" THEN
-            NEXT FIELD tc_tdi04
-         END IF
+        
 
  
       BEFORE DELETE                            #是否取消單身
@@ -279,8 +273,7 @@ FUNCTION i180_b()
                CANCEL DELETE 
             END IF 
             DELETE FROM tc_tdi_file WHERE tc_tdi01 = g_tc_tdi_t.tc_tdi01
-                                      AND tc_tdi02 = g_tc_tdi_t.tc_tdi02
-                                      AND tc_tdi03 = g_tc_tdi_t.tc_tdi03
+                                     
             IF SQLCA.sqlcode THEN
                CALL cl_err3("del","tc_tdi_file",g_tc_tdi_t.tc_tdi01,"",SQLCA.sqlcode,"","",1) 
                ROLLBACK WORK
@@ -304,15 +297,24 @@ FUNCTION i180_b()
             CALL cl_err(g_tc_tdi[l_ac].tc_tdi01,-263,1)
             LET g_tc_tdi[l_ac].* = g_tc_tdi_t.*
          ELSE
-            UPDATE tc_tdi_file SET tc_tdi01=g_tc_tdi[l_ac].tc_tdi01,
-                                   tc_tdi02=g_tc_tdi[l_ac].tc_tdi02,
-                                   tc_tdi03=g_tc_tdi[l_ac].tc_tdi03, 
-                                   tc_tdi04=g_tc_tdi[l_ac].tc_tdi04,     
-                                   tc_tdiuser = g_user,
-                                   tc_tdidate = g_today                           
+            UPDATE tc_tdi_file 
+               SET tc_tdi01=g_tc_tdi[l_ac].tc_tdi01,
+                   tc_tdi02=g_tc_tdi[l_ac].tc_tdi02,
+                   tc_tdi03=g_tc_tdi[l_ac].tc_tdi03, 
+                   tc_tdi04=g_tc_tdi[l_ac].tc_tdi04,     
+                   tc_tdi05=g_tc_tdi[l_ac].tc_tdi05,
+                   tc_tdi06=g_tc_tdi[l_ac].tc_tdi06, 
+                   tc_tdi07=g_tc_tdi[l_ac].tc_tdi07,
+                   tc_tdi08=g_tc_tdi[l_ac].tc_tdi08,
+                   tc_tdi09=g_tc_tdi[l_ac].tc_tdi09, 
+                   tc_tdi10=g_tc_tdi[l_ac].tc_tdi10,
+                   tc_tdi11=g_tc_tdi[l_ac].tc_tdi11,
+                   tc_tdi12=g_tc_tdi[l_ac].tc_tdi12, 
+                   tc_tdi13=g_tc_tdi[l_ac].tc_tdi13,
+                   tc_tdiacti = g_tc_tdi[l_ac].tc_tdiacti, 
+                   tc_tdidate = g_today                           
              WHERE tc_tdi01 = g_tc_tdi_t.tc_tdi01
-               AND tc_tdi02 = g_tc_tdi_t.tc_tdi02
-               AND tc_tdi03 = g_tc_tdi_t.tc_tdi03 
+              
             IF SQLCA.sqlcode THEN
                CALL cl_err3("upd","tc_tdi_file",g_tc_tdi_t.tc_tdi01,g_tc_tdi_t.tc_tdi02,SQLCA.sqlcode,"","",1)  
                LET g_tc_tdi[l_ac].* = g_tc_tdi_t.*
@@ -331,42 +333,44 @@ FUNCTION i180_b()
             IF p_cmd='u' THEN
                LET g_tc_tdi[l_ac].* = g_tc_tdi_t.*              
 
-            #FUN-D40030--add--str--
             ELSE
                CALL g_tc_tdi.deleteElement(l_ac)
                IF g_rec_b != 0 THEN
                   LET g_action_choice = "detail"
                   LET l_ac = l_ac_t
                END IF
-            #FUN-D40030--add--end--
             END IF
             CLOSE i180_bcl
             ROLLBACK WORK
             EXIT INPUT
          END IF
-         LET l_ac_t = l_ac      #FUN-D40030 Add
+         LET l_ac_t = l_ac      
          CLOSE i180_bcl
          COMMIT WORK
  
-      #FUN-510041 add
       ON ACTION CONTROLP
          CASE
-             WHEN INFIELD(tc_tdi03)      
+             WHEN INFIELD(tc_tdi07)      
                 CALL cl_init_qry_var()
-                LET g_qryparam.form ="q_azf" 
-                LET g_qryparam.default1 = g_tc_tdi[l_ac].tc_tdi03
-                LET g_qryparam.arg1 = 'D'
-                CALL cl_create_qry() RETURNING g_tc_tdi[l_ac].tc_tdi03
-                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi03
-                NEXT FIELD tc_tdi03
-              WHEN INFIELD(tc_tdi01)
+                LET g_qryparam.form ="q_pmc" 
+                LET g_qryparam.default1 = g_tc_tdi[l_ac].tc_tdi07
+                CALL cl_create_qry() RETURNING g_tc_tdi[l_ac].tc_tdi07
+                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi07
+                NEXT FIELD tc_tdi07
+              WHEN INFIELD(tc_tdi10)
                 CALL cl_init_qry_var()
-                LET g_qryparam.form ="q_boa01"
-                LET g_qryparam.default1 = g_tc_tdi[l_ac].tc_tdi01
-                CALL cl_create_qry() RETURNING g_tc_tdi[l_ac].tc_tdi01,g_tc_tdi[l_ac].tc_tdi02
-                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi01
-                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi02
-                NEXT FIELD tc_tdi02
+                LET g_qryparam.form ="q_gen"
+                LET g_qryparam.default1 = g_tc_tdi[l_ac].tc_tdi10
+                CALL cl_create_qry() RETURNING g_tc_tdi[l_ac].tc_tdi10
+                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi10
+                NEXT FIELD tc_tdi10
+              WHEN INFIELD(tc_tdi11)
+                CALL cl_init_qry_var()
+                LET g_qryparam.form ="q_gen"
+                LET g_qryparam.default1 = g_tc_tdi[l_ac].tc_tdi11
+                CALL cl_create_qry() RETURNING g_tc_tdi[l_ac].tc_tdi11
+                DISPLAY BY NAME g_tc_tdi[l_ac].tc_tdi11
+                NEXT FIELD tc_tdi11
              OTHERWISE
          END CASE
  
@@ -383,24 +387,22 @@ FUNCTION i180_b()
          CALL cl_cmdask()
  
       ON ACTION CONTROLF
-         CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name #Add on 040913
-         CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) #Add on 040913
+         CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name 
+         CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) 
           
       ON IDLE g_idle_seconds
          CALL cl_on_idle()
          CONTINUE INPUT
  
-      ON ACTION about         #MOD-4C0121
-         CALL cl_about()      #MOD-4C0121
+      ON ACTION about        
+         CALL cl_about()      
      
-      ON ACTION help          #MOD-4C0121
-         CALL cl_show_help()  #MOD-4C0121
- 
-      #No.FUN-6B0030------Begin--------------                                                                                             
+      ON ACTION help          
+         CALL cl_show_help() 
+                                                                                          
       ON ACTION controls                                                                                                             
          CALL cl_set_head_visible("","AUTO")                                                                                        
-      #No.FUN-6B0030-----End------------------     
- 
+   
    END INPUT
  
    CLOSE i180_bcl
@@ -415,57 +417,62 @@ FUNCTION i180_b_askkey()
     CLEAR FORM
     CALL g_tc_tdi.clear()
  
-    CONSTRUCT g_wc2 ON tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04
-         FROM s_tc_tdi[1].tc_tdi01,s_tc_tdi[1].tc_tdi02,s_tc_tdi[1].tc_tdi03,s_tc_tdi[1].tc_tdi04
-       #No.FUN-580031 --start--     HCN
+    CONSTRUCT g_wc2 ON tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07,
+                       tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi06,tc_tdi13,
+                       tc_tdiacti
+         FROM s_tc_tdi[1].tc_tdi01,s_tc_tdi[1].tc_tdi02,s_tc_tdi[1].tc_tdi03,s_tc_tdi[1].tc_tdi04,
+              s_tc_tdi[1].tc_tdi05,s_tc_tdi[1].tc_tdi06,s_tc_tdi[1].tc_tdi07,s_tc_tdi[1].tc_tdi08,
+              s_tc_tdi[1].tc_tdi09,s_tc_tdi[1].tc_tdi10,s_tc_tdi[1].tc_tdi11,s_tc_tdi[1].tc_tdi12,
+              s_tc_tdi[1].tc_tdi13,s_tc_tdi[1].tc_tdiacti
+     
        BEFORE CONSTRUCT
           CALL cl_qbe_init()
-       #No.FUN-580031 --end--       HCN
+    
  
        ON IDLE g_idle_seconds
           CALL cl_on_idle()
           CONTINUE CONSTRUCT
  
-        #FUN-510041 add 
+       
         ON ACTION CONTROLP
            CASE
-              WHEN INFIELD(tc_tdi03)
-                 LET g_qryparam.form = "q_azf"
+              WHEN INFIELD(tc_tdi07)
+                 LET g_qryparam.form = "q_pmc"
                  LET g_qryparam.state = "c"
-                 LET g_qryparam.default1 = g_tc_tdi[1].tc_tdi03
+                 LET g_qryparam.default1 = g_tc_tdi[1].tc_tdi07
                  CALL cl_create_qry() RETURNING g_qryparam.multiret
-                 DISPLAY g_qryparam.multiret TO tc_tdi03
-               WHEN INFIELD(tc_tdi01)
-                 LET g_qryparam.form = "q_boa01"
+                 DISPLAY g_qryparam.multiret TO tc_tdi07
+               WHEN INFIELD(tc_tdi10)
+                 LET g_qryparam.form = "q_gen"
                  LET g_qryparam.state = "c"
-                 LET g_qryparam.default1 = g_tc_tdi[1].tc_tdi01
+                 LET g_qryparam.default1 = g_tc_tdi[1].tc_tdi10
                  CALL cl_create_qry() RETURNING g_qryparam.multiret
-                 DISPLAY g_qryparam.multiret TO tc_tdi01
+                 DISPLAY g_qryparam.multiret TO tc_tdi10
               OTHERWISE
            END CASE
          ##
  
-         ON ACTION about         #MOD-4C0121
-            CALL cl_about()      #MOD-4C0121
+         ON ACTION about        
+            CALL cl_about()     
        
-         ON ACTION help          #MOD-4C0121
-            CALL cl_show_help()  #MOD-4C0121
+         ON ACTION help          
+            CALL cl_show_help()  
        
-         ON ACTION controlg      #MOD-4C0121
-            CALL cl_cmdask()     #MOD-4C0121
+         ON ACTION controlg      
+            CALL cl_cmdask()     
     
-         #No.FUN-580031 --start--     HCN
+        
          ON ACTION qbe_select
             CALL cl_qbe_select() 
          ON ACTION qbe_save
             CALL cl_qbe_save()
-         #No.FUN-580031 --end--       HCN
+        
     END CONSTRUCT
 
  
     IF INT_FLAG THEN 
        LET INT_FLAG = 0 
-       LET g_rec_b = 0  #MOD-D60241
+       LET g_rec_b = 0 
        RETURN 
     END IF
  
@@ -479,10 +486,11 @@ END FUNCTION
 FUNCTION i180_b_fill(p_wc2)              #BODY FILL UP
    DEFINE p_wc2   LIKE type_file.chr1000  #No.FUN-680102 VARCHAR(200)
  
-   LET g_sql = "SELECT tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07, ",   
-               "        tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi13,tc_tdiacti,tc_tdidate",
-               "  FROM tc_tdi_file ",  
-               "  WHERE  ", p_wc2 CLIPPED,                     #單身
+   LET g_sql = "SELECT tc_tdi01,tc_tdi02,tc_tdi03,tc_tdi04,tc_tdi05,tc_tdi06,tc_tdi07, ",        
+               "       tc_tdi08,tc_tdi09,tc_tdi10,tc_tdi11,tc_tdi12,tc_tdi13,",
+               "       tc_tdiacti,tc_tdidate",
+               "  FROM tc_tdi_file ",                                        
+               " WHERE ", p_wc2 CLIPPED,                     #單身
                " ORDER BY tc_tdi05 "
    PREPARE i180_pb FROM g_sql
    DECLARE azf_curs CURSOR FOR i180_pb
@@ -531,12 +539,12 @@ FUNCTION i180_bp(p_ud)
  
       BEFORE ROW
          LET l_ac = ARR_CURR()
-      CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
+      CALL cl_show_fld_cont()                   
  
-#No.FUN-6B0030------Begin--------------                                                                                             
+                                                                                        
       ON ACTION controls                                                                                                             
          CALL cl_set_head_visible("","AUTO")                                                                                        
-#No.FUN-6B0030-----End------------------     
+   
  
       ON ACTION query
          LET g_action_choice="query"
@@ -552,7 +560,7 @@ FUNCTION i180_bp(p_ud)
  
       ON ACTION locale
          CALL cl_dynamic_locale()
-          CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
+          CALL cl_show_fld_cont()                  
  
       ON ACTION exit
          LET g_action_choice="exit"
@@ -571,7 +579,7 @@ FUNCTION i180_bp(p_ud)
          EXIT DISPLAY
  
       ON ACTION cancel
-             LET INT_FLAG=FALSE 		#MOD-570244	mars
+             LET INT_FLAG=FALSE 		
          LET g_action_choice="exit"
          EXIT DISPLAY
  
@@ -579,19 +587,18 @@ FUNCTION i180_bp(p_ud)
          CALL cl_on_idle()
          CONTINUE DISPLAY
  
-      ON ACTION about         #MOD-4C0121
-         CALL cl_about()      #MOD-4C0121
+      ON ACTION about         #
+         CALL cl_about()      #
  
  
-      ON ACTION exporttoexcel   #No.FUN-4B0020
+      ON ACTION exporttoexcel  
          LET g_action_choice = 'exporttoexcel'
          EXIT DISPLAY
  
-      # No.FUN-530067 --start--
+    
       AFTER DISPLAY
          CONTINUE DISPLAY
-      # No.FUN-530067 ---end---
- 
+    
  
    END DISPLAY
    CALL cl_set_act_visible("accept,cancel", TRUE)

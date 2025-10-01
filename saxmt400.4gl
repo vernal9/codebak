@@ -1041,6 +1041,8 @@
 # Modify.........: No.24080053   20240904 By momo 拋轉請購單時若存在選配件，增加轉工單功能
 # Modify.........: No.24120005   20241209 By Ruby 增加選項oeaud05[是否寄送通知信MIAL?]預設Y
 # Modify.........: No.24120030   20241226 By Ruby 客戶區域碼AME/EUR，增加寫入oao_file備註
+# Modify.........: No.25070015   20250714 By momo 增加顯示 tc_,mpn16 生管備註欄位
+
 
 DATABASE ds
 
@@ -12888,6 +12890,7 @@ FUNCTION t400_b_fill(p_wc2,p_wc5)              #BODY FILL UP
         "       oeb907,oeb1005, ",       #240617 add by ruby #241212 add oeb1005 by ruby
         "       oebud01,oebud02,oebud03,oebud04,oebud05,oebud06,oebud07,oebud08,oebud09,oebud10,oebud11,oebud12,oebud13,oebud14,oebud15,", #No.FUN-840011
         "       oeb44,oeb45,oeb46,oeb47,oeb48,oeb909,b.pmc03,ima54,a.pmc03,nvl(img10,0)", #No.FUN-870007 #220215 add ima54,a.pmc03 by ruby #231106 add img10 by ruby #240515 add oeb909 by ruby #240614 add b.pmc03 by ruby
+        "       ,'' ",   #20250714
         " FROM oeb_file LEFT OUTER JOIN  ima_file ON oeb04 = ima01",
         " LEFT JOIN pmc_file a ON ima54=a.pmc01",                                   #220215 add by ruby
         " LEFT JOIN pmc_file b ON oeb909=b.pmc01",                                  #240614 add by ruby
@@ -12996,6 +12999,14 @@ FUNCTION t400_b_fill(p_wc2,p_wc5)              #BODY FILL UP
 ##FUN-A50054 --End
 #FUN-A60035 ---MARK END
         LET g_oeb[g_cnt].gem02c=s_costcenter_desc(g_oeb[g_cnt].oeb930) #FUN-670063
+        ##---- 20250714 (S) ----新增顯示 生管備註
+　　　　SELECT tc_mpn16 INTO g_oeb[g_cnt].tc_mpn16 
+　　　　　FROM tc_mpn_file
+         WHERE tc_mpn01 = g_oea.oea10
+           AND tc_mpn02 = g_oeb[g_cnt].oeb71
+　　　　　 AND tc_mpn03 = g_oea.oea03
+           AND tc_mpn10 = 'N'
+        ##---- 20250714 (E) ----新增顯示 生管備註
         LET g_cnt = g_cnt + 1
         IF g_cnt > g_max_rec THEN
            CALL cl_err( '', 9035, 0 )
