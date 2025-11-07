@@ -22,6 +22,7 @@
 # Modify.........: 20190104 By momo 原[預計出貨日]欄位資料來源為訂單預計出貨日,更改為[工單維護作業 (asfi301)]：預計完工日
 # Modify.........: 20200814 By momo 增加列印影響台數shhud11
 # Modify.........: NO.23020022   20230216 By momo 增加 「處理品質異常成本」shhud08
+# Modify.........: No.23050046   20230601 By momo 增加 「初判項目-細項」ta_shh01、「複判項目-細項」ta_shh02
  
 DATABASE ds
  
@@ -99,6 +100,8 @@ MAIN
                "shhud07.shh_file.shhud07,",   #異常數量     20180524
                "shhud11.shh_file.shhud11,",   #影響台數     20100814
                "shhud08.shh_file.shhud08,",   #處理品質異常成本 20230216
+               "ta_shh01.shh_file.ta_shh01,", #初判項目-細項 20230601
+               "ta_shh02.shh_file.ta_shh02,", #複判項目-細項 20230601
                "qcp05.qcp_file.qcp05,",       #處理方式     20180604
                "qcpud02.qcp_file.qcpud02,",   #單據編號     20180604
                "qcpud03.qcp_file.qcpud03,",   #處理者       20180604
@@ -124,7 +127,7 @@ MAIN
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table CLIPPED,
                " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",
                "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,",
-               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,? )"   #TQC-C10039 add 4?  #No.TQC-C20203 del 4? #20180524 add 5? #20180604 add 5? #20200814 add 1?
+               "        ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,? )"   #TQC-C10039 add 4?  #No.TQC-C20203 del 4? #20180524 add 5? #20180604 add 5? #20200814 add 1?
    PREPARE insert_prep FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep:',status,1) EXIT PROGRAM
@@ -397,9 +400,11 @@ FUNCTION asfr720()
                        shh141 LIKE shh_file.shh141,
                        shh14  LIKE shh_file.shh14,
                        shh08  LIKE shh_file.shh08,
-                       shhud07 LIKE shh_file.shhud07,   #異常數量 20180524
-                       shhud11 LIKE shh_file.shhud11,   #影響台數 20200814
-                       shhud08 LIKE shh_file.shhud08,   #處理品質異常成本 20230216
+                       shhud07  LIKE shh_file.shhud07,   #異常數量 20180524
+                       shhud11  LIKE shh_file.shhud11,   #影響台數 20200814
+                       shhud08  LIKE shh_file.shhud08,   #處理品質異常成本 20230216
+                       ta_shh01 LIKE shh_file.ta_shh01,  #初判項目-細項 20230601
+                       ta_shh02 LIKE shh_file.ta_shh02,  #複判項目-細項 20230601
                        qcp05   LIKE qcp_file.qcp05,     #20180604
                        qcpud02 LIKE qcp_file.qcpud02,   #20180604
                        qcpud03 LIKE qcp_file.qcpud03,   #20180604
@@ -450,6 +455,7 @@ FUNCTION asfr720()
                "       shh161,shh162,shh163,shh164,shh165,shh171,shh172,",
                "       shh173,shh174,shh175,shh101,shh10 ,shh121,shh12 ,",
                "       shh141,shh14, shh08,shhud07,shhud11,shhud08,",           #20180524 add ''、shhud07  #20200814 #20230216
+               "       ta_shh01,ta_shh02,",                                     #20230601
                "       qcp05,qcpud02,qcpud03,qcpud04,qcpud13,'','','',0 ",      #20180604 add '','','','',''
               #"  FROM sfb_file,ima_file,shh_file LEFT OUTER JOIN qcp_file ON qcp01=shh01",
                "  FROM ima_file,shh_file LEFT OUTER JOIN qcp_file ON qcp01=shh01 ",
@@ -530,6 +536,7 @@ FUNCTION asfr720()
          sr.shh175,sr.shh101,sr.shh10,sr.shh121,sr.shh12,
          sr.shh141,sr.shh14,sr.shh08,
          sr.shhud07,sr.shhud11,sr.shhud08,                                    #20180524 #20200814 #20230216
+         sr.ta_shh01,sr.ta_shh02,                                             #20230601
          sr.qcp05,sr.qcpud02,sr.qcpud03,sr.qcpud04,sr.qcpud13,                #20180604
          l_ecd02,l_gen02_1,
          l_gem02_1,l_gen02_2,l_gem02_2,l_gen02_3,

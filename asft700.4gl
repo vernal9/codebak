@@ -288,7 +288,8 @@
 # Modify.........: NO:23080015   20230828 By momo 資料清單增加欄位
 # Modify.........: No:24010020   24/01/15 By Ruby 增加action[維護工時]
 # Modify.........:               20240423 By momo 調整 20180918 工單製程變更新已計算正確轉入量，故不需再額外計算
-# Modify.........; NO:24060009   20240607 By momo 調整可入庫量檢核判斷
+# Modify.........: NO:24060009   20240607 By momo 調整可入庫量檢核判斷
+# Modify.........: NO:25110007   20251107 By momo 顯示下製程 作業編號與作業名稱
 
 DATABASE ds
  
@@ -3835,6 +3836,7 @@ END FUNCTION
 FUNCTION t700_show()
    DEFINE l_sfb919 LIKE sfb_file.sfb919   #FUN-A80102
    DEFINE l_pmc03  LIKE pmc_file.pmc03    #FUN-A80102
+   DEFINE l_ecm45  LIKE ecm_file.ecm45    #20251107 下製程顯示
    
    SELECT * INTO g_shb.* FROM shb_file WHERE shb01 = g_shb.shb01   #FUN-A70095
    LET g_shb_t.* = g_shb.*                #保存單頭舊值
@@ -3867,6 +3869,19 @@ FUNCTION t700_show()
    DISPLAY BY NAME g_shb.shb26,g_shb.shb27,g_shb.shb28,
                    g_shb.shb29,g_shb.shb30,g_shb.shb31
    #FUN-A80102(E)
+
+   ##--- 20251107 (S) --下製程----------------------
+   LET l_ecm45=''
+   IF cl_null(g_shb.shb12) THEN
+      SELECT ecm04||' '||ecm45 INTO l_ecm45
+        FROM ecm_file
+       WHERE ecm01 = g_shb.shb05
+         AND ecm03 = (SELECT MIN(ecm03) FROM ecm_file
+                       WHERE ecm01 = g_shb.shb05
+                         AND ecm03 > g_shb.shb06)
+      DISPLAY l_ecm45 TO FORMONLY.ecm45
+   END IF
+   ##--- 20251107 (E) -------------------------------
    
    CALL t700_shb04('d')
    CALL t700_shb10('d')

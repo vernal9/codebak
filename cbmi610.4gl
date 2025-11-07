@@ -1,4 +1,4 @@
-# Prog. Version..: '5.30.24-17.04.13(00010)'     #
+vf# Prog. Version..: '5.30.24-17.04.13(00010)'     #
 #
 # Pattern name...: cbmi610.4gl
 # Descriptions...: 上階主件對元件群組維護作業
@@ -87,6 +87,26 @@ DEFINE                                     #模組變數(Module Variables)
                 ta_boamodu  LIKE boa_file.ta_boamodu,  
                 note        LIKE boa_file.boa08
    END RECORD,
+    ga_color DYNAMIC ARRAY OF RECORD
+                           boa01  STRING,
+                           ima02  STRING,
+                           ima021 STRING,
+                           ima08  STRING,
+                           boa02  STRING,
+                           ta_boa01 STRING,
+                           boa03  STRING,    
+                           ima02b STRING,
+                           ima021b STRING,
+                           bmb06   STRING,
+                           bmb07   STRING,
+                           boa04   STRING,
+                           boa05   STRING,
+                           boa06   STRING,
+                           boa07   STRING,
+                           ta_boadate STRING,
+                           ta_boamodu STRING,
+                           note       STRING
+                           END RECORD,
     g_wc,g_wc2             string,                 #No.FUN-580092 HCN
     g_sql                  string,                 #No.FUN-580092 HCN
     g_sql1                 string,                 #No.FUN-580092 HCN
@@ -340,40 +360,17 @@ FUNCTION i610_menu()                         #中文的MENU
    DEFINE   l_flag LIKE type_file.chr1       #20240910
 
    WHILE TRUE
-      ##---- 20190709 資料清單 (S)
+   
       #CALL i610_bp("G")
       CASE
          WHEN (g_action_flag IS NULL) OR (g_action_flag = "main")
             CALL i610_bp("G")
            
-         #WHEN (g_action_flag = "page_list")
-         #   CALL i610_list_fill()
-         #   CALL i610_bp1("G")
-         #   IF NOT cl_null(g_action_choice) AND l_ac1>0 THEN #將清單的資料回傳到主畫面
-         #      SELECT boa_file.* INTO boa_l.* FROM boa_file
-         #       WHERE boa01=g_boa_1[l_ac1].boa01_1
-         #   END IF
-         #   IF g_action_choice!= "" THEN
-         #      LET g_action_flag = 'main'
-         #      LET l_ac1 = ARR_CURR()
-         #      LET g_jump = l_ac1
-         #      LET g_no_ask = TRUE 
-         #      IF g_rec_b1 >0 THEN
-         #          CALL i610_fetch('/')
-         #      END IF
-         #      CALL cl_set_comp_visible("page_list", FALSE)
-         #      CALL ui.interface.refresh()
-         #      CALL cl_set_comp_visible("page_list", TRUE)
-         #    END IF
       END CASE
 
       ##---- 20190709 資料清單 (E)
       CASE g_action_choice
  
-     #    WHEN "insert"
-     #       IF cl_chk_act_auth() THEN
-     #          CALL i610_a()
-     #       END IF
          WHEN "query"
             IF cl_chk_act_auth() THEN
                CALL i610_q()
@@ -459,24 +456,21 @@ FUNCTION i610_menu()                         #中文的MENU
             END IF
          ##---- 20240910 add by momo (E)
 
-         WHEN "exporttoexcel" #FUN-4B0003
+         WHEN "exporttoexcel" 
             IF cl_chk_act_auth() THEN
-              ##---- 20190709 資料清單 (S)
-              #CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_boa),'','')
+              
               LET w = ui.Window.getCurrent()
               LET f = w.getForm()
               CASE 
                  WHEN (g_action_flag IS NULL) OR (g_action_flag = 'main')
                      CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_boa),'','')
-                # WHEN (g_action_flag = 'page_list')
-                #     LET page = f.FindNode("Page","page_list")
-                #     CALL cl_export_to_excel(page,base.TypeInfo.create(g_boa_1),'','')
+               
                  END CASE
                  LET g_action_choice = NULL
-              ##---- 20190709 資料清單 (E)
+              
             END IF
          OTHERWISE EXIT CASE
-         #M014 180130 By TSD.Andy -----(E)
+        
       END CASE
    END WHILE
 END FUNCTION
@@ -1720,8 +1714,8 @@ DEFINE
 END FUNCTION
  
 FUNCTION i610_b_fill(p_wc)              #BODY FILL UP
-DEFINE
-    p_wc     STRING                  
+DEFINE   p_wc     STRING 
+DEFINE   l_cnt    LIKE type_file.chr1   #20251105               
      
     LET g_sql =
        "SELECT boa01,a.ima02,a.ima021,a.ima08,boa02,ta_boa01,boa03,b.ima02,b.ima021,",    #20250224
@@ -1733,17 +1727,37 @@ DEFINE
        "  LEFT JOIN ima_file a ON a.ima01=boa01 ",       
        "  LEFT JOIN bmb_file ON bmb01 = boa01 AND bmb03 = boa03 AND bmb05 IS NULL ",      #20231012  #20240911 排除失效                 
        " WHERE (NVL(boa08,'N')='",g_boa08,"' ) ",
-       "   AND ",p_wc CLIPPED 
+       "   AND ",p_wc CLIPPED,
+       " ORDER BY boa01,boa02" 
  
     PREPARE i610_prepare2 FROM g_sql           #預備一下
     DECLARE boa_curs CURSOR FOR i610_prepare2
     CALL g_boa.clear()
+    CALL ga_color.clear()
     LET g_cnt = 1
     FOREACH boa_curs INTO g_boa[g_cnt].*       #單身 ARRAY 填充
         IF SQLCA.sqlcode THEN
             CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
             EXIT FOREACH
         END IF
+        ##--- 20251105 (S) ----
+        LET l_cnt = 0
+        SELECT COUNT(*) INTO l_cnt
+         FROM bob_file
+        WHERE bob01 = g_boa[g_cnt].boa01
+          AND bob11 IS NULL
+        GROUP BY bob01
+        IF l_cnt > 1 THEN
+           LET ga_color[g_cnt].boa01 = "RED"
+        END IF
+        ##--- 20251105 (E) ----
+        IF g_cnt > 1 THEN
+           DISPLAY BY NAME g_boa[g_cnt-1].boa01
+           IF (g_boa[g_cnt].boa01 <> g_boa[g_cnt-1].boa01) OR (g_boa[g_cnt].boa02 <> g_boa[g_cnt-1].boa02) THEN
+              LET ga_color[g_cnt].boa01 = "green reverse"
+              LET ga_color[g_cnt].boa02 = "green reverse"
+           END IF
+        END IF 
         LET g_cnt = g_cnt + 1
         IF g_cnt > g_max_rec THEN
         #   CALL cl_err( '', 9035, 0 )
@@ -1811,6 +1825,7 @@ FUNCTION i610_bp(p_ud)
  
       BEFORE DISPLAY
         # CALL cl_navigator_setting( g_curs_index, g_row_count )
+        CALL DIALOG.setCellAttributes(ga_color)
          IF l_ac <> 0 THEN
             CALL fgl_set_arr_curr(l_ac)
          END IF

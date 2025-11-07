@@ -176,6 +176,8 @@
 #                                                            2.工單展備料時，如生產料號=歸屬父階料號時，將此配件產生至備料檔
 # Modify.........: No.2003204418 20200320 By momo 執行取替代時，若原料件應發量為0，新取代件應發量也應為0
 # Modify.........: No.2207298565 20220802 By momo 庫存不足時，原應發量錯誤修正
+# Modify.........: No.25050012   20250528 By momo 群組替代時，上階料號需等同生產料號，才可產生替代
+# Modify.........: No.25080035   20250902 BY momo No.25050012卡控移除群組取替時檢核
 
 DATABASE ds
  
@@ -262,7 +264,12 @@ DEFINE
     IF cl_null(l_ima910) THEN LET l_ima910=' ' END IF
     #--
     IF p_wotype=5 OR p_wotype=11 OR p_wotype=8 THEN    #rework order or de-assembly order NO:7075 add p_wotype=8
-        CALL cralc_rd(p_part,p_woq)                   
+        CALL cralc_rd(p_part,p_woq)      
+        ##----- 20240903 add (S)---- 再加工工單需帶入選配
+        IF p_wotype='5' THEN             
+           CALL cralc_oeo(p_part,p_woq)			#由S/O配件產生備料檔
+        END IF
+        ##----- 20240903 add (E)----
     ELSE
         # Prog. Version..: '5.30.24-17.04.13(0,p_part,p_altno,p_woq,1) #FUN-550112  #由BOM產生備料檔  #No.TQC-610003
         IF g_sma.sma542 = 'Y' AND g_sfb.sfb93 = 'Y' THEN
@@ -1025,6 +1032,14 @@ DEFINE l_bmb06_07  LIKE bmb_file.bmb06
                 IF cl_null(g_sfa.sfa04) THEN LET g_sfa.sfa04 = 0 END IF
                 IF cl_null(g_sfa.sfa05) THEN LET g_sfa.sfa05 = 0 END IF
 #TQC-AB0037 --end--
+                ##---- 20250902 (S) MARK 檢核移除群組時執行
+                ##---- 20250528 (S) 生產料件與上階料不同 = BOM為展開，即不顯示群組替代
+                #IF g_sfb.sfb05 <> g_sfa.sfa29 AND g_sfa.sfa26='5' THEN
+                #   LET g_sfa.sfa26='0'
+                #   LET g_sfa.sfaud01='5-abmi600展開'   #2025901
+                #END IF
+                ##---- 20250528 (E)
+                ##---- 20250902 (E) MARK 檢核移除群組時執行
                 INSERT INTO sfa_file VALUES(g_sfa.*)
                 IF SQLCA.SQLCODE THEN    #Duplicate
                    #IF SQLCA.SQLCODE=-239 THEN                #TQC-790089 mark
@@ -1438,6 +1453,8 @@ DEFINE l_ima63   LIKE ima_file.ima63       #MOD-BC0199
         SELECT COUNT(*) INTO l_a FROM bmd_file
          WHERE bmd04=l_bmd04 AND bmd03 !=l_bmd03
            AND bmd01=p_part AND bmd02=p_sou
+           AND (bmd05<=g_date OR bmd05 IS NULL)    #20251028
+           AND (bmd06>=g_date OR bmd06 IS NULL)    #20251028
         IF l_a>0 AND l_b>0 THEN
            CONTINUE FOREACH
         END IF
