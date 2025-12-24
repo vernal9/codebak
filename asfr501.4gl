@@ -52,6 +52,7 @@
 # Modify.........: NO.1904032923 20190409 By momo 增加顯示出貨客戶或多角終端客戶
 # Modify.........: NO.1908193511 20190822 By momo 增加列印客戶品名ta_obk01 客戶規格ta_obk02 
 # Modify.........: NO.1911213928 20191126 By momo 列印訂單單頭備註
+# Modify.........: No.25120034   20251224 By momo 列印訂單單身「客戶專案號oebud02」
 
 DATABASE ds
  
@@ -186,7 +187,8 @@ MAIN
               "ta_sfb01.sfb_file.ta_sfb01,sfb15.sfb_file.sfb15,", #add by ruby 2017/12/26 #add by ruby 2018/01/03
               "oea032.oea_file.oea032,",                          #add by ruby 2018/01/16
               "occ02.occ_file.occ02,",                            #add by ruby 2018/01/16
-              "oea10.oea_file.oea10,oeb11.oeb_file.oeb11,",       #20190409 
+              "oea10.oea_file.oea10,oeb11.oeb_file.oeb11,",       #20190409
+              "oebud02.oeb_file.oebud02,",                        #20251224 客戶專案號 
               "ta_obk01.obk_file.ta_obk01,",                      #20190821
               "ta_obk02.obk_file.ta_obk02,",                      #20190822
               "ima02a.ima_file.ima02,ima021a.ima_file.ima021",
@@ -490,6 +492,7 @@ DEFINE l_sfa16       LIKE sfa_file.sfa16       #add by ruby 2018/01/30
 DEFINE l_oea03       LIKE oea_file.oea03       #客戶代號 20180321 add by momo
 DEFINE l_oea10       LIKE oea_file.oea10       #客戶PO 20180921
 DEFINE l_oeb11       LIKE oeb_file.oeb11       #客戶產品編號 20180921
+DEFINE l_oebud02     LIKE oeb_file.oebud02     #客戶專案號 20251224
 DEFINE l_ta_obk01    LIKE obk_file.ta_obk01    #客戶品名 20190822
 DEFINE l_ta_obk02    LIKE obk_file.ta_obk02    #客戶規格 20190822
 DEFINE l_occ02       LIKE occ_file.occ02       #送貨客戶OR終端客戶簡稱 20190409 
@@ -575,7 +578,8 @@ DEFINE l_smyud02      LIKE smy_file.smyud02      #20180322 add 是否列印客�
    END IF
  
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table1 CLIPPED,
-               " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?)"  #add by ruby 1? 2017/12/26 #add by ruby 1? 2018/01/03  #add by ruby 1? 2018/01/16 #20180416 add 2? #20180921 add 2? #20190409 add 1? #20190822 add 1?
+               " VALUES(?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,? ",  #add by ruby 1? 2017/12/26 #add by ruby 1? 2018/01/03  #add by ruby 1? 2018/01/16 #20180416 add 2? #20180921 add 2? #20190409 add 1? #20190822 add 1?
+               "        ,?)"                                          #20251224 1?
    PREPARE insert_prep1 FROM g_sql
    IF STATUS THEN
       CALL cl_err("insert_prep1:",STATUS,1)
@@ -918,6 +922,14 @@ DEFINE l_smyud02      LIKE smy_file.smyud02      #20180322 add 是否列印客�
             FROM oea_file,occ_file
            WHERE oea916=occ01 AND oea99 IS NOT NULL
              AND oea01=substr(l_sfb.ta_sfb01,1,15)
+          ##---20250528 (S) 增加 雜發員工姓名
+          UNION
+          SELECT gen02,''
+            INTO l_occ02,l_oea04
+            FROM ina_file,gen_file
+          WHERE ina11=gen01
+            AND ina01=substr(l_sfb.ta_sfb01,1,15)
+          ##---20250528 (E)
           IF SQLCA.SQLCODE THEN
              SELECT occ02,oea04
                INTO l_occ02,l_oea04
@@ -934,7 +946,14 @@ DEFINE l_smyud02      LIKE smy_file.smyud02      #20180322 add 是否列印客�
           
           SELECT obk03,ta_obk01,ta_obk02 INTO l_oeb11,l_ta_obk01,l_ta_obk02 #20190822
             FROM obk_file
-           WHERE obk02 = l_oea03 AND obk01 = l_sfb.sfb05 
+           WHERE obk02 = l_oea03 AND obk01 = l_sfb.sfb05
+
+          ##--- 20251224 oebud02 客戶專案號 (S)
+          LET l_oebud02=''
+          SELECT oebud02 INTO l_oebud02
+            FROM oeb_file 
+          WHERE oeb01||LPAD(oeb03,3,'0') = l_sfb.ta_sfb01
+          ##--- 20251224 oebud02 客戶專案號 (E) 
 
           #---- 20180416 add by momo 母工單料號、母工單料號規格 (S)
           LET l_sfb86 = ''
@@ -953,6 +972,7 @@ DEFINE l_smyud02      LIKE smy_file.smyud02      #20180322 add 是否列印客�
             l_sfb.sfb05,l_sfb.sfb08,l_sfb.sfb081,l_sfb.sfb09,l_sfb.ta_sfb01,l_sfb.sfb15,l_oea032, #add by ruby ta_sfb01,sfb15 #add by ruby l_oea032 2018/01/16
             l_occ02,               #20190409
             l_oea10,l_oeb11,       #20180921 add
+            l_oebud02,             #20251224
             l_ta_obk01,l_ta_obk02, #20190822
             l_ima02,l_ima021,
             l_ima01b,l_ima02b      #20180416 add

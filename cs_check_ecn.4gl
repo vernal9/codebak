@@ -28,7 +28,7 @@ FUNCTION cs_check_ecn(p_bmx01)
          SELECT distinct tc_bmd01,tc_bmdnote          
            INTO l_tc_bmd.tc_bmd01,l_tc_bmd.tc_bmdnote
            FROM tc_bmd_file
-          WHERE tc_bmd01 = l_bmy05
+          WHERE tc_bmd01 = l_bmy05      
             AND tc_bmd06 IS NULL
             AND tc_bmd02 IN ('1','2','4')
          IF NOT cl_null(l_tc_bmd.tc_bmd01) THEN

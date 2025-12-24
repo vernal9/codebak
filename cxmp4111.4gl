@@ -4,8 +4,7 @@
 # Descriptions...: 料號規格查詢與申請記錄維護作業
 # Input parameter: 
 # Date & Author..: 2023/06/13 By Momo 
-# Modify.........: NO:25110035  20251125 By momo 移除下拉選單
-# Modify.........: NO:25120013  20251210 By momo 依規格符合多筆料號時，挑選選單人員自行挑選
+
 
 DATABASE ds
  
@@ -131,11 +130,11 @@ MAIN
 
     LET g_query_flag=1
     LET plant_visible = 'N'
-    DISPLAY g_plant TO FORMONLY.azp01
+       DISPLAY g_plant TO FORMONLY.azp01
 	 
     LET p_row = 2 LET p_col = 12
 	 
-    OPEN WINDOW p412_w AT p_row,p_col WITH FORM "cxm/42f/cxmp412" 
+    OPEN WINDOW p412_w AT p_row,p_col WITH FORM "cxm/42f/cxmp4111" 
        ATTRIBUTE (STYLE = g_win_style CLIPPED) 
 	    
        CALL cl_ui_init()
@@ -165,7 +164,7 @@ FUNCTION p412_curs()
     AFTER FIELD azp01
       LET l_cnt = 0
       SELECT 1 INTO l_cnt FROM zxy_file
-       WHERE (zxy01 = g_user OR zxy01=g_prog)
+       WHERE zxy01 = g_user
          AND zxy03 = tm.azp01
       IF l_cnt = 0 THEN
          CALL cl_err(tm.azp01,'sub-188',1)
@@ -177,7 +176,7 @@ FUNCTION p412_curs()
          WHEN INFIELD(azp01)
               CALL cl_init_qry_var()
               LET g_qryparam.form = "q_zxy"
-              LET g_qryparam.arg1 = g_prog
+              LET g_qryparam.arg1 = g_user
               CALL cl_create_qry() RETURNING g_qryparam.multiret
               LET tm.azp01 = g_qryparam.multiret
               DISPLAY BY NAME tm.azp01
@@ -210,6 +209,7 @@ FUNCTION p412_curs()
 	 
     BEFORE CONSTRUCT
         CALL cl_qbe_init()
+        DISPLAY g_plant TO tc_mpnplant
 	      
         AFTER FIELD tc_mpn03
            CALL p412_tc_mpn03('a')
@@ -217,13 +217,13 @@ FUNCTION p412_curs()
 
         ON ACTION controlp
           CASE
-	    WHEN INFIELD(tc_mpn03) #客戶編號
-              CALL cl_init_qry_var()
-              LET g_qryparam.state = "c"
-              LET g_qryparam.form ="q_occ"
-              CALL cl_create_qry() RETURNING g_qryparam.multiret
-              DISPLAY g_qryparam.multiret TO tc_mpn03 
-              NEXT FIELD tc_mpn03
+			  WHEN INFIELD(tc_mpn03) #客戶編號
+                CALL cl_init_qry_var()
+                LET g_qryparam.state = "c"
+                LET g_qryparam.form ="q_occ"
+                CALL cl_create_qry() RETURNING g_qryparam.multiret
+                DISPLAY g_qryparam.multiret TO tc_mpn03 
+                NEXT FIELD tc_mpn03
 			  
            END CASE
            
@@ -232,24 +232,23 @@ FUNCTION p412_curs()
            CONTINUE CONSTRUCT
 	 
         ON ACTION about         
-           CALL cl_about()      
+		   CALL cl_about()      
 	 
         ON ACTION HELP          
-	   CALL cl_show_help()  
+		   CALL cl_show_help()  
 	 
         ON ACTION controlg     
-	   CALL cl_cmdask()     
+		   CALL cl_cmdask()     
 	 
         ON ACTION qbe_select
-	   CALL cl_qbe_select() 
+		   CALL cl_qbe_select() 
            
         ON ACTION qbe_save
-	   CALL cl_qbe_save()
+		   CALL cl_qbe_save()
     END CONSTRUCT
 	 
     IF INT_FLAG THEN RETURN END IF
-    
-    CALL p412_upd_blank()
+
     LET g_sql= "SELECT UNIQUE tc_mpn03,tc_mpn01 FROM tc_mpn_file ",               
                " WHERE ", g_wc CLIPPED,
 		       "   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )"
@@ -258,8 +257,9 @@ FUNCTION p412_curs()
     SCROLL CURSOR WITH HOLD FOR p412_prepare
 	    
     DROP TABLE x
-    LET g_sql = "SELECT SUM(tc_mpn07) FROM tc_mpn_file",
-	        " WHERE tc_mpn01 = '",g_tc_mpn01,"' AND tc_mpn03='",g_tc_mpn03,"' AND tc_mpn10='N' "
+    LET g_sql = "SELECT COUNT(DISTINCT tc_mpn03||tc_mpn01) FROM tc_mpn_file",
+	  		    " WHERE ",g_wc CLIPPED,
+			    "   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )"
     PREPARE p412_precount FROM g_sql
     DECLARE p412_count CURSOR FOR p412_precount
     CALL p412_b_fill(g_wc)
@@ -278,58 +278,50 @@ FUNCTION p412_menu()
                CALL p412_q()            
             END IF   
          ##---- 20250520 (E)
-	 WHEN "insert" 
-	    IF cl_chk_act_auth() THEN
-	       LET g_sa = 'a'  #新增
-	       LET l_ac = 0    #20230707
-               LET g_row_count = 0
-	       CALL p412_a()
-	    END IF
-	 WHEN "query" 
-	    IF cl_chk_act_auth() THEN
-	       CALL p412_q()
-	    END IF
-	 WHEN "delete" 
-	    IF cl_chk_act_auth() THEN
-	       CALL p412_r()
-	    END IF
-	 WHEN "detail" 
-	    IF cl_chk_act_auth() THEN
-	       LET g_sa = 'u'
-	       CALL p412_b_fill(g_wc)              
-	       CALL p412_b()
-	    ELSE
-	       LET g_action_choice = NULL
-	    END IF
-	 #- 生管
-	 WHEN "modify_date"
-	    IF cl_chk_act_auth() THEN
-	       LET g_sa = 'm' 
-               CALL update_mpn17()        #20250507 add
-	       CALL p412_b_fill(g_wc)     #20250507 mark         
-	       CALL p412_b()              #20250507
-	       LET g_sa = ''
-               CALL p412_upd_blank()
-	    END IF
+		 WHEN "insert" 
+		    IF cl_chk_act_auth() THEN
+		       LET g_sa = 'a'  #新增
+		       LET l_ac = 0    #20230707
+		       CALL p412_a()
+		    END IF
+		 WHEN "query" 
+		    IF cl_chk_act_auth() THEN
+		       CALL p412_q()
+		    END IF
+		 WHEN "delete" 
+		    IF cl_chk_act_auth() THEN
+		       CALL p412_r()
+		    END IF
+		 WHEN "detail" 
+		    IF cl_chk_act_auth() THEN
+		       LET g_sa = 'u'
+		       CALL p412_b_fill(g_wc)              
+		       CALL p412_b()
+		    ELSE
+		       LET g_action_choice = NULL
+		    END IF
+		 #- 生管
+		 WHEN "modify_date"
+		    IF cl_chk_act_auth() THEN
+		       LET g_sa = 'm' 
+                       CALL update_mpn17()        #20250507 add
+		       CALL p412_b_fill(g_wc)     #20250507 mark         
+		       CALL p412_b()              #20250507
+		       LET g_sa = ''
+		    END IF
          #- 研發-更新料號(S) 20240422
          WHEN "refresh_item"
             IF cl_chk_act_auth() THEN
-	       CALL p412_b_fill(g_wc)   
+		       CALL p412_b_fill(g_wc)   
                IF cl_null(g_tc_mpn[l_ac].oeb01) THEN
                   LET g_tc_mpn[l_ac].tc_mpn06=''
-                  LET g_sql = "UPDATE ",tm.azp01,".tc_mpn_file ",
-                              "  SET tc_mpn06=(SELECT ima01 FROM ",tm.azp01,".ima_file ",
-                              "                 WHERE ima021= ? ",
-                              "                   AND imaacti='Y' AND ima130='1') ",
-                              " WHERE tc_mpn01 = ? ",
-                              "   AND tc_mpn02 = ? ",
-                              "   AND tc_mpn03 = ? "
-                  PREPARE upd_ima01 FROM g_sql
-	          EXECUTE upd_ima01 USING g_tc_mpn[l_ac].tc_mpn05,g_tc_mpn[l_ac].tc_mpn01,
-                                          g_tc_mpn[l_ac].tc_mpn02,g_tc_mpn[l_ac].tc_mpn03
-                  CALL p412_sel_ima()
+                  UPDATE tc_mpn_file SET tc_mpn06=(SELECT ima01 FROM ima_file 
+                                                 WHERE ima021=g_tc_mpn[l_ac].tc_mpn05
+                                                   AND imaacti='Y' AND ima130='1')
+                  WHERE tc_mpn01 = g_tc_mpn[l_ac].tc_mpn01 
+                    AND tc_mpn02 = g_tc_mpn[l_ac].tc_mpn02
+                    AND tc_mpn03 = g_tc_mpn[l_ac].tc_mpn03
                END IF
-               CALL p412_upd_blank()
             END IF
         #- 研發-更新料號(E) 20240422
         #- 研發
@@ -340,15 +332,14 @@ FUNCTION p412_menu()
              CALL p412_b_fill(g_wc)              
              CALL p412_b()            
              LET g_sa = ''
-             CALL p412_upd_blank()
           END IF
 	 
         WHEN "help" 
-	     CALL cl_show_help()
+		     CALL cl_show_help()
         WHEN "exit"
-	     EXIT WHILE
+		     EXIT WHILE
         WHEN "controlg"
-	     CALL cl_cmdask()
+		     CALL cl_cmdask()
         WHEN "exporttoexcel"     
           IF cl_chk_act_auth() THEN
               CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_tc_mpn),'','')
@@ -356,132 +347,140 @@ FUNCTION p412_menu()
         WHEN "related_document"  #相關文件
           IF cl_chk_act_auth() THEN
              IF NOT cl_null(g_tc_mpn[l_ac].tc_mpn01) THEN
-	        LET g_doc.column1 = "tc_mpn01"
-	        LET g_doc.column2 = "tc_mpn03"               #20230814
-	        LET g_doc.value1 = g_tc_mpn[l_ac].tc_mpn01
-	        LET g_doc.value2 = g_tc_mpn[l_ac].tc_mpn03   #20230814
-	        CALL cl_doc()
+			    LET g_doc.column1 = "tc_mpn01"
+			    LET g_doc.column2 = "tc_mpn03"               #20230814
+			    LET g_doc.value1 = g_tc_mpn[l_ac].tc_mpn01
+			    LET g_doc.value2 = g_tc_mpn[l_ac].tc_mpn03   #20230814
+			    CALL cl_doc()
              END IF
-	  END IF
+		  END IF
        END CASE
     END WHILE
 END FUNCTION
 	 
-FUNCTION p412_a()
-  IF s_shut(0) THEN RETURN END IF
-  MESSAGE ""
-  CLEAR FORM
-  CALL g_tc_mpn.clear()
-  INITIALIZE g_tc_mpn01 LIKE tc_mpn_file.tc_mpn01
-  INITIALIZE g_tc_mpn03 LIKE tc_mpn_file.tc_mpn03
-  CLOSE p412_b_curs
-  LET g_tc_mpn01_t = NULL
-  LET g_tc_mpn03_t = NULL
-  LET g_wc      = NULL
-  CALL cl_opmsg('a')
-  WHILE TRUE
-    CALL p412_i("a")                   #輸入單頭
-    IF INT_FLAG THEN                   #使用者不玩了
-       LET INT_FLAG = 0
-       CALL cl_err('',9001,0)
-       EXIT WHILE
-    END IF
-	    
-    LET g_rec_b=0                              
-    IF g_ss='N' THEN
-       FOR g_cnt = 1 TO g_tc_mpn.getLength()
-  	   INITIALIZE g_tc_mpn[g_cnt].* TO NULL
-       END FOR
-    ELSE
-       CALL p412_b_fill(' 1=1')          #單身
-    END IF
 	 
-    CALL p412_b()                        #輸入單身
-    IF SQLCA.sqlcode THEN 
-       CALL cl_err(g_tc_mpn01,SQLCA.sqlcode,0)
-    END IF
-    LET g_tc_mpn01_t = g_tc_mpn01                 #保留舊值
-    EXIT WHILE
-  END WHILE
-END FUNCTION
-	   	 
+	FUNCTION p412_a()
+	    IF s_shut(0) THEN RETURN END IF
+	    MESSAGE ""
+	    CLEAR FORM
+	    CALL g_tc_mpn.clear()
+	    INITIALIZE g_tc_mpn01 LIKE tc_mpn_file.tc_mpn01
+	    INITIALIZE g_tc_mpn03 LIKE tc_mpn_file.tc_mpn03
+	    CLOSE p412_b_curs
+	    LET g_tc_mpn01_t = NULL
+	    LET g_tc_mpn03_t = NULL
+	    LET g_wc      = NULL
+	    CALL cl_opmsg('a')
+	    WHILE TRUE
+		CALL p412_i("a")                   #輸入單頭
+		IF INT_FLAG THEN                   #使用者不玩了
+		    LET INT_FLAG = 0
+		    CALL cl_err('',9001,0)
+		    EXIT WHILE
+		END IF
+	    
+		LET g_rec_b=0                              
+		IF g_ss='N' THEN
+		    FOR g_cnt = 1 TO g_tc_mpn.getLength()
+			INITIALIZE g_tc_mpn[g_cnt].* TO NULL
+		    END FOR
+		ELSE
+		    CALL p412_b_fill(' 1=1')          #單身
+		END IF
+	 
+		CALL p412_b()                        #輸入單身
+		IF SQLCA.sqlcode THEN 
+		    CALL cl_err(g_tc_mpn01,SQLCA.sqlcode,0)
+		END IF
+		LET g_tc_mpn01_t = g_tc_mpn01                 #保留舊值
+		EXIT WHILE
+	    END WHILE
+	END FUNCTION
+	   
+	 
 #處理INPUT
 FUNCTION p412_i(p_cmd)
-DEFINE p_cmd           LIKE type_file.chr1,          #a:輸入 u:更改  
-       l_buf           LIKE type_file.chr1000,       
-       l_n             LIKE type_file.num5         
+	DEFINE
+	    p_cmd           LIKE type_file.chr1,          #a:輸入 u:更改  
+	    l_buf           LIKE type_file.chr1000,       
+	    l_n             LIKE type_file.num5         
 	 
-   LET g_ss = 'Y'
-   CALL cl_set_head_visible("","YES")       
+	    LET g_ss = 'Y'
+	    CALL cl_set_head_visible("","YES")       
 	 
-   INPUT g_tc_mpn03,g_tc_mpn01 WITHOUT DEFAULTS        
-    FROM occ01,tc_mpn01_i                    
-	 		     
-   AFTER FIELD occ01
-      IF g_tc_mpn03 IS NULL THEN
-         NEXT FIELD occ01
-      ELSE 
-         CALL p412_tc_mpn03('a')
-      END IF
+	    INPUT g_tc_mpn03,g_tc_mpn01 WITHOUT DEFAULTS        
+		FROM occ01,tc_mpn01_i                    
+	 
+		     
+	       AFTER FIELD occ01
+		   IF g_tc_mpn03 IS NULL THEN
+		      NEXT FIELD occ01
+		   ELSE 
+		      CALL p412_tc_mpn03('a')
+		   END IF
 
-   AFTER FIELD tc_mpn01_i
-      IF cl_null(g_tc_mpn01) THEN
-         NEXT FIELD tc_mpn01
-      END IF
+	       AFTER FIELD tc_mpn01_i
+		   IF cl_null(g_tc_mpn01) THEN
+		      NEXT FIELD tc_mpn01
+		   END IF
 
-   ON ACTION CONTROLF                  #欄位說明
-      CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name 
-      CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) 
-		  	 
-   ON ACTION controlp 
-      CASE
-	 WHEN INFIELD(occ01) #客戶編號
-	      CALL cl_init_qry_var()
-	      LET g_qryparam.form ="q_occ"
-	      LET g_qryparam.default1 = g_tc_mpn03
-	      CALL cl_create_qry() RETURNING g_tc_mpn03
-	      NEXT FIELD occ01
 
-      END CASE
+		ON ACTION CONTROLF                  #欄位說明
+		   CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name 
+		   CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) 
+		  
 	 
-   ON IDLE g_idle_seconds                                                   
-      CALL cl_on_idle()                                                     
-      CONTINUE INPUT
+		ON ACTION controlp 
+		   CASE
+		      WHEN INFIELD(occ01) #客戶編號
+			   CALL cl_init_qry_var()
+			   LET g_qryparam.form ="q_occ"
+			   LET g_qryparam.default1 = g_tc_mpn03
+			   CALL cl_create_qry() RETURNING g_tc_mpn03
+			   NEXT FIELD occ01
+
+		    END CASE
 	 
-   ON ACTION about         
-      CALL cl_about()      
+		ON IDLE g_idle_seconds                                                   
+		   CALL cl_on_idle()                                                     
+		   CONTINUE INPUT
 	 
-   ON ACTION help          
-      CALL cl_show_help()  
+		ON ACTION about         
+		   CALL cl_about()      
 	 
-   ON ACTION controlg      
-      CALL cl_cmdask()     
+		ON ACTION help          
+		   CALL cl_show_help()  
 	 
-  END INPUT
-END FUNCTION	 
+		ON ACTION controlg      
+		   CALL cl_cmdask()     
+	 
+	    END INPUT
+END FUNCTION
+	 
 	   
-FUNCTION p412_tc_mpn03(p_cmd) 
-DEFINE p_cmd     LIKE type_file.chr1,          
-       l_occacti LIKE occ_file.occacti,     
-       l_occ02 LIKE occ_file.occ02
+	FUNCTION p412_tc_mpn03(p_cmd)
+	    DEFINE
+		   p_cmd   LIKE type_file.chr1,          
+		   l_occacti LIKE occ_file.occacti,     
+		   l_occ02 LIKE occ_file.occ02
 	 
-   LET g_errno = ' '
-   IF g_tc_mpn03 IS NULL THEN
-      LET l_occ02 = NULL
-   ELSE
-      SELECT occ02,occacti INTO l_occ02,l_occacti FROM occ_file   
-       WHERE occ01 = g_tc_mpn03
+	    LET g_errno = ' '
+	    IF g_tc_mpn03 IS NULL THEN
+		LET l_occ02 = NULL
+	    ELSE
+		SELECT occ02,occacti INTO l_occ02,l_occacti FROM occ_file   
+		 WHERE occ01 = g_tc_mpn03
 	     
-      CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = 'mfg2732' 
-				     LET l_occ02 = NULL  LET l_occacti = NULL
-	   WHEN l_occacti='N' LET g_errno = '9028'
-	   OTHERWISE          LET g_errno = SQLCA.SQLCODE USING '-------'
-     END CASE
-   END IF
-   IF p_cmd = 'd' OR cl_null(g_errno) THEN
-      DISPLAY l_occ02 TO occ02 
-   END IF
-END FUNCTION 
+		CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = 'mfg2732' 
+					       LET l_occ02 = NULL  LET l_occacti = NULL
+		     WHEN l_occacti='N' LET g_errno = '9028'
+		     OTHERWISE          LET g_errno = SQLCA.SQLCODE USING '-------'
+		END CASE
+	    END IF
+	    IF p_cmd = 'd' OR cl_null(g_errno) THEN
+		DISPLAY l_occ02 TO occ02 
+	    END IF
+	END FUNCTION 
 	 
 #Query 查詢
 FUNCTION p412_q()
@@ -525,51 +524,58 @@ FUNCTION p412_q()
 
 END FUNCTION
 	 
-#處理資料的讀取
-FUNCTION p412_fetch(p_flag)
-DEFINE p_flag   LIKE type_file.chr1                  #處理方式      
+	#處理資料的讀取
+	FUNCTION p412_fetch(p_flag)
+	DEFINE
+	    p_flag          LIKE type_file.chr1                  #處理方式      
 	 
-   MESSAGE ""
-   CASE p_flag
-   WHEN 'N' FETCH NEXT     p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
-   WHEN 'P' FETCH PREVIOUS p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
-   WHEN 'F' FETCH FIRST    p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
-   WHEN 'L' FETCH LAST     p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
-   WHEN '/' 
-   IF (NOT mi_no_ask) THEN
-      CALL cl_getmsg('fetch',g_lang) RETURNING g_msg
-      LET INT_FLAG = 0  ######add for prompt bug
-      PROMPT g_msg CLIPPED,': ' FOR g_jump
-         ON IDLE g_idle_seconds
-            CALL cl_on_idle()	 
-         ON ACTION about       
-            CALL cl_about()     
-         ON ACTION help          
-	    CALL cl_show_help() 
-         ON ACTION controlg      
-    	    CALL cl_cmdask()    
-      END PROMPT
-      IF INT_FLAG THEN LET INT_FLAG = 0 EXIT CASE END IF
-   END IF 
-   FETCH ABSOLUTE g_jump p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
-      LET mi_no_ask = FALSE
-      END CASE
+	    MESSAGE ""
+	    CASE p_flag
+		WHEN 'N' FETCH NEXT     p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
+		WHEN 'P' FETCH PREVIOUS p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
+		WHEN 'F' FETCH FIRST    p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
+		WHEN 'L' FETCH LAST     p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
+		WHEN '/' 
+		    IF (NOT mi_no_ask) THEN
+		       CALL cl_getmsg('fetch',g_lang) RETURNING g_msg
+		       LET INT_FLAG = 0  ######add for prompt bug
+		       PROMPT g_msg CLIPPED,': ' FOR g_jump
+	      ON IDLE g_idle_seconds
+		 CALL cl_on_idle()
 	 
-      IF SQLCA.sqlcode THEN                         #有麻煩
-         CALL cl_err(g_tc_mpn01,SQLCA.sqlcode,0)
-         INITIALIZE g_tc_mpn01 TO NULL 
-      ELSE
-	 CASE p_flag
-	   WHEN 'F' LET g_curs_index = 1
-	   WHEN 'P' LET g_curs_index = g_curs_index - 1
-	   WHEN 'N' LET g_curs_index = g_curs_index + 1
-	   WHEN 'L' LET g_curs_index = g_row_count
-	   WHEN '/' LET g_curs_index = g_jump          --改g_jump
-         END CASE
-	 CALL cl_navigator_setting( g_curs_index, g_row_count )
-      END IF
-      CALL p412_show()
-END FUNCTION
+	      ON ACTION about       
+		 CALL cl_about()     
+	 
+	      ON ACTION help          
+		 CALL cl_show_help() 
+	 
+	      ON ACTION controlg      
+		 CALL cl_cmdask()    
+	 
+	       END PROMPT
+		       IF INT_FLAG THEN LET INT_FLAG = 0 EXIT CASE END IF
+		    END IF 
+		    FETCH ABSOLUTE g_jump p412_b_curs INTO g_tc_mpn03,g_tc_mpn01
+		    LET mi_no_ask = FALSE
+	    END CASE
+	 
+	    IF SQLCA.sqlcode THEN                         #有麻煩
+	       CALL cl_err(g_tc_mpn01,SQLCA.sqlcode,0)
+	       INITIALIZE g_tc_mpn01 TO NULL 
+	    ELSE
+	 
+	       CASE p_flag
+		  WHEN 'F' LET g_curs_index = 1
+		  WHEN 'P' LET g_curs_index = g_curs_index - 1
+		  WHEN 'N' LET g_curs_index = g_curs_index + 1
+		  WHEN 'L' LET g_curs_index = g_row_count
+		  WHEN '/' LET g_curs_index = g_jump          --改g_jump
+	       END CASE
+	    
+	       CALL cl_navigator_setting( g_curs_index, g_row_count )
+	    END IF
+	    CALL p412_show()
+	END FUNCTION
 	 
 #將資料顯示在畫面上
 FUNCTION p412_show()	 
@@ -577,61 +583,61 @@ FUNCTION p412_show()
    CALL cl_show_fld_cont()                
 END FUNCTION
 	 
-#取消整筆 (所有合乎單頭的資料)
-FUNCTION p412_r()
-   IF s_shut(0) THEN RETURN END IF
-   IF g_tc_mpn01 IS NULL THEN
-      CALL cl_err("",-400,0)                
-      RETURN 
-   END IF
+	#取消整筆 (所有合乎單頭的資料)
+	FUNCTION p412_r()
+	    IF s_shut(0) THEN RETURN END IF
+	    IF g_tc_mpn01 IS NULL THEN
+	       CALL cl_err("",-400,0)                
+	       RETURN
+	    END IF
 	 
-   BEGIN WORK
+	    BEGIN WORK
 	 
-   IF cl_delh(0,0) THEN                   #確認一下
-      INITIALIZE g_doc.* TO NULL      
-      LET g_doc.column1 = "tc_mpn01"      
-      LET g_doc.column2 = "tc_mpn03"      
-      LET g_doc.value1 = g_tc_mpn01       
-      LET g_doc.value2 = g_tc_mpn03     
-      CALL cl_del_doc()                
-      DELETE FROM tc_mpn_file WHERE tc_mpn01 = g_tc_mpn01 AND tc_mpn03= g_tc_mpn03
-      IF SQLCA.sqlcode THEN
-         CALL cl_err3("del","tc_mpn_file",g_tc_mpn01,"",SQLCA.sqlcode,"","BODY DELETE",1)  
-      ELSE
-	 CLEAR FORM
-         CALL g_tc_mpn.clear()
-         LET g_cnt=SQLCA.SQLERRD[3]
-	 MESSAGE 'Remove (',g_cnt USING '####&',') Row(s)'
-         OPEN p412_count
-         IF STATUS THEN
-	    CLOSE p412_b_curs
-	    CLOSE p412_count
+	    IF cl_delh(0,0) THEN                   #確認一下
+		INITIALIZE g_doc.* TO NULL      
+		LET g_doc.column1 = "tc_mpn01"      
+		LET g_doc.column2 = "tc_mpn03"      
+		LET g_doc.value1 = g_tc_mpn01       
+		LET g_doc.value2 = g_tc_mpn03     
+		CALL cl_del_doc()                
+		DELETE FROM tc_mpn_file WHERE tc_mpn01 = g_tc_mpn01 AND tc_mpn03= g_tc_mpn03
+		IF SQLCA.sqlcode THEN
+		    CALL cl_err3("del","tc_mpn_file",g_tc_mpn01,"",SQLCA.sqlcode,"","BODY DELETE",1)  
+		ELSE
+		    CLEAR FORM
+		    CALL g_tc_mpn.clear()
+		    LET g_cnt=SQLCA.SQLERRD[3]
+		    MESSAGE 'Remove (',g_cnt USING '####&',') Row(s)'
+		    OPEN p412_count
+		    IF STATUS THEN
+		       CLOSE p412_b_curs
+		       CLOSE p412_count
+		       COMMIT WORK
+		       RETURN
+		    END IF
+		    FETCH p412_count INTO g_row_count
+		    IF STATUS OR (cl_null(g_row_count) OR  g_row_count = 0 ) THEN
+		       CLOSE p412_b_curs
+		       CLOSE p412_count
+		       COMMIT WORK
+		       RETURN
+		    END IF
+		    DISPLAY g_row_count TO FORMONLY.cnt
+		    OPEN p412_b_curs
+		    IF g_curs_index = g_row_count + 1 THEN
+		       LET g_jump = g_row_count
+		       CALL p412_fetch('L')
+		    ELSE
+		       LET g_jump = g_curs_index
+		       LET mi_no_ask = TRUE
+		       CALL p412_fetch('/')
+		    END IF
+		END IF
+	    END IF
+	 
 	    COMMIT WORK
-            RETURN
-         END IF
-	 FETCH p412_count INTO g_row_count
-	 IF STATUS OR (cl_null(g_row_count) OR  g_row_count = 0 ) THEN
-	    CLOSE p412_b_curs
-	    CLOSE p412_count
-	    COMMIT WORK
-            RETURN
-         END IF
-	 DISPLAY g_row_count TO FORMONLY.cnt
-	 OPEN p412_b_curs
-         IF g_curs_index = g_row_count + 1 THEN
-	    LET g_jump = g_row_count
-            CALL p412_fetch('L')
-         ELSE
-            LET g_jump = g_curs_index
-	    LET mi_no_ask = TRUE
-            CALL p412_fetch('/')
-	 END IF
-	END IF
-   END IF
 	 
-  COMMIT WORK
-	 
-END FUNCTION
+	END FUNCTION
 	 
 #單身
 FUNCTION p412_b()
@@ -652,7 +658,7 @@ DEFINE   l_cnt      LIKE type_file.num10
 		"       tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10,tc_mpn19, ",  
 		"       tc_mpn11,tc_mpn12,tc_mpn13,tc_mpn14,tc_mpn15,tc_mpn16,tc_mpn17,tc_mpnplant, ",  
 		"       tc_mpn18,tc_mpndate,tc_mpnoriu ",
-		"  FROM ",tm.azp01,".tc_mpn_file ",         
+		"  FROM tc_mpn_file ",         
 		" WHERE tc_mpn01 = ? AND tc_mpn02 = ? AND tc_mpn05 = ?  AND tc_mpn03 =? FOR UPDATE "  #20230704
     LET g_forupd_sql = cl_forupd_sql(g_forupd_sql)
     DECLARE p412_bcl CURSOR FROM g_forupd_sql      # LOCK CURSOR
@@ -713,8 +719,6 @@ DEFINE   l_cnt      LIKE type_file.num10
 	    LET g_tc_mpn[l_ac].tc_mpn01 = g_tc_mpn01 
 	    LET g_tc_mpn[l_ac].tc_mpn03 = g_tc_mpn03
 	    LET g_tc_mpn[l_ac].tc_mpn04 = 'N'
-	    LET g_tc_mpn[l_ac].tc_mpn05 = ''
-	    LET g_tc_mpn[l_ac].tc_mpn06 = ''
 	    LET g_tc_mpn[l_ac].tc_mpn09 = 'N'
 	    LET g_tc_mpn[l_ac].tc_mpn10 = 'N'
 	    LET g_tc_mpn[l_ac].tc_mpn11 = 'N'
@@ -747,7 +751,6 @@ DEFINE   l_cnt      LIKE type_file.num10
 	     LET INT_FLAG = 0
 	     CANCEL INSERT
           END IF
-          IF g_tc_mpn[g_cnt].tc_mpn06 < 2 THEN LET g_tc_mpn[g_cnt].tc_mpn06='' END IF
 		    
 	  INSERT INTO tc_mpn_file(tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,
 			          tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10,tc_mpn11,
@@ -762,7 +765,7 @@ DEFINE   l_cnt      LIKE type_file.num10
 				  g_tc_mpn[l_ac].tc_mpn10,g_tc_mpn[l_ac].tc_mpn11,
 				  g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,
 				  g_tc_mpn[l_ac].tc_mpn16,g_tc_mpn[l_ac].tc_mpn19,
-				  g_user,g_tc_mpn[l_ac].tc_mpnplant,sysdate)
+				  g_user,g_plant,sysdate)
 	 IF SQLCA.sqlcode THEN
 	    CALL cl_err3("ins","tc_mpn_file",g_tc_mpn01,g_tc_mpn[l_ac].tc_mpn05,SQLCA.sqlcode,"","",1) 
 	    CANCEL INSERT
@@ -819,46 +822,19 @@ DEFINE   l_cnt      LIKE type_file.num10
 	  IF NOT cl_null(g_tc_mpn[l_ac].tc_mpn05) THEN
 	     CALL cl_set_comp_entry("tc_mpn06",FALSE)
 	     IF g_tc_mpn[l_ac].tc_mpn04='N' THEN
-                LET g_tc_mpn[l_ac].tc_mpn06 = ''                         #20251125
-                ##--計算符合規格的數量 20251210 
-                LET l_cnt = 0
-                SELECT COUNT(*) INTO l_cnt FROM ima_file
-                 WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
-                #---只有一筆 可直接取用(S)
-                IF l_cnt = 1 THEN
-                   #取料件
-                   SELECT ima01 INTO g_tc_mpn[l_ac].tc_mpn06
-                     FROM ima_file
-                    WHERE ima01 = g_tc_mpn[l_ac].tc_mpn05
-                END IF
-                #---只有一筆 可直接取用(E)
-                #--- 符合多筆時需自行挑選 (S)
-                IF l_cnt > 1 THEN
-                   CALL cl_init_qry_var()
-                   LET g_qryparam.form = "q_ima011"
-                   #LET g_qryparam.state = "c"
-                   LET g_qryparam.construct = 'N'
-                   LET g_qryparam.default1 = g_tc_mpn[l_ac].tc_mpn06
-                   LET g_qryparam.where = " ima021 = '",g_tc_mpn[l_ac].tc_mpn05 CLIPPED,"'"
-                   CALL cl_create_qry() RETURNING g_tc_mpn[l_ac].tc_mpn06
-                   DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn06
-                END IF
-                #--- 符合多筆時需自行挑選 (E) 20251210
-                
+		SELECT ima01 INTO g_tc_mpn[l_ac].tc_mpn06 FROM ima_file
+		 WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
+                            #AND imaacti='Y'                             #20240823 mark 輸入時不卡控，執行INSERT才可判斷正確 
                            
 		#依客戶規格取得廠內料號、規格
 	        IF cl_null(g_tc_mpn[l_ac].tc_mpn06) THEN
-                   LET g_tc_mpn[l_ac].tc_mpn06 = ''                      #20251125
 	           SELECT ima01,ima021 
 		     INTO g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
 		     FROM ima_file,obk_file
 		    WHERE ima01 = obk01 
-                    # AND ima130 = '1'　　　　　　　　　　　　　　#20251209 只取一般產品
 		      AND ta_obk02 = g_tc_mpn[l_ac].tc_mpn05
 		END IF
 	     END IF
-          ELSE
-             CALL cl_set_comp_entry("tc_mpn06",TRUE)
 	  END IF
           DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn05
 
@@ -867,34 +843,21 @@ DEFINE   l_cnt      LIKE type_file.num10
 
 	AFTER FIELD tc_mpn06
 	  IF NOT cl_null(g_tc_mpn[l_ac].tc_mpn06) THEN
-	     #取料件規格
+	     #取料件
 	     SELECT ima021 INTO g_tc_mpn[l_ac].tc_mpn05
 	       FROM ima_file
 	      WHERE ima01 = g_tc_mpn[l_ac].tc_mpn06
-             #--- 符合多筆時需自行挑選 (E)
 	     #取客戶料件
 	      IF cl_null(g_tc_mpn[l_ac].tc_mpn05) THEN
-                 LET g_tc_mpn[l_ac].tc_mpn06 = ''                       #20251125
 		 SELECT obk01,ima021 INTO g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
 		   FROM obk_file,ima_file 
 		  WHERE obk03 = g_tc_mpn[l_ac].tc_mpn06
 		    AND obk02 = g_tc_mpn03
 		    AND obk01 = ima01                   
 	      END IF
-              IF cl_null(g_tc_mpn[l_ac].tc_mpn05) THEN
-                 NEXT FIELD tc_mpn06
-              END IF
 	 END IF
 	 DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn06
          DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn05
-
-        BEFORE FIELD tc_mpn08
-          #--預設 希望交期
-          IF l_ac > 1 THEN
-             IF NOT cl_null(g_tc_mpn[l_ac-1].tc_mpn08)  THEN
-                LET g_tc_mpn[l_ac].tc_mpn08 = g_tc_mpn[l_ac-1].tc_mpn08
-             END IF
-          END IF
 
 	AFTER FIELD tc_mpn08
 	  IF g_tc_mpn[l_ac].tc_mpn08 < g_today THEN
@@ -904,7 +867,6 @@ DEFINE   l_cnt      LIKE type_file.num10
 		
 	AFTER FIELD tc_mpn14
 	  IF g_tc_mpn[l_ac].tc_mpn14 < g_today THEN
-             CALL cl_err('','asr-049',1)
 	     NEXT FIELD tc_mpn14
 	  END IF
 	  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
@@ -942,9 +904,8 @@ DEFINE   l_cnt      LIKE type_file.num10
 	  END IF
 	  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn13
 	  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn06
-  
+
         AFTER FIELD tc_mpnplant
-          LET l_cnt = 0
           SELECT 1 INTO l_cnt FROM geu_file
            WHERE geu01=g_tc_mpn[l_ac].tc_mpnplant
              AND geuacti='Y' AND ROWNUM=1
@@ -952,7 +913,6 @@ DEFINE   l_cnt      LIKE type_file.num10
              CALL cl_err("",'atm-377',1)
              NEXT FIELD tc_mpnplant
           END IF
-
 
 	BEFORE DELETE                            #是否取消單身
 	  IF NOT cl_null(g_tc_mpn_t.tc_mpn17) OR NOT cl_null(g_tc_mpn_t.tc_mpn18) THEN
@@ -982,13 +942,6 @@ DEFINE   l_cnt      LIKE type_file.num10
 	     LET g_rec_b = g_rec_b -1   
 	     DISPLAY g_rec_b TO FORMONLY.cn2 
 	     COMMIT WORK
-             ##--- 20250616 (S)
-             SELECT SUM(tc_mpn07) INTO g_row_count
-              FROM tc_mpn_file
-             WHERE tc_mpn01 = g_tc_mpn01 AND tc_mpn03= g_tc_mpn03
-               AND tc_mpn10 = 'N'
-             DISPLAY g_row_count TO FORMONLY.cnt
-             ##--- 20250616 (S)
 	 END IF
 	 
 	ON ROW CHANGE
@@ -1004,32 +957,26 @@ DEFINE   l_cnt      LIKE type_file.num10
 	      CALL cl_err(g_tc_mpn[l_ac].tc_mpn01,-263,1)
 	      LET g_tc_mpn[l_ac].* = g_tc_mpn_t.*
 	   ELSE
-              IF g_tc_mpn[l_ac].tc_mpn06 < 2 THEN LET g_tc_mpn[l_ac].tc_mpn06='' END IF
-	      LET g_sql = " UPDATE ",tm.azp01,".tc_mpn_file SET ",
-		          " tc_mpn02='",g_tc_mpn[l_ac].tc_mpn02,"',",                                
-		          " tc_mpn03='",g_tc_mpn[l_ac].tc_mpn03,"',",                                
-		          " tc_mpn04='",g_tc_mpn[l_ac].tc_mpn04,"',",
-		          " tc_mpn05='",g_tc_mpn[l_ac].tc_mpn05,"',",
-		          " tc_mpn06='",g_tc_mpn[l_ac].tc_mpn06,"',",
-		          " tc_mpn07='",g_tc_mpn[l_ac].tc_mpn07,"',",
-		          " tc_mpn08= ? ,",
-		          " tc_mpn09='",g_tc_mpn[l_ac].tc_mpn09,"',",     
-		          " tc_mpn10='",g_tc_mpn[l_ac].tc_mpn10,"',",       
-		          " tc_mpn19='",g_tc_mpn[l_ac].tc_mpn19,"',",       
-		          " tc_mpn11='",g_tc_mpn[l_ac].tc_mpn11,"',",       
-		          " tc_mpn12='",g_tc_mpn[l_ac].tc_mpn12,"',",       
-		          " tc_mpn13='",g_tc_mpn[l_ac].tc_mpn13,"',",       
-		          " tc_mpn14= ? ,",       
-		          " tc_mpn15= ? ,",  
-		          " tc_mpn16='",g_tc_mpn[l_ac].tc_mpn16,"',", 
-		          " tc_mpnplant='",g_tc_mpn[l_ac].tc_mpnplant,"' ", 
-	                  " WHERE tc_mpn01 = ? ", 
-	    	          " AND tc_mpn02 = ? ",
-	                  " AND tc_mpn03 = ? ",
-	                  " AND tc_mpn05 = ? "   
-           PREPARE db_upd_all FROM g_sql
-	   EXECUTE db_upd_all USING g_tc_mpn[l_ac].tc_mpn08,g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,
-                                    g_tc_mpn_t.tc_mpn01,g_tc_mpn_t.tc_mpn02,g_tc_mpn_t.tc_mpn03,g_tc_mpn_t.tc_mpn05
+	      UPDATE tc_mpn_file 
+		SET tc_mpn03=g_tc_mpn[l_ac].tc_mpn03,                                
+		    tc_mpn04=g_tc_mpn[l_ac].tc_mpn04,
+		    tc_mpn05=g_tc_mpn[l_ac].tc_mpn05,
+		    tc_mpn06=g_tc_mpn[l_ac].tc_mpn06,
+		    tc_mpn07=g_tc_mpn[l_ac].tc_mpn07,
+		    tc_mpn08=g_tc_mpn[l_ac].tc_mpn08,
+		    tc_mpn09=g_tc_mpn[l_ac].tc_mpn09,       
+		    tc_mpn10=g_tc_mpn[l_ac].tc_mpn10,       
+		    tc_mpn19=g_tc_mpn[l_ac].tc_mpn19,       
+		    tc_mpn11=g_tc_mpn[l_ac].tc_mpn11,       
+		    tc_mpn12=g_tc_mpn[l_ac].tc_mpn12,       
+		    tc_mpn13=g_tc_mpn[l_ac].tc_mpn13,       
+		    tc_mpn14=g_tc_mpn[l_ac].tc_mpn14,       
+		    tc_mpn15=g_tc_mpn[l_ac].tc_mpn15,  
+		    tc_mpn16=g_tc_mpn[l_ac].tc_mpn16 
+	      WHERE tc_mpn01 = g_tc_mpn_t.tc_mpn01 
+		AND tc_mpn02 = g_tc_mpn_t.tc_mpn02
+	        AND tc_mpn03 = g_tc_mpn_t.tc_mpn03
+	        AND tc_mpn05 = g_tc_mpn_t.tc_mpn05    
 	   IF SQLCA.sqlcode THEN
 	      CALL cl_err3("upd","tc_mpn_file",g_tc_mpn_t.tc_mpn01,g_tc_mpn_t.tc_mpn02,SQLCA.sqlcode,"","",1) 
 	      LET g_tc_mpn[l_ac].* = g_tc_mpn_t.*
@@ -1041,17 +988,6 @@ DEFINE   l_cnt      LIKE type_file.num10
 	 END IF
 	 
 	AFTER ROW
-
-         ##--- 20250529 ---(S)
-         IF g_tc_mpn[l_ac].tc_mpn10 = 'N' THEN
-            #LET g_row_count = g_tc_mpn[l_ac].tc_mpn07+g_row_count
-            SELECT SUM(tc_mpn07) INTO g_row_count
-              FROM tc_mpn_file
-             WHERE tc_mpn01 = g_tc_mpn01 AND tc_mpn03= g_tc_mpn03
-               AND tc_mpn10 = 'N'
-            DISPLAY g_row_count TO FORMONLY.cnt
-         END IF
-         ##--- 20250529 ---(E)
 	 LET l_ac = ARR_CURR()
 	   
 	 IF INT_FLAG THEN
@@ -1123,40 +1059,41 @@ DEFINE   l_cnt      LIKE type_file.num10
 END FUNCTION
 	   
 FUNCTION p412_b_askkey()
-DEFINE l_wc     LIKE type_file.chr1000
+   DEFINE
+     l_wc            LIKE type_file.chr1000
 	 
-   CONSTRUCT g_wc ON tc_mpn01,tc_mpn02,tc_mpn03,       
-	             tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10    #螢幕上取條件  
-	FROM s_tc_mpn[1].tc_mpn01,s_tc_mpn[1].tc_mpn02,s_tc_mpn[1].tc_mpn03,
-	     s_tc_mpn[1].tc_mpn04,s_tc_mpn[1].tc_mpn05,                   
-	     s_tc_mpn[1].tc_mpn06,s_tc_mpn[1].tc_mpn07,s_tc_mpn[1].tc_mpn08,s_tc_mpn[1].tc_mpn09,
-	     s_tc_mpn[1].tc_mpn10
+	    CONSTRUCT g_wc ON tc_mpn01,tc_mpn02,tc_mpn03,       
+			      tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10    #螢幕上取條件  
+		FROM s_tc_mpn[1].tc_mpn01,s_tc_mpn[1].tc_mpn02,s_tc_mpn[1].tc_mpn03,
+		     s_tc_mpn[1].tc_mpn04,s_tc_mpn[1].tc_mpn05,                   
+		     s_tc_mpn[1].tc_mpn06,s_tc_mpn[1].tc_mpn07,s_tc_mpn[1].tc_mpn08,s_tc_mpn[1].tc_mpn09,
+		     s_tc_mpn[1].tc_mpn10
 
-    BEFORE CONSTRUCT
-       CALL cl_qbe_init()
+	      BEFORE CONSTRUCT
+		CALL cl_qbe_init()
 
-    ON IDLE g_idle_seconds
-       CALL cl_on_idle()
-       CONTINUE CONSTRUCT
+	      ON IDLE g_idle_seconds
+		  CALL cl_on_idle()
+		  CONTINUE CONSTRUCT
 	 
-    ON ACTION about         
-       CALL cl_about()      
+	      ON ACTION about         
+		 CALL cl_about()      
 	 
-    ON ACTION help          
-       CALL cl_show_help()  
+	      ON ACTION help          
+		 CALL cl_show_help()  
 	 
-    ON ACTION controlg      
-       CALL cl_cmdask()   
+	      ON ACTION controlg      
+		 CALL cl_cmdask()   
 	     
-    ON ACTION qbe_select
-       CALL cl_qbe_select() 
+	      ON ACTION qbe_select
+		 CALL cl_qbe_select() 
 		 
-    ON ACTION qbe_save
-       CALL cl_qbe_save()
-  END CONSTRUCT
-  IF INT_FLAG THEN RETURN END IF
+	      ON ACTION qbe_save
+		 CALL cl_qbe_save()
+	    END CONSTRUCT
+	    IF INT_FLAG THEN RETURN END IF
 	 
-  CALL p412_b_fill(l_wc)
+	    CALL p412_b_fill(l_wc)
 	 
 END FUNCTION
 	 
@@ -1165,32 +1102,40 @@ FUNCTION p412_b_fill(p_wc)              #BODY FILL UP
 DEFINE p_wc            LIKE type_file.chr1000    
 DEFINE g_new_plant     LIKE azp_file.azp01    
 
-    IF cl_null(tm.azp01) THEN LET tm.azp01=g_plant END IF
     LET g_new_plant = tm.azp01
-    IF p_wc = " 1=1" THEN LET p_wc = "tc_mpndate >= sysdate-1 " END IF
        
-    LET g_sql = "SELECT tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,occ02,",
-		"       tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,",
-	        "       tc_mpn10,tc_mpn19,tc_mpn11,tc_mpn12,tc_mpn13,tc_mpn14,tc_mpn15,",
-		"       tc_mpn16,",
-		"       to_char(tc_mpn17,'yyyy/mm/dd HH24:MI:SS'),tc_mpnplant,",
-		"       to_char(tc_mpn18,'yyyy/mm/dd HH24:MI:SS'),",
-		"       to_char(tc_mpndate,'yyyy/mm/dd HH24:MI:SS'),",
-		"       tc_mpnoriu,'',bma05 ",
-		" FROM  ",g_new_plant,".occ_file,",g_new_plant,".tc_mpn_file ",
-                " LEFT JOIN ",g_new_plant,".bma_file ON tc_mpn06 = bma01   ",
-	        " WHERE tc_mpn03 = occ01 ",
-	        "   AND ",p_wc CLIPPED ,
-	        " ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
-
-    IF NOT cl_null(g_tc_mpn01) THEN
-       LET g_sql = g_sql CLIPPED , " AND tc_mpn01 = '",g_tc_mpn01,"' AND tc_mpn03 = '",g_tc_mpn03,"' "
+    IF NOT cl_null(g_tc_mpn01) THEN 
+       LET g_sql =
+               "SELECT tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,occ02,",  
+		       "       tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,",
+		       "       tc_mpn10,tc_mpn19,tc_mpn11,tc_mpn12,tc_mpn13,tc_mpn14,tc_mpn15,", 
+		       "       tc_mpn16,",
+		       "       to_char(tc_mpn17,'yyyy/mm/dd HH24:MI:SS'),tc_mpnplant,",
+		       "       to_char(tc_mpn18,'yyyy/mm/dd HH24:MI:SS'),",
+		       "       to_char(tc_mpndate,'yyyy/mm/dd HH24:MI:SS'),",
+		       "       tc_mpnoriu,'','' ",         
+		       " FROM ",g_new_plant,".tc_mpn_file,",g_new_plant,".occ_file ",
+		       " WHERE tc_mpn03 = occ01 ",
+		       "   AND tc_mpn01 = '",g_tc_mpn01,"' AND tc_mpn03 = '",g_tc_mpn03,"' ",
+		       "   AND ",p_wc CLIPPED ,
+		       "   AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )",
+		       " ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
+    ELSE
+        LET g_sql =
+		       "SELECT tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,occ02,",
+		       "       tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,",
+		       "       tc_mpn10,tc_mpn19,tc_mpn11,tc_mpn12,tc_mpn13,tc_mpn14,tc_mpn15,",
+		       "       tc_mpn16,",
+		       "       to_char(tc_mpn17,'yyyy/mm/dd HH24:MI:SS'),tc_mpnplant,",
+		       "       to_char(tc_mpn18,'yyyy/mm/dd HH24:MI:SS'),",
+		       "       to_char(tc_mpndate,'yyyy/mm/dd HH24:MI:SS'),",
+		       "       tc_mpnoriu,'','' ",
+		       " FROM  ",g_new_plant,".tc_mpn_file,",g_new_plant,".occ_file ",
+		       " WHERE tc_mpn03 = occ01 ",
+			"  AND EXISTS ((SELECT 1 FROM zxy_file WHERE tc_mpnplant=zxy03 AND zxy01='",g_user,"') )",
+		       "   AND ",p_wc CLIPPED ,
+		       " ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
     END IF
-
-    IF g_plant <> tm.azp01 THEN
-       LET g_sql = g_sql CLIPPED , " AND tc_mpnplant = '",tm.azp01,"' "
-    END IF
-
     PREPARE p412_p2 FROM g_sql      #預備一下
     DECLARE tc_mpn_curs CURSOR FOR p412_p2
 	 
@@ -1202,49 +1147,50 @@ DEFINE g_new_plant     LIKE azp_file.azp01
 		    CALL cl_err('FOREACH:',SQLCA.sqlcode,1)
 		    EXIT FOREACH
 		END IF
+ 
 	      
 		##-訂單
 		IF cl_null(g_tc_mpn[g_cnt].oeb01) THEN
-		   LET g_sql = " SELECT oeb01 ",
-		               "   FROM ",tm.azp01,".oeb_file,",tm.azp01,".oea_file ",
-		               "   WHERE oeb01 = oea01 ",
-		               "     AND oea03 = ? ",            
-		               "     AND oea10 = ? ",             
-                               "     AND ((oeb71 = ?) ",
-		               "     OR  (oeb04 = ? ",
-		               "     AND oeb15 = ?)) ",
-                               "     AND oeaconf <> 'X' "                                #240202 add by ruby
-                   PREPARE sel_oeb01_p FROM g_sql
-                   DECLARE sel_oeb01 CURSOR WITH HOLD FOR sel_oeb01_p
-                   FOREACH sel_oeb01 USING g_tc_mpn[g_cnt].tc_mpn03,g_tc_mpn[g_cnt].tc_mpn01,g_tc_mpn[g_cnt].tc_mpn02,
-                                           g_tc_mpn[g_cnt].tc_mpn06,g_tc_mpn[g_cnt].tc_mpn14
-                                     INTO g_tc_mpn[g_cnt].oeb01
-                   END FOREACH
+		   SELECT oeb01 INTO g_tc_mpn[g_cnt].oeb01
+		     FROM g_new_plant.oeb_file,g_new_plant.oea_file
+		    WHERE oeb01 = oea01
+		      AND oea03 = g_tc_mpn[g_cnt].tc_mpn03            
+		      AND oea10 = g_tc_mpn[g_cnt].tc_mpn01              
+                      AND ((oeb71 = g_tc_mpn[g_cnt].tc_mpn02)
+		      OR  (oeb04 = g_tc_mpn[g_cnt].tc_mpn06
+		      AND oeb15 = g_tc_mpn[g_cnt].tc_mpn14))
+                      AND oeaconf <> 'X'                                #240202 add by ruby
 		END IF
-
-                #IF g_plant <> tm.azp01 THEN
-                #   IF NOT cl_null(g_tc_mpn[g_cnt].oeb01) OR g_tc_mpn[g_cnt].tc_mpn10='Y' THEN
-		##      EXIT FOREACH
-                #   END IF
-                #END IF
+		#-BOM發放日
+		IF cl_null(g_tc_mpn[g_cnt].bma05) THEN
+		   SELECT bma05 INTO g_tc_mpn[g_cnt].bma05
+		     FROM g_new_plant.bma_file
+		    WHERE bma01 = g_tc_mpn[g_cnt].tc_mpn06
+		END IF
+              
 
 		#--更新料號、結案碼
-		IF (cl_null(g_tc_mpn[g_cnt].tc_mpn06) OR LENGTH(g_tc_mpn[g_cnt].tc_mpn06)<2 )
-                   AND g_tc_mpn[g_cnt].tc_mpn10='N' AND g_tc_mpn[g_cnt].tc_mpn11='N' 
-                THEN
-                   CALL p412_sel_ima()
+		IF cl_null(g_tc_mpn[g_cnt].tc_mpn06) AND g_tc_mpn[g_cnt].tc_mpn10='N' 
+						     AND g_tc_mpn[g_cnt].tc_mpn11='N' THEN
+                   IF g_tc_mpn[g_cnt].tc_mpn04='N' THEN
+                      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
+                        FROM ima_file
+                       WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn05
+                         AND imaacti='Y' AND ima130='1'            #20240823   
+                   ELSE
+                      SELECT ima01 INTO g_tc_mpn[g_cnt].tc_mpn06
+                        FROM ima_file 
+                       WHERE ima021 = g_tc_mpn[g_cnt].tc_mpn13
+                         AND imaacti='Y' AND ima130='1'            #20240823   
+                   END IF
 
-                   LET g_sql = " UPDATE ",tm.azp01,".tc_mpn_file ",
-                               "   SET tc_mpn06 = ?, tc_mpn10 = ? ",
-                               " WHERE tc_mpn01 = ? ",
-                               "   AND tc_mpn02 = ? ",
-                               "   AND tc_mpn03 = ? ",
-                               "   AND tc_mpn05 = ? ",
-                               "   AND (tc_mpn06 IS NULL OR tc_mpn06=' ')  "
-                   PREPARE upd_tc_mpn06_p FROM g_sql
-	           EXECUTE upd_tc_mpn06_p USING g_tc_mpn[g_cnt].tc_mpn06,g_tc_mpn[g_cnt].tc_mpn10,
-                                                g_tc_mpn[g_cnt].tc_mpn01,g_tc_mpn[g_cnt].tc_mpn02,
-                                                g_tc_mpn[g_cnt].tc_mpn03,g_tc_mpn[g_cnt].tc_mpn05
+                      UPDATE tc_mpn_file SET tc_mpn06 = g_tc_mpn[g_cnt].tc_mpn06,
+                                             tc_mpn10 = g_tc_mpn[g_cnt].tc_mpn10
+                       WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+                         AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+                         AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+                         AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+                         AND tc_mpn06 IS NULL
                 END IF                                        
 
 		LET g_cnt = g_cnt + 1
@@ -1346,6 +1292,13 @@ FUNCTION p412_bp(p_ud)
        LET l_ac = ARR_CURR()
        EXIT DISPLAY
 
+    ##---- 20250520 (S)
+    ON ACTION plant                  
+       LET plant_visible = 'Y'       
+       LET g_action_choice="plant"   
+       EXIT DISPLAY 
+    ##---- 20250520 (E)
+
     ON ACTION modify_date
        LET g_action_choice="modify_date"
        LET l_ac = ARR_CURR()
@@ -1427,13 +1380,6 @@ FUNCTION p412_bp(p_ud)
        LET l_ac2 = l_ac                       #20230816
        EXIT DISPLAY
  
-    ##---- 20250520 (S)
-    ON ACTION plant                  
-       LET plant_visible = 'Y'       
-       LET g_action_choice="plant"   
-       EXIT DISPLAY 
-    ##---- 20250520 (E)
- 
      AFTER DISPLAY
         CONTINUE DISPLAY
  
@@ -1449,7 +1395,7 @@ FUNCTION p412_b_no_entry()
    CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,
                            tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn10,tc_mpn11,
                            tc_mpn12,tc_mpn13,tc_mpn14,tc_mpn15,tc_mpn16,tc_mpn17,
-                           tc_mpn18,tc_mpn19,tc_mpnplant",FALSE)
+                           tc_mpn18,tc_mpn19",FALSE)
    #-- 生管
    IF g_sa = 'm' THEN
       CALL cl_set_comp_entry("tc_mpn14,tc_mpn15,tc_mpn16,tc_mpnplant",TRUE)
@@ -1478,72 +1424,39 @@ FUNCTION p412_b_no_entry()
    IF g_sa = 'a' or g_sa='u' THEN
       CALL cl_set_comp_entry("tc_mpn10,tc_mpn19",TRUE)
 
-      IF g_sa = 'u' THEN
-         #CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)  #20251125
-         CALL cl_set_comp_entry("tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)            #20251125
+      IF l_ac = 0 THEN
+         CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)
          RETURN
       END IF
 
       IF cl_null(g_tc_mpn[l_ac].tc_mpn17) AND cl_null(g_tc_mpn[l_ac].tc_mpn18) THEN
-         #CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)  #20251125
-         CALL cl_set_comp_entry("tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)            #20251125
+         CALL cl_set_comp_entry("tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,tc_mpn19",TRUE)
       END IF   
    END IF
 
 END FUNCTION 
 
-
 ##--更新研發確認日
 FUNCTION update_mpn18()
 
    FOR g_cnt = 1 TO g_tc_mpn.getLength()
-       IF NOT cl_null(g_tc_mpn[g_cnt].tc_mpn18) THEN CONTINUE FOR END IF
-       LET g_sql= " UPDATE ",tm.azp01,".tc_mpn_file SET tc_mpn18 = sysdate ",
-                  "   WHERE tc_mpn01 = ? ",
-                  "     AND tc_mpn02 = ? ",
-                  "     AND tc_mpn03 = ? ",
-                  "     AND tc_mpn05 = ? ",
-                  "     AND tc_mpn18 IS NULL "
-       PREPARE upd_rddate FROM g_sql
-       EXECUTE upd_rddate USING g_tc_mpn[g_cnt].tc_mpn01,g_tc_mpn[g_cnt].tc_mpn02,g_tc_mpn[g_cnt].tc_mpn03,g_tc_mpn[g_cnt].tc_mpn05
+       UPDATE tc_mpn_file SET tc_mpn18 = sysdate
+        WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+          AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+          AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+          AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+          AND tc_mpn18 IS NULL
    END FOR
 END FUNCTION
 
 ##--更新生管確認日
 FUNCTION update_mpn17()
    FOR g_cnt = 1 TO g_tc_mpn.getLength()
-       IF NOT cl_null(g_tc_mpn[g_cnt].tc_mpn17) THEN CONTINUE FOR END IF
-       LET g_sql = " UPDATE ",tm.azp01,".tc_mpn_file SET tc_mpn17 = sysdate ",
-                   "  WHERE tc_mpn01 = ? ",
-                   "    AND tc_mpn02 = ? ",
-                   "    AND tc_mpn03 = ? ",
-                   "    AND tc_mpn05 = ? ",
-                   "    AND tc_mpn17 IS NULL"
-       PREPARE upd_mddate FROM g_sql
-       EXECUTE upd_mddate USING g_tc_mpn[g_cnt].tc_mpn01,g_tc_mpn[g_cnt].tc_mpn02,g_tc_mpn[g_cnt].tc_mpn03,g_tc_mpn[g_cnt].tc_mpn05
+     UPDATE tc_mpn_file SET tc_mpn17 = sysdate
+      WHERE tc_mpn01 = g_tc_mpn[g_cnt].tc_mpn01
+        AND tc_mpn02 = g_tc_mpn[g_cnt].tc_mpn02
+        AND tc_mpn03 = g_tc_mpn[g_cnt].tc_mpn03
+        AND tc_mpn05 = g_tc_mpn[g_cnt].tc_mpn05
+        AND tc_mpn17 IS NULL
    END FOR
-END FUNCTION
-
-FUNCTION p412_sel_ima()
-    LET g_tc_mpn[g_cnt].tc_mpn06 = ''
-    LET g_sql = "SELECT ima01 ",
-                "  FROM  ",tm.azp01,".ima_file ",
-                " WHERE imaacti='Y' AND ima130= '1' ",
-                "   AND ima021 = ? "
-    PREPARE sel_ima01_p FROM g_sql
-    DECLARE sel_ima01 CURSOR WITH HOLD FOR sel_ima01_p
-    IF g_tc_mpn[g_cnt].tc_mpn04='N' THEN    #修改件否
-       FOREACH sel_ima01 USING g_tc_mpn[g_cnt].tc_mpn05 INTO g_tc_mpn[g_cnt].tc_mpn06
-       END FOREACH
-    ELSE
-       FOREACH sel_ima01 USING g_tc_mpn[g_cnt].tc_mpn13 INTO g_tc_mpn[g_cnt].tc_mpn06
-       END FOREACH
-    END IF
-END FUNCTION 
-
-FUNCTION p412_upd_blank()
-  
-    LET g_sql = "UPDATE ",tm.azp01,".tc_mpn_file SET tc_mpn06='' WHERE LENGTH(tc_mpn06) < = 5 "
-    PREPARE upd_spc FROM g_sql
-    EXECUTE upd_spc
 END FUNCTION

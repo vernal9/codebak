@@ -290,6 +290,7 @@
 # Modify.........:               20240423 By momo 調整 20180918 工單製程變更新已計算正確轉入量，故不需再額外計算
 # Modify.........: NO:24060009   20240607 By momo 調整可入庫量檢核判斷
 # Modify.........: NO:25110007   20251107 By momo 顯示下製程 作業編號與作業名稱
+# Modify.........: NO:25120004   20251202 By momo 修正重工量已大於生產量卡控問題
 
 DATABASE ds
  
@@ -7330,6 +7331,7 @@ DEFINE l_ecm63      LIKE ecm_file.ecm63  #TQC-B20083
 DEFINE l_n          LIKE type_file.num5  #MOD-CA0066 add 
 DEFINE l_sfb93      LIKE sfb_file.sfb93  #MOD-CA0066 add 
 DEFINE l_ecm311     LIKE ecm_file.ecm311 #20241108 可轉出量
+DEFINE l_sfb08      LIKE sfb_file.sfb08  #20251202 生產數量
 
     LET g_success = 'Y'
     IF cl_null(g_shb.shb012) THEN LET g_shb.shb012=' ' END IF #FUN-A60095
@@ -7344,6 +7346,7 @@ DEFINE l_ecm311     LIKE ecm_file.ecm311 #20241108 可轉出量
     END IF
     #TQC-B20083(S)
     LET l_ecm311 = 0                                 #20241108 add
+    #組成用量,底數,良品轉出量-重工轉入量 
     SELECT ecm62,ecm63,ecm311-ecm302                 #20241108 add #20241114 modify
       INTO l_ecm62,l_ecm63,l_ecm311                  #20241108 add
       FROM ecm_file  
@@ -7355,14 +7358,25 @@ DEFINE l_ecm311     LIKE ecm_file.ecm311 #20241108 可轉出量
     IF cl_null(l_ecm63) OR l_ecm63=0 THEN
        LET l_ecm63=1
     END IF
+   ##----- 20251202 By momo (S) 生產量=最小發料量，不需再重設最小發料量                                         
    ##----- 20241108 (S) 可移轉數判斷
-   IF g_wip > 0 AND l_ecm311 > 0 AND g_wip-l_ecm311 < 0 THEN      
-      LET g_min_set = g_wip - l_ecm311 + g_min_set                
-   END IF              
-   IF g_wip > 0 AND l_ecm311 > 0 AND g_wip > l_ecm311 THEN
-      LET g_min_set =  g_min_set - l_ecm311
-   END IF                                           
+   LET l_sfb08 = 0
+   SELECT sfb08 INTO l_sfb08 FROM sfb_file
+    WHERE sfb01 = g_shb.shb05
+   IF g_min_set = l_sfb08 THEN   
+   ELSE  
+      #WIP > 0 AND 良品轉出量 > 0 AND WIP-良品轉出 < 0 
+      IF g_wip > 0 AND l_ecm311 > 0 AND g_wip-l_ecm311 < 0 THEN      
+         LET g_min_set = g_wip - l_ecm311 + g_min_set                
+      END IF              
+      #WIP > 0 AND 良品轉出量 > 0 AND WIP > 良品轉出量 
+      IF g_wip > 0 AND l_ecm311 > 0 AND g_wip > l_ecm311 THEN
+         LET g_min_set =  g_min_set - l_ecm311
+      END IF    
+   END IF
    ##----- 20241108 (E)
+   ##----- 20251202 By momo (E)  
+
    #MOD-F30066 mark str
    ##CHI-BA0035 -- begin --
    #SELECT SUM(ecm315) INTO l_ecm315 FROM ecm_file

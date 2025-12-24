@@ -642,6 +642,15 @@ FUNCTION axmr610()
             SELECT sfb01 INTO l_sfb01 FROM sfb_file
              WHERE sfb22 = sr.ogb31
                AND sfb221 = sr.ogb32
+               AND sfb87 != 'X'
+
+            IF cl_null(l_sfb01) THEN
+               SELECT sfb01 INTO l_sfb01 FROM sfb_file,ogb_file
+                WHERE ta_sfb01 = ogb31||LPAD(ogb32,3,'0')
+                  AND ogb31=sr.ogb31 AND ogb32=sr.ogb32
+                  AND sfb87 != 'X' AND sfb86 IS NULL
+                  AND rownum=1
+            END IF
             ##---- 20230815 add by momo (E)
 
  
