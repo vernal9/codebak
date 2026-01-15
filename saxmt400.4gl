@@ -5195,6 +5195,8 @@ FUNCTION t400_i(p_cmd)
    DEFINE l_unit       LIKE oeb_file.oeb05     #MOD-E40008
    DEFINE l_oea26_sum  LIKE type_file.num20_6  #MOD-F60047 add
    DEFINE l_occ21      LIKE occ_file.occ21     #180518 add by ruby
+   DEFINE l_oeb03      LIKE oeb_file.oeb03     #251229 add by ruby
+   DEFINE l_sql        LIKE type_file.chr1000  #251229 add by ruby 
                    
    CALL cl_set_head_visible("","YES")          #No.FUN-6A0092
 #TQC-C40197---ADD---STR---
@@ -5327,8 +5329,7 @@ FUNCTION t400_i(p_cmd)
                    WHERE oayslip = g_t1
                   DISPLAY BY NAME g_oea.oea1002
                END IF
-               #MOD-D10033 --End 
-               
+               #MOD-D10033 --End             
             END IF
          END IF
 
@@ -6179,7 +6180,29 @@ FUNCTION t400_i(p_cmd)
           AFTER FIELD oeaud05
              IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
           AFTER FIELD oeaud06
-             IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
+             #IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF               #251229 mark by ruby
+             #251229 add by ruby --s--
+             IF cl_null(g_oea_t.oeaud06) THEN LET g_oea_t.oeaud06='N' END IF
+             IF cl_null(g_oea.oeaud06) THEN LET g_oea.oeaud06='N' END IF
+             IF g_oea_t.oeaud06 <> g_oea.oeaud06 THEN
+                IF g_oea.oeaud06='Y' THEN
+                   LET l_cnt=0
+                   SELECT count(*) INTO l_cnt FROM oeb_file WHERE oeb01=g_oea.oea01
+                   IF cl_null(l_cnt) THEN LET l_cnt=0 END IF
+                   IF l_cnt>0 THEN
+                      LET l_sql = " SELECT oeb03 FROM oeb_file",
+                                  "  WHERE oeb01 = '",g_oea.oea01,"' AND oeb03 NOT IN (SELECT oao03 FROM oao_file WHERE oao01 = '",g_oea.oea01,"' AND oao06='貨齊出')"
+                      PREPARE t400_pre_1 FROM l_sql
+                      DECLARE t400_curs_1 CURSOR FOR t400_pre_1
+                      FOREACH t400_curs_1 INTO l_oeb03                
+                        CALL t410_ins_oao(g_oea.oea01,l_oeb03)
+                      END FOREACH
+                   END IF  
+                ELSE
+                   DELETE FROM oao_file WHERE oao01=g_oea.oea01 AND oao06='貨齊出'       
+                END IF
+             END IF             
+             #251229 add by ruby --e--
           AFTER FIELD oeaud07
              IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
           AFTER FIELD oeaud08
@@ -6816,6 +6839,7 @@ DEFINE l_oeb03      LIKE oeb_file.oeb03   #MOD-G70055 add
 DEFINE l_ras07      LIKE ras_file.ras07   #MOD-G70055 add
 DEFINE l_oeb931     LIKE oeb_file.oeb931  #No.FUN-820046
 DEFINE l_oeb932     LIKE oeb_file.oeb932  #No.FUN-820046
+DEFINE l_oeaud06    LIKE oea_file.oeaud06   #251229 add by ruby
 
     DEFINE l_pjb09  LIKE pjb_file.pjb09    #No.FUN-850027
     DEFINE l_pjb11  LIKE pjb_file.pjb11    #No.FUN-850027
@@ -8279,12 +8303,36 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
               END IF
            END IF #FUN-BC0130
            #241226 add by ruby --s--
+           #251229 add by ruby --s--
+           LET l_oeaud06='N'
+           SELECT oeaud06 INTO l_oeaud06 FROM oea_file WHERE oea01=g_oea.oea01
+           IF l_oeaud06='Y' THEN
+              LET l_cnt=0
+              SELECT count(*) INTO l_cnt FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03 AND oao06='貨齊出'
+              IF cl_null(l_cnt) THEN LET l_cnt=0 END IF
+              IF l_cnt=0 THEN
+                 #CALL t410_ins_oao()
+                 CALL t410_ins_oao(g_oea.oea01,g_oeb[l_ac].oeb03)
+              END IF   
+           ELSE
+              DELETE FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03 AND oao06='貨齊出'
+           END IF
+           #251229 add by ruby --e--
            LET l_cnt=0
            SELECT count(*) INTO l_cnt FROM occ_file WHERE occ01=g_oea.oea03 AND occ20 in ('AME','EUR')
            IF cl_null(l_cnt) THEN LET l_cnt=0 END IF
-           IF p_cmd='a' AND l_cnt>0 AND g_plant='TY' THEN
-              CALL t410_ins_oao()   
-           END IF                      
+           #IF p_cmd='a' AND l_cnt>0 AND g_plant='TY' THEN     #251229 mark by ruby
+           IF l_cnt>0 AND g_plant='TY' THEN                    #251229 add by ruby
+              #CALL t410_ins_oao()     #251229 mark by ruby
+              #251229 add by ruby --s--
+              LET l_cnt=0                                                                                                           
+              SELECT count(*) INTO l_cnt FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03 AND oao06='貨齊出'       
+              IF cl_null(l_cnt) THEN LET l_cnt=0 END IF                                                                             
+              IF l_cnt=0 THEN                                                                                                       
+                 CALL t410_ins_oao(g_oea.oea01,g_oeb[l_ac].oeb03)                                                                   
+              END IF                                                                                                                
+              #251229 add by ruby --e--
+           END IF                       
            #241226 add by ruby --e--
            #計算折價
            SELECT SUM(rxc06) INTO l_sum FROM rxc_file WHERE rxc00 = '01'
@@ -8390,7 +8438,8 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
             SELECT occ74 INTO l_occ74 FROM occ_file WHERE occ01=g_oea.oea03
             IF l_occ74='Y' AND NOT cl_null(g_oeb[l_ac].oeb11) THEN
                LET l_cnt=0
-               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=g_oeb[l_ac].oeb11 AND obk02=g_oea.oea03 AND obk01<>g_oeb[l_ac].oeb04 
+               #SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=g_oeb[l_ac].oeb11 AND obk02=g_oea.oea03 AND obk01<>g_oeb[l_ac].oeb04                    #251016 add by ruby
+               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=g_oeb[l_ac].oeb11 AND obk02=g_oea.oea03 AND obk01<>g_oeb[l_ac].oeb04 AND obkacti = 'Y'   #251016 add by ruby 
                IF l_cnt>0 THEN
                   CALL cl_err('','cxm-041',1)                
                   NEXT FIELD oeb11
@@ -8401,7 +8450,8 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
           SELECT COUNT(*) INTO l_count FROM obk_file
             WHERE obk03 = g_oeb[l_ac].oeb11
               AND obk05 = g_oea.oea23            #TQC-A70029 add  
-              AND obk02 = g_oea.oea03           #MOD-C40035 add          
+              AND obk02 = g_oea.oea03           #MOD-C40035 add 
+              AND obkacti = 'Y'                 #251016 add by ruby
           #IF cl_null(g_oeb[l_ac].oeb04) THEN                  #MOD-GA0033 mark
            IF cl_null(g_oeb[l_ac].oeb04) AND l_count >=1 THEN  #MOD-GA0033 add #20190326 mark
           #IF l_count >=1 THEN  #20190326 modify
@@ -8419,7 +8469,8 @@ DEFINE l_ac_t2     LIKE type_file.num5    #MOD-G60038 add
                 FROM obk_file
                WHERE obk03 = g_oeb[l_ac].oeb11
                  AND obk05 = g_oea.oea23       #TQC-A70029 add 
-                 AND obk02 = g_oea.oea03           #MOD-C40035 add              
+                 AND obk02 = g_oea.oea03           #MOD-C40035 add
+                 AND obkacti = 'Y'             #251016 add by ruby 
               LET g_oeb[l_ac].oeb04  = l_obk01
               #-----MOD-AA0054---------
               CALL t400_chk_oeb04_1(p_cmd) RETURNING 
@@ -11927,7 +11978,7 @@ FUNCTION t400_copy()
    DEFINE l_oea23         LIKE oea_file.oea23   #MOD-A30147
    DEFINE l_oea24         LIKE oea_file.oea24   #MOD-A30147
    DEFINE l_cnt           LIKE type_file.num5    #TQC-C70220 add
-   DEFINE l_cnt1          LIKE type_file.num5   #FUN-C80045 add 
+   DEFINE l_cnt1          LIKE type_file.num5   #FUN-C80045 add   
 
    IF g_oea.oea11 ='3' THEN RETURN END IF
    LET new_date=g_today
@@ -11999,7 +12050,7 @@ WHILE TRUE
              END IF
              LET g_t1=new_no[1,g_doc_len]
              SELECT oayapr INTO l_oayapr
-               FROM oay_file WHERE oayslip = g_t1
+               FROM oay_file WHERE oayslip = g_t1                                 
           END IF
 
         ON ACTION controlp
@@ -17721,7 +17772,8 @@ FUNCTION t400_b_more()
             SELECT occ74 INTO l_occ74 FROM occ_file WHERE occ01=g_oea.oea03
             IF l_occ74='Y' AND NOT cl_null(b_oeb.oeb11) THEN
                LET l_cnt=0
-               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=b_oeb.oeb11 AND obk02=g_oea.oea03 AND obk01<>b_oeb.oeb04 
+               #SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=b_oeb.oeb11 AND obk02=g_oea.oea03 AND obk01<>b_oeb.oeb04                    #251016 mark by ruby
+               SELECT count(*) INTO l_cnt FROM obk_file WHERE obk03=b_oeb.oeb11 AND obk02=g_oea.oea03 AND obk01<>b_oeb.oeb04 AND obkacti = 'Y'   #251016 add by ruby
                IF l_cnt>0 THEN
                   CALL cl_err('','cxm-041',1)                
                   NEXT FIELD oeb11
@@ -22649,6 +22701,7 @@ END FUNCTION
 FUNCTION t400_chk_oea01()
    DEFINE li_result    LIKE type_file.num5        #No.FUN-550052  #No.FUN-680137 SMALLINT
    DEFINE l_cnt     LIKE type_file.num5   #FUN-C80045 add
+   DEFINE l_oayud02    LIKE oay_file.oayud02 #250808 add by ruby     
             IF NOT  cl_null(g_oea.oea01) THEN
                LET g_ydate = g_oea.oea02              #FUN-D60069 add
                LET g_t1=s_get_doc_no(g_oea.oea01)
@@ -22698,6 +22751,19 @@ FUNCTION t400_chk_oea01()
            END IF
   	       DISPLAY BY NAME g_oay.oaydesc                  #MOD-9C0388 remark
 
+               #250808 add by ruby --s--
+               LET l_oayud02='N'
+               SELECT oayud02 INTO l_oayud02 FROM oay_file WHERE oayslip=g_t1
+               #250808 add by ruby --e--
+                  #241209 add by ruby --s--
+                  IF g_plant='TY' AND l_oayud02='Y' THEN   #250808 modify by ruby
+                    LET g_oea.oeaud05 = 'Y'   
+                  ELSE
+                    LET g_oea.oeaud05 = 'N'
+                  END IF
+                  DISPLAY BY NAME g_oea.oeaud05
+                  #241209 add by ruby --e--   
+                  
 #..............check是否須簽核處理....................................
                SELECT oayapr,oaysign
                  INTO g_oea.oeamksg,g_oea.oeasign
@@ -23413,7 +23479,8 @@ FUNCTION T400_chk_oea04(p_cmd)
      #      IF NOT (g_oea.oea11='5' AND NOT cl_null(g_oea.oea044) ) THEN   #CHI-B30081
      #MOD-BB0122 mark --end--
      #MOD-BB0122 add --start--
-     IF (g_oea.oea04 != g_oea_t.oea04 OR g_oea_t.oea04 IS NULL) AND length(g_oea.oea04)<>'6' THEN
+     #IF (g_oea.oea04 != g_oea_t.oea04 OR g_oea_t.oea04 IS NULL) AND length(g_oea.oea04)<>'6' THEN                                                                 #251111 mark by ruby
+     IF (g_oea.oea04 != g_oea_t.oea04 OR g_oea_t.oea04 IS NULL) AND (length(g_oea.oea04)<>'6' OR (length(g_oea.oea04)='6' AND g_oea.oea04 MATCHES 'CH*')) THEN     #251111 add by ruby
         IF g_oea.oea11<>'5' THEN
      #MOD-BB0122 add --end--
                LET g_oea.oea044=NULL
@@ -23437,7 +23504,8 @@ FUNCTION T400_chk_oea04(p_cmd)
          END IF   #CHI-B30081
       END IF
       
-      IF length(g_oea.oea04)<>'6' THEN
+      #IF length(g_oea.oea04)<>'6' THEN                                                               #251111 mark by ruby
+      IF (length(g_oea.oea04)<>'6' OR (length(g_oea.oea04)='6' AND g_oea.oea04 MATCHES 'CH*')) THEN   #251111 add by ruby
       SELECT occ02,occ66 INTO g_buf,l_occ66
         FROM occ_file
        WHERE occ01=g_oea.oea04
@@ -23447,7 +23515,8 @@ FUNCTION T400_chk_oea04(p_cmd)
          RETURN FALSE
       END IF
       END IF
-      IF length(g_oea.oea04)='6' THEN
+      #IF length(g_oea.oea04)='6' THEN                                          #251111 mark by ruby
+      IF length(g_oea.oea04)='6' AND g_oea.oea04 NOT MATCHES 'CH*' THEN         #251111 add by ruby
       SELECT ofd02,'' INTO g_buf,l_occ66
         FROM ofd_file
        WHERE ofd01=g_oea.oea04
@@ -28696,13 +28765,6 @@ DEFINE l_azp02 LIKE azp_file.azp02 #No.FUN-870007
        WHERE azp01 = g_plant
        DISPLAY l_azp02 TO oeaplant_desc
    END IF
-      #241209 add by ruby --s--
-      IF g_plant='TY' THEN
-        LET g_oea.oeaud05 = 'Y'   
-      ELSE
-        LET g_oea.oeaud05 = 'N'
-      END IF
-      #241209 add by ruby --e--
 END FUNCTION
 
 FUNCTION t400_undo_dis()
@@ -32262,11 +32324,11 @@ FUNCTION t400_fetch_price(p_cmd)
      END IF
      #MOD-H30018----add----str---
      LET l_get_price = 'N'
-     IF NOT cl_null(g_oeb_o.oeb12) AND g_oeb_o.oeb12 > 0 AND g_oeb_o.oeb12 <> g_oeb[l_ac].oeb12 THEN
-         IF cl_confirm('apm-501') THEN #影響取價方式欄位[數量]有變更,是否重新取價(Y/N)?
-             LET l_get_price = 'Y'
-         END IF
-     END IF
+     #IF NOT cl_null(g_oeb_o.oeb12) AND g_oeb_o.oeb12 > 0 AND g_oeb_o.oeb12 <> g_oeb[l_ac].oeb12 THEN        #250917 mark by ruby
+     #    IF cl_confirm('apm-501') THEN #影響取價方式欄位[數量]有變更,是否重新取價(Y/N)?                     #250917 mark by ruby
+     #        LET l_get_price = 'Y'                                                                          #250917 mark by ruby
+     #    END IF                                                                                             #250917 mark by ruby
+     #END IF                                                                                                 #250917 mark by ruby
      #MOD-H30018----add----end---
 #FUN-C20098 -----------------STA
 #   #FUN-AC0012 Begin---
@@ -35984,13 +36046,16 @@ END FUNCTION
 ##----- 20180413 add(E)
 
 #241226 add by ruby --s--
-FUNCTION t410_ins_oao() 
+FUNCTION t410_ins_oao(l_oea01,l_oeb03) 
    DEFINE l_flag   LIKE type_file.num5
    DEFINE l_cnt    LIKE type_file.num5
    DEFINE l_item   LIKE type_file.num5
+   DEFINE l_oea01  LIKE oea_file.oea01   #251229 add by ruby
+   DEFINE l_oeb03  LIKE oeb_file.oeb03   #251229 add by ruby
 
    LET l_item=1
-   SELECT max(oao04) INTO l_item FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03
+   #SELECT max(oao04) INTO l_item FROM oao_file WHERE oao01=g_oea.oea01 AND oao03=g_oeb[l_ac].oeb03     #251229 mark by ruby
+   SELECT max(oao04) INTO l_item FROM oao_file WHERE oao01=l_oea01 AND oao03=l_oeb03                    #251229 add by ruby
    IF cl_null(l_item) THEN 
      LET l_item=1
    ELSE 
@@ -35998,8 +36063,10 @@ FUNCTION t410_ins_oao()
    END IF     
 
    #Default初植
-   LET g_oao.oao01  = g_oea.oea01           #訂單單號
-   LET g_oao.oao03  = g_oeb[l_ac].oeb03     #項次
+   #LET g_oao.oao01  = g_oea.oea01           #訂單單號
+   #LET g_oao.oao03  = g_oeb[l_ac].oeb03     #項次
+   LET g_oao.oao01  = l_oea01                #訂單單號
+   LET g_oao.oao03  = l_oeb03                #項次
    LET g_oao.oao04  = l_item
    LET g_oao.oao05  = '2'
    LET g_oao.oao06  = '貨齊出'

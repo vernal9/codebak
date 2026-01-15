@@ -163,14 +163,14 @@ FUNCTION p412_curs()
       END IF
    
     AFTER FIELD azp01
-      LET l_cnt = 0
-      SELECT 1 INTO l_cnt FROM zxy_file
-       WHERE (zxy01 = g_user OR zxy01=g_prog)
-         AND zxy03 = tm.azp01
-      IF l_cnt = 0 THEN
-         CALL cl_err(tm.azp01,'sub-188',1)
-         NEXT FIELD azp01
-      END IF
+      #LET l_cnt = 0
+      #SELECT 1 INTO l_cnt FROM zxy_file
+      # WHERE (zxy01 = g_user OR zxy01=g_prog)
+      #   AND zxy03 = tm.azp01
+      #IF l_cnt = 0 THEN
+      #   CALL cl_err(tm.azp01,'sub-188',1)
+      #   NEXT FIELD azp01
+      #END IF
 
     ON ACTION controlp
        CASE
@@ -739,6 +739,7 @@ DEFINE   l_cnt      LIKE type_file.num10
           END IF
  
           #判斷料號有效否與是否可販售 20230816
+          LET l_cnt = 0
           SELECT 1 INTO l_cnt FROM ima_file
             WHERE ima01 = g_tc_mpn[l_ac].tc_mpn06
               AND (imaacti='N' OR ima130='0')
@@ -789,6 +790,7 @@ DEFINE   l_cnt      LIKE type_file.num10
 	AFTER FIELD tc_mpn02
 	  #結案卡控
 	  IF g_sa = 'a' OR p_cmd='a' THEN
+             LET l_cnt = 0
 	     SELECT 1 INTO l_cnt FROM tc_mpn_file
               WHERE tc_mpn01 = g_tc_mpn[l_ac].tc_mpn01
 	        AND tc_mpn02 = g_tc_mpn[l_ac].tc_mpn02
@@ -824,28 +826,24 @@ DEFINE   l_cnt      LIKE type_file.num10
                 LET l_cnt = 0
                 SELECT COUNT(*) INTO l_cnt FROM ima_file
                  WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
-                #---只有一筆 可直接取用(S)
+                #--- 符合多筆時需自行挑選 (S)
+                IF l_cnt > 1 THEN
+                   CALL cl_init_qry_var()
+                   LET g_qryparam.form ="cq_ima02"
+                   LET g_qryparam.construct = 'N'
+                   LET g_qryparam.arg1= g_tc_mpn[l_ac].tc_mpn05
+                   CALL cl_create_qry() RETURNING g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
+                END IF
+                #--- 符合多筆時需自行挑選 (E) 
+                #--- 符合一筆 (S)
                 IF l_cnt = 1 THEN
                    #取料件
                    SELECT ima01 INTO g_tc_mpn[l_ac].tc_mpn06
                      FROM ima_file
-                    WHERE ima01 = g_tc_mpn[l_ac].tc_mpn05
+                    WHERE ima021 = g_tc_mpn[l_ac].tc_mpn05
                 END IF
-                #---只有一筆 可直接取用(E)
-                #--- 符合多筆時需自行挑選 (S)
-                IF l_cnt > 1 THEN
-                   CALL cl_init_qry_var()
-                   LET g_qryparam.form = "q_ima011"
-                   #LET g_qryparam.state = "c"
-                   LET g_qryparam.construct = 'N'
-                   LET g_qryparam.default1 = g_tc_mpn[l_ac].tc_mpn06
-                   LET g_qryparam.where = " ima021 = '",g_tc_mpn[l_ac].tc_mpn05 CLIPPED,"'"
-                   CALL cl_create_qry() RETURNING g_tc_mpn[l_ac].tc_mpn06
-                   DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn06
-                END IF
-                #--- 符合多筆時需自行挑選 (E) 20251210
+                ##--- 符合一筆 (S) 20251210
                 
-                           
 		#依客戶規格取得廠內料號、規格
 	        IF cl_null(g_tc_mpn[l_ac].tc_mpn06) THEN
                    LET g_tc_mpn[l_ac].tc_mpn06 = ''                      #20251125
@@ -1076,12 +1074,24 @@ DEFINE   l_cnt      LIKE type_file.num10
 	 
 	ON ACTION controlp
 	   CASE
-	   WHEN INFIELD(tc_mpn01) #產品名稱
-	        CALL q_sel_ima(TRUE, "q_ima","","","","","","","",'')  RETURNING  g_qryparam.multiret
-	        CALL p412_b_fill(" 1=1")
-	        COMMIT WORK
-	        LET g_flag = TRUE
-		EXIT INPUT
+	   WHEN INFIELD(tc_mpn03) #客戶
+                CALL cl_init_qry_var()
+                LET g_qryparam.form ="q_occ"
+                CALL cl_create_qry() RETURNING g_qryparam.multiret
+                DISPLAY g_qryparam.multiret TO tc_mpn03
+	   WHEN INFIELD(tc_mpn05) #規格
+                CALL cl_init_qry_var()
+                LET g_qryparam.form ="cq_ima02"
+                LET g_qryparam.arg1= g_tc_mpn[l_ac].tc_mpn05
+                CALL cl_create_qry() RETURNING g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
+                NEXT FIELD tc_mpn05
+	   WHEN INFIELD(tc_mpn06) #產品
+                CALL cl_init_qry_var()
+                CALL cl_init_qry_var()
+                LET g_qryparam.form ="cq_ima02"
+                LET g_qryparam.arg1= g_tc_mpn[l_ac].tc_mpn05
+                CALL cl_create_qry() RETURNING g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
+                NEXT FIELD tc_mpn06
 	   END CASE
 	 
 	ON ACTION CONTROLO                        #沿用所有欄位
@@ -1164,10 +1174,18 @@ FUNCTION p412_b_fill(p_wc)              #BODY FILL UP
 
 DEFINE p_wc            LIKE type_file.chr1000    
 DEFINE g_new_plant     LIKE azp_file.azp01    
+DEFINE l_cnt           LIKE type_file.num5
 
     IF cl_null(tm.azp01) THEN LET tm.azp01=g_plant END IF
     LET g_new_plant = tm.azp01
     IF p_wc = " 1=1" THEN LET p_wc = "tc_mpndate >= sysdate-1 " END IF
+
+    #---判斷是否有該營運中心權限(S)
+    LET l_cnt = 0
+    SELECT 1 INTO l_cnt FROM zxy_file
+       WHERE zxy01 = g_user
+         AND zxy03 = tm.azp01
+    #---判斷是否有該營運中心權限(S)
        
     LET g_sql = "SELECT tc_mpn00,tc_mpn01,tc_mpn02,tc_mpn03,occ02,",
 		"       tc_mpn04,tc_mpn05,tc_mpn06,tc_mpn07,tc_mpn08,tc_mpn09,",
@@ -1180,16 +1198,18 @@ DEFINE g_new_plant     LIKE azp_file.azp01
 		" FROM  ",g_new_plant,".occ_file,",g_new_plant,".tc_mpn_file ",
                 " LEFT JOIN ",g_new_plant,".bma_file ON tc_mpn06 = bma01   ",
 	        " WHERE tc_mpn03 = occ01 ",
-	        "   AND ",p_wc CLIPPED ,
-	        " ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
+	        "   AND ",p_wc CLIPPED 
+	      #  " ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
 
     IF NOT cl_null(g_tc_mpn01) THEN
        LET g_sql = g_sql CLIPPED , " AND tc_mpn01 = '",g_tc_mpn01,"' AND tc_mpn03 = '",g_tc_mpn03,"' "
     END IF
 
-    IF g_plant <> tm.azp01 THEN
-       LET g_sql = g_sql CLIPPED , " AND tc_mpnplant = '",tm.azp01,"' "
+    IF g_plant <> tm.azp01 AND l_cnt = 0 THEN
+       LET g_sql = g_sql CLIPPED , " AND tc_mpnplant = '",g_plant,"' "
     END IF
+
+    LET g_sql = g_sql CLIPPED ," ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
 
     PREPARE p412_p2 FROM g_sql      #預備一下
     DECLARE tc_mpn_curs CURSOR FOR p412_p2
