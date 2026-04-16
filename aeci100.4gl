@@ -159,6 +159,9 @@
 # Modify.........: No:22080024   20220810 By momo 增加顯示 imaacti ; 追加卡控,料號資料有效碼為『 N 』的資料不可複製
 # Modify.........: No:22120013   20221209 By momo 增加資料串聯功能
 # Modify.........: NO:23030034   20230317 By momo 增加資料建立日
+# Modify.........: NO:23030059   20230331 By momo copy 時，預設新製程編號=原製程編號
+# Modify.........: NO:24100010   20241011 By momo 料件製程新增時，一併更新 aimi104 ima571/ima94
+# Modify.........: NO:26030077   20260318 By momo 調整 更新機工時 
 
 DATABASE ds
 
@@ -1298,7 +1301,8 @@ FUNCTION i100_update_working_time()        #更新報工機工時
    DEFINE l_month        LIKE type_file.num10
    DEFINE l_bdate        LIKE type_file.dat 
    DEFINE l_edate        LIKE type_file.dat
-   DEFINE tm_wc          STRING           #20180316 add
+   DEFINE tm_wc          STRING                #20180316 add
+   DEFINE l_update       LIKE  type_file.chr1  #20260317
 
    IF s_shut(0) THEN
       RETURN
@@ -1331,10 +1335,11 @@ FUNCTION i100_update_working_time()        #更新報工機工時
 
    LET l_year = YEAR(g_today)
    LET l_month = MONTH(g_today)
+   LET l_update = 'N'                                 #20260317
    
    CALL cl_set_head_visible("","YES")   
 
-   INPUT l_year,l_month WITHOUT DEFAULTS FROM year,month
+   INPUT l_year,l_month,l_update WITHOUT DEFAULTS FROM year,month,update #20260317
 
       AFTER FIELD year
          IF NOT cl_null(l_year) THEN
@@ -1351,6 +1356,16 @@ FUNCTION i100_update_working_time()        #更新報工機工時
                NEXT FIELD month
             END IF
          END IF
+
+     ##--- 20260317 (S) ---
+     AFTER FIELD update 
+       IF l_update = 'Y' THEN
+          IF tm_wc = " 1=1" OR tm_wc="ecb01 like '%'" THEN
+             CALL cl_err('','apc-619',1)
+             CALL i100_update_working_time()
+          END IF
+       END IF
+
 
       ON IDLE g_idle_seconds
          CALL cl_on_idle()
@@ -1385,21 +1400,59 @@ FUNCTION i100_update_working_time()        #更新報工機工時
    END IF
    ##---- 20210518 (E)
 
-   LET l_sql =  " SELECT ecb01,ecb02,ecb03,ecb06,ecb19,ecb21 FROM ecb_file ",
-                #M009 180129 By TSD.Nic -----(S)
-                #"  WHERE ecb01 = ? AND ecb02 = ? "
-                " ,ecu_file ",
-               #"  WHERE ecb01 = ecu01 AND ecb02 = ecu02 AND ecu10 = 'Y' ",     #221007 mark by ruby
-                "  WHERE ecb01 = ecu01 AND ecb02 = ecu02 ",                     #221007 add by ruby
-               #"  AND ecu01 IN (SELECT shb10 FROM shb_file WHERE shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"') ",  #180705 add by ruby        #20211008 mark
-                "  AND EXISTS(SELECT * FROM shb_file WHERE shbconf !='X' AND shb10=ecu01 AND shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"' )",  #20211008 modify
-                "  AND (ecb19 > 0 OR ecb21 > 0 )",                                            #20191210 標準工時 > 0
-                "    AND ",tm_wc CLIPPED                                       #20180319 add 
-                #M009 180129 By TSD.Nic -----(E)
+   ##---- 20260317 by momo (S) 改寫 製程抓取段
+   #LET l_sql =  " SELECT ecb01,ecb02,ecb03,ecb06,ecb19,ecb21 FROM ecb_file ",
+   #             #M009 180129 By TSD.Nic -----(S)
+   #             #"  WHERE ecb01 = ? AND ecb02 = ? "
+   #             " ,ecu_file ",
+   #            #"  WHERE ecb01 = ecu01 AND ecb02 = ecu02 AND ecu10 = 'Y' ",     #221007 mark by ruby
+   #             "  WHERE ecb01 = ecu01 AND ecb02 = ecu02 ",                     #221007 add by ruby
+   #            #"  AND ecu01 IN (SELECT shb10 FROM shb_file WHERE shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"') ",  #180705 add by ruby        #20211008 mark
+   #             "  AND EXISTS (SELECT * FROM shb_file WHERE shbconf !='X' AND shb10=ecu01 AND shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"' )",  #20211008 modify
+   #             "  AND (ecb19 > 0 OR ecb21 > 0 )",                                            #20191210 標準工時 > 0
+   #             "    AND ",tm_wc CLIPPED                                       #20180319 add 
+   #             #M009 180129 By TSD.Nic -----(E)
+
+   IF l_update = 'N' THEN
+   LET l_sql =  " SELECT ecb01,ecb02,ecb03,ecb06,ecb19,ecb21 ",
+                "   FROM ecb_file ecb ",
+                "  WHERE ecb19 > 0 AND ecb21 > 0 ",
+                "    AND EXISTS ( ",
+                "        SELECT 1 ",
+                "        FROM shb_file shb ",
+                "        JOIN sfb_file sfb ON shb.shb05 = sfb.sfb01 ",
+                "        WHERE shb.shb10 = ecb.ecb01 ",
+                "          AND shb.shb081 = ecb.ecb06 ",
+                "          AND sfb.sfb06 = ecb.ecb02 ",
+                "          AND shb.shb27 IS NULL ",
+                "          AND shb.shb32 >= '",l_bdate,"' AND shb.shb32 <= '",l_edate,"' ",
+                "          AND (shb.shb032 IS NULL OR (shb.shb032 = 0 AND shb.shb033 = 0)) ",
+                "        ) ",
+                "    AND ",tm_wc CLIPPED 
+    ELSE
+    LET l_sql =  " SELECT ecb01,ecb02,ecb03,ecb06,ecb19,ecb21 ",
+                "   FROM ecb_file ecb ",
+                "  WHERE ecb19 > 0 AND ecb21 > 0 ",
+                "    AND EXISTS ( ",
+                "        SELECT 1 ",
+                "        FROM shb_file shb ",
+                "        JOIN sfb_file sfb ON shb.shb05 = sfb.sfb01 ",
+                "        WHERE shb.shb10 = ecb.ecb01 ",
+                "          AND shb.shb081 = ecb.ecb06 ",
+                "          AND sfb.sfb06 = ecb.ecb02 ",
+                "          AND shb.shb27 IS NULL ",
+                "          AND shb.shb32 >= '",l_bdate,"' AND shb.shb32 <= '",l_edate,"' ",
+                "        ) ",
+                "    AND ",tm_wc CLIPPED
+    END IF
+
+
+   ##---- 20260317 by momo (E) 改寫 製程抓取段
 
    PREPARE l_ecb_pre FROM l_sql
    DECLARE l_ecb_cus CURSOR FOR l_ecb_pre
 
+   IF l_update = 'N' THEN                                                  #20260317 
    LET l_sql = " SELECT shb01 FROM shb_file,sfb_file ",
                "  WHERE shb05  = sfb01 ",
                "    AND shb10 = ? ",
@@ -1409,8 +1462,22 @@ FUNCTION i100_update_working_time()        #更新報工機工時
                "    AND shb27 IS NULL ",                                  #20191227 抓非委外單進行更新 
                "    AND shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"' ",
                "    AND shb03 > '",g_sma.sma53,"' ",                      #20180521 by momo   
-               "    AND substr(shb01,1,5)<>'T4092' ",                     #200603 add by ruby
+              #"    AND substr(shb01,1,5)<>'T4092' ",                     #200603 add by ruby #20260317 mark
+               "    AND (shb32 IS NULL OR (shb032 = 0 AND shb033 = 0 )) ",  #20260317 
                "  ORDER BY shb01 "
+   ELSE
+   LET l_sql = " SELECT shb01 FROM shb_file,sfb_file ",
+               "  WHERE shb05  = sfb01 ",
+               "    AND shb10 = ? ",
+               "    AND sfb06  = ? ",
+               "    AND shb06 = ?  ",
+               "    AND shb081 = ? ",
+               "    AND shb27 IS NULL ",                                  #20191227 抓非委外單進行更新 
+               "    AND shb32 BETWEEN '",l_bdate,"' AND '",l_edate,"' ",
+               "    AND shb03 > '",g_sma.sma53,"' ",                      #20180521 by momo   
+               "    AND substr(shb01,1,5)<>'T4092' ",                     #200603 add by ruby #20260317 mark
+               "  ORDER BY shb01 "
+   END IF
 
    PREPARE l_shb_pre FROM l_sql
    DECLARE l_shb_cus CURSOR FOR l_shb_pre
@@ -1965,7 +2032,8 @@ FUNCTION i100_copy()
    LET old_no = g_ecu.ecu01   #LET ans_2  = g_ecu.ecu04
    LET new_no = NULL          #LET ans_1  = '1'
    LET oecu02 = g_ecu.ecu02
-   LET necu02 = NULL          #LET ef_date= NULL
+  #LET necu02 = NULL            #LET ef_date= NULL #20230331 mark
+   LET necu02 = g_ecu.ecu02    #20230331 modify
    LET oecu012 = g_ecu.ecu012  #FUN-A50081
    LET necu012 = NULL          #FUN-A50081
    LET g_before_input_done = FALSE   #FUN-580024
@@ -2003,8 +2071,8 @@ FUNCTION i100_copy()
         END IF
         ##---- 20210705 add by momo(E)取料件單位
 
-      BEFORE FIELD necu02
-        LET necu02 = "   "
+      #BEFORE FIELD necu02    #20230331 mark
+      #  LET necu02 = "   "   #20230331 mark
 
       AFTER FIELD necu02
         IF necu02 IS NULL THEN NEXT FIELD necu02 END IF
@@ -2658,6 +2726,17 @@ DEFINE l_cnt              LIKE type_file.num10        #20210629
                CALL cl_err3("upd","ecu_file",g_ecu.ecu01,g_ecu.ecu02,SQLCA.sqlcode,"","ecu10",1)
                ROLLBACK WORK
            ELSE
+               ##--- 20241011 更新 aimi100 ima571/ima94 (S)
+               SELECT COUNT(*) INTO l_cnt FROM ecu_file
+                WHERE ecu01 = g_ecu.ecu01
+               IF l_cnt = 1 THEN 
+                  UPDATE ima_file SET ima571 = g_ecu.ecu01,
+                                      ima94 = g_ecu.ecu02
+                   WHERE ima01 = g_ecu.ecu01
+                     AND ima94 IS NULL
+               END IF
+               ##--- 20241011 更新 aimi100 ima571/ima94 (E)
+
                COMMIT WORK
                LET g_ecu.ecu10="Y"
               #FUN-D50106---add---S

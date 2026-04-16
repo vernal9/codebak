@@ -1042,7 +1042,7 @@
 # Modify.........: No.24120005   20241209 By Ruby 增加選項oeaud05[是否寄送通知信MIAL?]預設Y
 # Modify.........: No.24120030   20241226 By Ruby 客戶區域碼AME/EUR，增加寫入oao_file備註
 # Modify.........: No.25070015   20250714 By momo 增加顯示 tc_,mpn16 生管備註欄位
-
+# MOdiyf.........: No.25120039   20251231 By momo 客戶首次交易預設訂金100%, 付款條件 2052
 
 DATABASE ds
 
@@ -5070,7 +5070,8 @@ FUNCTION t400_a()
      #IF cl_null(g_oea.oeaslk02) THEN #FUN-B90101 mark
      #   LET g_oea.oeaslk02 = 'N'     #FUN-B90101 mark
      #END IF                          #FUN-B90101 mark  
-      #TQC-AB0025---------add----------------end------------    
+      #TQC-AB0025---------add----------------end------------ 
+ 
       INSERT INTO oea_file VALUES (g_oea.*)
       IF STATUS OR SQLCA.SQLCODE THEN
          CALL cl_err3("ins","oea_file",g_oea.oea01,"",SQLCA.sqlcode,"","",1)  #No.FUN-650108
@@ -5084,6 +5085,8 @@ FUNCTION t400_a()
          END IF
       #--FUN-D10124 add end--
       END IF
+
+      CALL t400_chk_first() #20251231
 
       COMMIT WORK   #No:7829
       CALL cl_flow_notify(g_oea.oea01,'I')
@@ -12654,6 +12657,7 @@ DEFINE l_ttl3          LIKE oea_file.oea61      #TQC-C90021 add
 DEFINE l_oeb12_sum     LIKE oeb_file.oeb12      #MOD-FC0057 add
 DEFINE l_ttl4          LIKE oea_file.oea61      #20190416
 
+   #CALL t400_chk_first()               #20151231           #260122 mark by ruby
    IF g_oea.oea11='1' THEN LET g_oea.oea12='' END IF
    LET g_oea_t.* = g_oea.*                #保存單頭舊值
    LET g_data_keyvalue = g_oea.oea01      #FUN-F50014 add
@@ -12661,7 +12665,6 @@ DEFINE l_ttl4          LIKE oea_file.oea61      #20190416
    IF NOT cl_null(g_oea.oea99) THEN    #20190327
       LET g_oea.oea1004 = g_oea.oea915 #20190327
    END IF                              #20190327
-
    ##---- 20200312 add by momo 業務通知群組 (S)
    LET g_oea.oea19 = ' '
    LET g_oea.oeaud03 = ' '
@@ -36080,3 +36083,32 @@ FUNCTION t410_ins_oao(l_oea01,l_oeb03)
    END IF  
 END FUNCTION
 #241226 add by ruby --e--
+
+##----20251231 初次交易，訂金預收 (S)
+FUNCTION t400_chk_first()
+   DEFINE l_cnt   LIKE type_file.num5
+   
+   SELECT oazud03 INTO g_oea.oea80 FROM oaz_file #訂金收款條件 axms050
+   
+   IF NOT cl_null(g_oea.oea80) THEN
+      LET l_cnt = 0
+      SELECT 1 INTO l_cnt FROM oea_file
+       WHERE oea03 = g_oea.oea03
+         AND oea01 <> g_oea.oea01
+         AND oeaconf <> 'X'
+         AND rownum = 1
+
+      IF l_cnt = 0 AND g_oea.oea161=0 THEN
+         LET g_oea.oea161=100
+         LET g_oea.oea162=0
+         LET g_oea.oea261=g_oea.oea262
+         LET g_oea.oea262=0
+         UPDATE oea_file SET oea161=100,oea162=0,
+                             oea80=g_oea.oea80,
+                             oea261=g_oea.oea261,
+                             oea262=g_oea.oea262
+          WHERE oea01 = g_oea.oea01
+      END IF
+   END IF
+END FUNCTION
+##----20251231 初次交易，訂金預收 (S)

@@ -10,7 +10,7 @@
 # Modify.........: No.MOD-490371 04/09/23 By Kitty Controlp 未加display
 # Modify.........: No.FUN-550070 05/05/26 By Will 單據編號放大
 # Modify.........: No.FUN-660167 06/06/26 By wujie cl_err --> cl_err3
-# Modify.........: No.FUN-680137 06/09/04 By flowld 欄位型態定義,改為LIKE  
+# Modify.........: No.FUN-680137 06/09/04 By flowld 欄位型態定義,改為LIKE                                                                    
 # Modify.........: No.FUN-710037 07/01/18 By kim t400_oeo改為 s_t400oeo
 # Modify.........: No.MOD-850132 08/05/13 By Smapmin 備品料號不可與訂單銷售料號相同. 
 # Modify.........: No.FUN-980010 09/08/25 By TSD.Martin GP5.2架構重整，修改 INSERT INTO 語法
@@ -26,6 +26,8 @@
 #                                                            2.工單展備料時，如生產料號=歸屬父階料號時，將此配件產生至備料檔
 # Modify.........: NO:1908203521 20190820 By momo 調整作業編號檢核SQL語法
 # Modify.........: NO:22100023   20221021 By momo 調整選配維護模式
+# Modify.........: NO:           23/11/27 By Ruby 離開時檢查訂單是否存在工單，如有工單則提示[該訂單存在於工單，如配件有異動請通知生管同步修改！]
+# Modify.........: No:26040019   20260414 By momo oeo06 QPA 調整為不與數量連動 
 
 DATABASE ds
  
@@ -313,6 +315,21 @@ FUNCTION s_t400oeo(p_no,p_seq,p_part,p_qty)
                    NEXT FIELD ta_oeo01
                 END IF
              END IF
+             ##----20260414 (S) --- 依BOM帶出預設
+             IF l_oeo[i].ta_oeo01 <> p_part THEN
+                SELECT bmb09,bmb07,bmb06,ima02
+                  INTO l_oeo[i].ta_oeo02,l_oeo[i].oeo06,l_oeo[i].oeo09,l_oeo[i].ima02_2
+                  FROM bmb_file
+                  LEFT JOIN ima_file ON bmb03=ima01
+                 WHERE bmb01 = p_part
+                   AND bmb03 = l_oeo[i].ta_oeo01
+                LET l_oeo[i].oeo09 = l_oeo[i].oeo06*l_oeo[i].oeo09*p_qty
+             ELSE
+                LET l_oeo[i].oeo06 = 1
+                LET l_oeo[i].oeo09 = p_qty
+             END IF
+             LET l_oeo[i].oeo09 = s_digqty(l_oeo[i].oeo09,l_oeo[i].oeo05)
+             ##----20260414 (E) ---
              IF NOT cl_null(l_oeo[i].ta_oeo02) THEN
                 CALL s_t400_oeo_ta_oeo02(l_oeo[i].ta_oeo01,l_oeo[i].ta_oeo02)
                 IF cl_null(g_errno) THEN
@@ -363,10 +380,12 @@ FUNCTION s_t400oeo(p_no,p_seq,p_part,p_qty)
               IF l_oeo[i].oeo06 > 0 THEN
                  #SELECT oeb12 INTO l_oeb12 FROM oeb_file                       #210805 mark by ruby
                  # WHERE oeb01 = p_no AND oeb03 = p_seq                         #210805 mark by ruby
-                 LET l_oeb12 = p_qty                                            #210805 add by ruby 
-                 IF cl_null(l_oeb12) THEN LET l_oeb12 = 0 END IF
-                 LET l_oeo[i].oeo09 = l_oeo[i].oeo06 * l_oeb12
-                 LET l_oeo[i].oeo09 = s_digqty(l_oeo[i].oeo09,l_oeo[i].oeo05)  #FUN-910088--add--
+                 ##---- 20260414 mark (S)
+                 #LET l_oeb12 = p_qty                                           #210805 add by ruby 
+                 #IF cl_null(l_oeb12) THEN LET l_oeb12 = 0 END IF
+                 #LET l_oeo[i].oeo09 = l_oeo[i].oeo06 * l_oeb12
+                 #LET l_oeo[i].oeo09 = s_digqty(l_oeo[i].oeo09,l_oeo[i].oeo05)  #FUN-910088--add--
+                 ##---- 20260414 mark (E)
                  DISPLAY l_oeo[i].oeo09 TO s_oeo[j].oeo09
               END IF
            END IF
@@ -519,7 +538,14 @@ FUNCTION s_t400oeo(p_no,p_seq,p_part,p_qty)
           MESSAGE "Insert :",l_oeo[i].oeo04
        END IF
     END FOR
- 
+   #231127 add by ruby --s--
+   LET l_cnt=0
+   SELECT 1 INTO l_cnt FROM sfb_file
+    WHERE sfb22 = p_no
+   IF l_oeo.getLength()>0 AND l_cnt = 1 THEN
+      CALL cl_err('','cxm-038',1)
+   END IF
+   #231127 add by ruby --e-- 
 END FUNCTION
 
 #M012 180131 By TSD.Nic -----(S)
@@ -528,7 +554,8 @@ FUNCTION s_t400_oeo_ta_oeo01(p_ta_oeo01,p_part,p_date)
    DEFINE p_ta_oeo01      LIKE oeo_file.ta_oeo01
    DEFINE p_part          LIKE ima_file.ima01
    DEFINE p_date          LIKE type_file.dat
-   DEFINE l_cnt           LIKE type_file.num5
+   DEFINE l_cnt         LIKE type_file.num5
+ 
 
    LET l_cnt = 0
    LET g_errno = ''
@@ -650,7 +677,7 @@ FUNCTION t400_oeo09_check(p_no,p_seq,l_oeo09,l_oeo09_t,l_oeo05,l_oeo05_t,l_oeo06
       SELECT oeb12 INTO l_oeb12 FROM oeb_file
        WHERE oeb01 = p_no AND oeb03 = p_seq
       IF cl_null(l_oeb12) THEN LET l_oeb12 = 0 END IF
-         IF l_oeb12 !=0 THEN
+         IF l_oeb12 !=0 AND cl_null(l_oeo06) THEN      #20260414
             LET l_oeo06 = l_oeo09 / l_oeb12
             DISPLAY l_oeo06 TO s_oeo[j].oeo06
          END IF

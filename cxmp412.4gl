@@ -6,6 +6,7 @@
 # Date & Author..: 2023/06/13 By Momo 
 # Modify.........: NO:25110035  20251125 By momo 移除下拉選單
 # Modify.........: NO:25120013  20251210 By momo 依規格符合多筆料號時，挑選選單人員自行挑選
+# Modify.........: No:26010002  20260108 By momo 生管交期維護帶入
 
 DATABASE ds
  
@@ -872,7 +873,6 @@ DEFINE   l_cnt      LIKE type_file.num10
              #--- 符合多筆時需自行挑選 (E)
 	     #取客戶料件
 	      IF cl_null(g_tc_mpn[l_ac].tc_mpn05) THEN
-                 LET g_tc_mpn[l_ac].tc_mpn06 = ''                       #20251125
 		 SELECT obk01,ima021 INTO g_tc_mpn[l_ac].tc_mpn06,g_tc_mpn[l_ac].tc_mpn05
 		   FROM obk_file,ima_file 
 		  WHERE obk03 = g_tc_mpn[l_ac].tc_mpn06
@@ -899,6 +899,16 @@ DEFINE   l_cnt      LIKE type_file.num10
 	     NEXT FIELD tc_mpn08
 	  END IF
 	  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn08
+
+        BEFORE FIELD tc_mpn14
+          ##--- 20260113 (S)
+          IF l_ac > 1 AND g_plant[1,2] ='TY' THEN
+             IF cl_null(g_tc_mpn[l_ac].tc_mpn14) AND NOT cl_null(g_tc_mpn[l_ac-1].tc_mpn14) THEN
+                LET g_tc_mpn[l_ac].tc_mpn14 = g_tc_mpn[l_ac-1].tc_mpn14
+             END IF
+	  DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
+          END IF
+          ##--- 20260113 (E)
 		
 	AFTER FIELD tc_mpn14
 	  IF g_tc_mpn[l_ac].tc_mpn14 < g_today THEN
@@ -913,6 +923,16 @@ DEFINE   l_cnt      LIKE type_file.num10
              UPDATE oeb_file SET oeb71='' 
               WHERE oeb01 = g_tc_mpn[l_ac].oeb01 AND oeb71= g_tc_mpn[l_ac].tc_mpn02 
           END IF
+          ##--- 20260113 (S)
+          IF l_ac > 1 AND g_plant[1,2]='TY' THEN
+             IF cl_null(g_tc_mpn[l_ac].tc_mpn15) AND NOT cl_null(g_tc_mpn[l_ac-1].tc_mpn15) THEN
+                LET g_tc_mpn[l_ac].tc_mpn14 = g_tc_mpn[l_ac-1].tc_mpn14
+                LET g_tc_mpn[l_ac].tc_mpn15 = g_tc_mpn[l_ac-1].tc_mpn15
+	        DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn14
+	        DISPLAY BY NAME g_tc_mpn[l_ac].tc_mpn15
+             END IF
+          END IF
+          ##--- 20260113 (E)
         ##--- 20231013 排交日為空已轉訂單，清除oeb71拋轉項次 (E)
 
 	AFTER FIELD tc_mpn15
@@ -1028,6 +1048,7 @@ DEFINE   l_cnt      LIKE type_file.num10
            PREPARE db_upd_all FROM g_sql
 	   EXECUTE db_upd_all USING g_tc_mpn[l_ac].tc_mpn08,g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,
                                     g_tc_mpn_t.tc_mpn01,g_tc_mpn_t.tc_mpn02,g_tc_mpn_t.tc_mpn03,g_tc_mpn_t.tc_mpn05
+                                   #g_tc_mpn[l_ac].tc_mpn01,g_tc_mpn[l_ac].tc_mpn02,g_tc_mpn[l_ac].tc_mpn03,g_tc_mpn[l_ac].tc_mpn05 #20260113
 	   IF SQLCA.sqlcode THEN
 	      CALL cl_err3("upd","tc_mpn_file",g_tc_mpn_t.tc_mpn01,g_tc_mpn_t.tc_mpn02,SQLCA.sqlcode,"","",1) 
 	      LET g_tc_mpn[l_ac].* = g_tc_mpn_t.*
@@ -1209,7 +1230,7 @@ DEFINE l_cnt           LIKE type_file.num5
        LET g_sql = g_sql CLIPPED , " AND tc_mpnplant = '",g_plant,"' "
     END IF
 
-    LET g_sql = g_sql CLIPPED ," ORDER BY tc_mpn01,tc_mpn02,tc_mpn03,tc_mpn04 "
+    LET g_sql = g_sql CLIPPED ," ORDER BY tc_mpn03,tc_mpn01,tc_mpn02,tc_mpn04 "
 
     PREPARE p412_p2 FROM g_sql      #預備一下
     DECLARE tc_mpn_curs CURSOR FOR p412_p2
@@ -1543,6 +1564,18 @@ FUNCTION update_mpn17()
        EXECUTE upd_mddate USING g_tc_mpn[g_cnt].tc_mpn01,g_tc_mpn[g_cnt].tc_mpn02,g_tc_mpn[g_cnt].tc_mpn03,g_tc_mpn[g_cnt].tc_mpn05
    END FOR
 END FUNCTION
+
+##--更新約定、排交日 20260106
+#FUNCTION update_mpn15()
+#   LET g_sql = " UPDATE ",tm.azp01,".tc_mpn_file SET tc_mpn14 = ? , tc_mpn15 = ? ",
+#               "  WHERE tc_mpn01 = ? ",
+#               "    AND tc_mpn03 = ? ",
+#               "    AND tc_mpn15 IS NULL AND tc_mpn10='N' AND tc_mpn11='N' "
+#   PREPARE upd_md15 FROM g_sql
+#   EXECUTE upd_md15 USING g_tc_mpn[l_ac].tc_mpn14,g_tc_mpn[l_ac].tc_mpn15,g_tc_mpn[l_ac].tc_mpn01,g_tc_mpn[l_ac].tc_mpn03
+#   LET l_ac = 1           #20260113
+#   CALL p412_b_fill(g_wc)
+#END FUNCTION
 
 FUNCTION p412_sel_ima()
     LET g_tc_mpn[g_cnt].tc_mpn06 = ''

@@ -60,6 +60,7 @@
 # Modify.........: No:2205278168 20220530 By momo 取消上限筆數
 # Modify.........: No:2205168074 20220530 By momo 取替代失效時，更新BOM狀態
 # Modify.........: No:24060003   20240605 By momo 增加 ta_bmd01 生失效欄位
+# Modify.........: No:26040013   20260413 By momo 增加 ta_bmd02 標準否，並依失效日連動
 
 DATABASE ds
  
@@ -88,6 +89,7 @@ DEFINE
         bmd09       LIKE bmd_file.bmd09,   #Date
         bmd07       LIKE bmd_file.bmd07,   #QPA
         ta_bmd01    LIKE bmd_file.ta_bmd01,#生失效說明 20240605
+        ta_bmd02    LIKE bmd_file.ta_bmd02,#標準否 20260413
         bmduser     LIKE bmd_file.bmduser,
         bmdgrup     LIKE bmd_file.bmdgrup,
         bmdmodu     LIKE bmd_file.bmdmodu,
@@ -108,6 +110,7 @@ DEFINE
         bmd09       LIKE bmd_file.bmd09,   #Date
         bmd07       LIKE bmd_file.bmd07,   #QPA
         ta_bmd01    LIKE bmd_file.ta_bmd01,#生失效說明 20240605
+        ta_bmd02    LIKE bmd_file.ta_bmd02,#標準否 20260413
         bmduser     LIKE bmd_file.bmduser,
         bmdgrup     LIKE bmd_file.bmdgrup,
         bmdmodu     LIKE bmd_file.bmdmodu,
@@ -221,11 +224,13 @@ FUNCTION i6041_cs()
    INITIALIZE g_bmd10 TO NULL    #FUN-C30084
     	CONSTRUCT g_wc ON bmd01,bmd02,bmd10,bmd08,bmd11,bmd03,bmd04,    #螢幕上取條件   #FUN-C30084 add bmd10,bmd11
     	                  bmduser,bmdgrup,bmdmodu,bmddate,bmdacti,      #No.FUN-740196 add
-                          bmd05,bmd06                                   #20210513
+                          bmd05,bmd06,                                  #20210513
+                          bmd09,ta_bmd01,ta_bmd02                       #20260413
         	FROM bmd01,bmd02,bmd10,s_bmd[1].bmd08,s_bmd[1].bmd11,s_bmd[1].bmd03,s_bmd[1].bmd04,  #FUN-C30084 add bmd10,bmd11
                      s_bmd[1].bmduser,s_bmd[1].bmdgrup,s_bmd[1].bmdmodu,       #No.FUN-740196 add
                      s_bmd[1].bmddate,s_bmd[1].bmdacti,                        #No.FUN-740196 add
-                     s_bmd[1].bmd05,s_bmd[1].bmd06
+                     s_bmd[1].bmd05,s_bmd[1].bmd06,
+                     s_bmd[1].bmd09,s_bmd[1].ta_bmd01,s_bmd[1].ta_bmd02        #20260413
  
               BEFORE CONSTRUCT
                  CALL cl_qbe_init()
@@ -934,6 +939,7 @@ DEFINE  l_i         LIKE type_file.num5,     #FUN-C30084
     LET g_forupd_sql =
       " SELECT bmd08,'','',bmd11,bmd03,bmd04,'','',bmd05,bmd06,bmd09,bmd07, ",  #FUN-C30084 add bmd11
       "        ta_bmd01,",                                                      #20240605
+      "        ta_bmd02,",                                                      #20260413
       "        bmduser,bmdgrup,bmdmodu,bmddate,bmdacti ",   #No.FUN-740196 add
       " FROM bmd_file ",
       "  WHERE bmd01= ? ",
@@ -1008,6 +1014,7 @@ DEFINE  l_i         LIKE type_file.num5,     #FUN-C30084
               (bmd01, bmd02, bmd03, bmd04,
                bmd05, bmd06, bmd07, 
                ta_bmd01,     #20240605 add
+               ta_bmd02,     #20260413
                bmd08, bmd09,
                bmd10,        #20200409 add
                bmd11,        #TQC-C20131  add bmd11
@@ -1017,6 +1024,7 @@ DEFINE  l_i         LIKE type_file.num5,     #FUN-C30084
                   #g_bmd[l_ac].bmd05,NULL,g_bmd[l_ac].bmd07,               #MOD-A70216 mark
                    g_bmd[l_ac].bmd05,g_bmd[l_ac].bmd06,g_bmd[l_ac].bmd07,  #MOD-A70216
                    g_bmd[l_ac].ta_bmd01,                                   #20240605
+                   g_bmd[l_ac].ta_bmd02,                                   #20260413
                    g_bmd[l_ac].bmd08,g_bmd[l_ac].bmd09,#'N',    #TQC-C20131  add 'N' #FUN-C30084 mark N
                    g_bmd10,              #20200409 add
                    g_bmd[l_ac].bmd11,    #FUN-C30084
@@ -1241,6 +1249,7 @@ DEFINE  l_i         LIKE type_file.num5,     #FUN-C30084
                    CALL cl_err(g_bmd[l_ac].bmd06,'mfg2604',0)
                    NEXT FIELD bmd06
                 END IF
+                LET g_bmd[l_ac].ta_bmd02 = 'N'     #20260413
              END IF
  
             CALL i6041_chk_date_range('e')
@@ -1379,6 +1388,7 @@ DEFINE  l_i         LIKE type_file.num5,     #FUN-C30084
                              bmd06=g_bmd[l_ac].bmd06,
                              bmd07=g_bmd[l_ac].bmd07,
                              ta_bmd01=g_bmd[l_ac].ta_bmd01,  #20240605
+                             ta_bmd02=g_bmd[l_ac].ta_bmd02,  #20260413
                              bmd09=g_bmd[l_ac].bmd09,
                              bmd11=g_bmd[l_ac].bmd11,       #FUN-C30084
                              bmdmodu=g_bmd[l_ac].bmdmodu,   #No.FUN-740196 add
@@ -1579,6 +1589,7 @@ DEFINE i	LIKE type_file.num5          #No.FUN-680096 SMALLINT
     LET g_sql =
        "SELECT bmd08,'','',bmd11,bmd03, bmd04,ima02,ima021,bmd05, bmd06, bmd09, bmd07, ",  #FUN-C30084 add bmd11
        "       ta_bmd01,",                                  #20240605
+       "       ta_bmd02,",                                  #20260413
        "       bmduser,bmdgrup,bmdmodu,bmddate,bmdacti ",   #No.FUN-740196 add
        " FROM bmd_file, OUTER ima_file",
        " WHERE bmd01 = '",g_bmd01,"'",
@@ -2078,7 +2089,8 @@ FUNCTION i6041_allinvalid()
                     "   SET bmd06 = '",g_today,"' ,",
                     "       bmddate = '",g_today,"' ,",
                     "       bmdmodu = '",g_user,"' ,",
-                    "       ta_bmd01 = '",l_note,"' ",
+                    "       ta_bmd01 = '",l_note,"' , ",
+                    "       ta_bmd02 = 'N' ",              #20260413
                     " WHERE bmd01 = ? ",
                     "   AND bmd02 = ? ",
                     "   AND bmd03 = ? ",

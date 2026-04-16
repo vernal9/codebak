@@ -5,13 +5,15 @@
 # Date & Author..: 20250212 By momo
 # Input Parameter: p_bma01 主件               
 # Return Code....: 
-# Modify.........:        
+# Modify.........: NO.26010003 20260116 增加 標準取替代自動新增，BOM調整s
 
  
 DATABASE ds
  
 GLOBALS "../../../tiptop/config/top.global"    #FUN-7C0053
 
+
+#---標準群組
 FUNCTION cs_insboa(p_bma01)
          
 DEFINE 
@@ -123,12 +125,87 @@ DEFINE n_boa02       LIKE boa_file.boa02  #群組編號取最大值
              AND bmb01 = i_bma01
 
           IF SQLCA.sqlcode THEN
-             CALL cl_err('insert bob',i_bma01,1)
+             CALL cl_err('update bmb',i_bma01,1)
              EXIT FOREACH
           END IF
           MESSAGE 'upd bmb16:',i_bma01
          
         END FOREACH 
+               
+     END FOREACH
+     CALL cs_insbmd(p_bma01)  #20260116
+END FUNCTION
+
+#標準取替代自動新增
+FUNCTION cs_insbmd(p_bma01)
+         
+DEFINE 
+       p_bma01       LIKE bmb_file.bmb01,  #主件                  
+       l_sql         STRING,
+       l_cnt         LIKE type_file.num5
+DEFINE g_bmd         RECORD LIKE bmd_file.*
+DEFINE g_bmb         RECORD LIKE bmb_file.*
+   
+     LET l_cnt = 0
+           
+     #取出符合條件的取替代資料
+     LET l_sql = "SELECT * FROM bmd_file ",
+                 "  LEFT JOIN ima_file a ON a.ima01 = '",p_bma01,"' ",                #主件 ima_file
+                 " WHERE ta_bmd02 = 'Y' ",
+                 #--判斷需符合一致的條件
+                 "   AND EXISTS (SELECT 1 FROM ima_file b ",                          #取替代主件 ima_file
+                 "                WHERE b.ima01=bmd08 AND b.ima131=a.ima131 AND b.ima09=a.ima09 ",
+                 "                  AND b.ima1007 = a.ima1007 ",
+                 "                  AND b.ta_ima06 = a.ta_ima06 AND b.ta_ima08 =a.ta_ima08 )"
+     
+     PREPARE bmd_cal FROM l_sql
+     DECLARE bmd_cs CURSOR FOR bmd_cal
+
+     FOREACH bmd_cs INTO g_bmd.*
+        IF SQLCA.sqlcode THEN
+           CALL cl_err('foreach:boa_cs',SQLCA.sqlcode,1)
+           EXIT FOREACH
+        END IF
+
+        MESSAGE 'bmd08:',g_bmd.bmd08 ||' bmd04:' ||g_bmd.bmd04 CLIPPED
+
+        #---判斷BOM元件有效否，取替代特性需為 0
+        SELECT bmb01,bmb04 INTO g_bmb.bmb01,g_bmb.bmb04 
+            FROM bmb_file
+         WHERE bmb01 = p_bma01
+                AND bmb03 = g_bmd.bmd04
+                AND bmb05 IS NULL
+                AND bmb16 =  '0'
+        
+          #---INSERT bmd_file 取替資料
+          IF NOT cl_null(g_bmb.bmb01) THEN
+              LET g_bmd.bmd08 = p_bma01
+              LET g_bmd.bmd05 = g_today()
+              LET g_bmd.bmdoriu='tiptop'
+              LET g_bmd.bmd09=''
+              LET g_bmd.bmddate=''
+              LET g_bmd.ta_bmd02='N'
+          INSERT INTO bmd_file VALUES g_bmd.*
+          
+          IF SQLCA.sqlcode THEN
+             CALL cl_err('insert bmd',p_bma01,1)
+             EXIT FOREACH
+          END IF
+          MESSAGE 'ins bmd:',p_bma01
+          
+
+          #--UPDATE bmb16 取替代特性 = bmd02
+          UPDATE bmb_file SET bmb16=g_bmd.bmd02
+           WHERE bmb01 = p_bma01 AND bmb03 = g_bmd.bmd04
+                 AND bmb05 IS NULL
+                 AND bmb16='0'
+
+          IF SQLCA.sqlcode THEN
+             CALL cl_err('update bmb',p_bma01,1)
+             EXIT FOREACH
+          END IF
+          MESSAGE 'upd bmb16:',p_bma01
+         END IF
                
      END FOREACH
            

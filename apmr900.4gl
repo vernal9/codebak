@@ -216,7 +216,8 @@ MAIN
                "pmmud03.pmm_file.pmmud03,",#add by ruby 2017/12/26
                "pmmud04.pmm_file.pmmud04,",#add by ruby 2017/12/26
                "pmmud01.pmm_file.pmmud01,",#add by ruby 2017/12/26
-               "pmm16.pmm_file.pmm16,",    #CHI-B90026 add
+               #"pmm16.pmm_file.pmm16,",    #CHI-B90026 add   #260109 mark by ruby
+               "pmm16.ged_file.ged02,",                       #260109 add by ruby
                "ecm45.ecm_file.ecm45,",    #作業說明 20230112
                "bmbud02.bmb_file.bmbud02,",#Package 20231113 
                "pme031.pme_file.pme031,",
@@ -592,7 +593,8 @@ FUNCTION apmr900()
                      pmmud03   LIKE pmm_file.pmmud03,  #add by ruby 2017/12/26
                      pmmud04   LIKE pmm_file.pmmud04,  #add by ruby 2017/12/26
                      pmmud01   LIKE pmm_file.pmmud01,  #add by ruby 2017/12/26
-                     pmm16     LIKE pmm_file.pmm16     #CHI-B90026 add
+                     #pmm16     LIKE pmm_file.pmm16     #CHI-B90026 add   #260109 mark by ruby
+                     pmm16     LIKE ged_file.ged02                        #260109 add by ruby
                END RECORD,
           sr1  RECORD
                      pmm04     LIKE pmm_file.pmm04,
@@ -1009,9 +1011,14 @@ FUNCTION apmr900()
       END IF
       ##---- 20241204 add by momo (E)
 
-      #規格,單位使用方式 
-      SELECT ima021,ima906 INTO l_ima021,l_ima906 FROM ima_file
-       WHERE ima01=sr.pmn04
+      #規格,單位使用方式
+      IF sr.pmn04[1,1] MATCHES '[ABCD]' THEN                           #20250923
+         SELECT ima02,ima906 INTO l_ima021,l_ima906 FROM ima_file      #20250923
+          WHERE ima01=sr.pmn04                                         #20250923
+      ELSE 
+         SELECT ima021,ima906 INTO l_ima021,l_ima906 FROM ima_file
+          WHERE ima01=sr.pmn04
+      END IF
 
       ##----- 20201214 add by momo (S) 特殊件否
       SELECT case when ima28= 0 then 'Y' else 'N' end INTO l_ima28
@@ -1368,11 +1375,18 @@ FUNCTION apmr900()
    PREPARE r900_p3 FROM l_sql
    DECLARE r900_c3 CURSOR FOR r900_p3
    FOREACH r900_c3 INTO l_pmm01
-      UPDATE pmm_file SET pmmprno = pmmprno + 1
-                    WHERE pmm01 = l_pmm01
-      IF sqlca.sqlerrd[3]=0 THEN
-         CALL cl_err3("upd","pmm_file",l_pmm01,'',STATUS,"","upd pmmprno",1)
-      END IF
+      UPDATE pmm_file SET pmmprno = pmmprno + 1,
+                          pmmprdt = SYSDATE      #20230731
+       WHERE pmm01 = l_pmm01
+
+      ##---- 20250731 (S) 記錄首次列印日
+      UPDATE pmm_file SET pmmud13 = SYSDATE
+       WHERE pmm01 = l_pmm01
+         AND pmmud13 IS NULL
+      ##---- 20250731 (E)
+      #IF sqlca.sqlerrd[3]=0 THEN
+      #   CALL cl_err3("upd","pmm_file",l_pmm01,'',STATUS,"","upd pmmprno",1)
+      #END IF
    END FOREACH
 END FUNCTION
 #No:FUN-9C0071--------精簡程式-----

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{7818542c-b896-443b-976c-a83c51fa6f1a}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="s_tc_aag" order="" uid="{bcb11b94-ff1f-43c7-a8d9-4e998d9cd551}" where="">
+    <RecordField colName="tc_aag01" fieldIdRef="25" fieldType="TABLE_COLUMN" name="tc_aag_file.tc_aag01" sqlTabName="tc_aag_file" sqlType="VARCHAR" table_alias_name="" uid="{add6de91-244d-4847-b34a-0549c7b4305e}"/>
+    <RecordField colName="azf03" fieldIdRef="10" fieldType="TABLE_COLUMN" name="azf_file.azf03" sqlTabName="azf_file" sqlType="VARCHAR" table_alias_name="" uid="{006634f2-bc6a-4286-a771-8b9e5dbe7b61}"/>
+    <RecordField colName="tc_aag02" defaultValue="N" fieldIdRef="2" fieldType="TABLE_COLUMN" name="tc_aag_file.tc_aag02" sqlTabName="tc_aag_file" sqlType="VARCHAR" table_alias_name="" uid="{9f9d932c-2ee8-4660-b3cf-226cbd75aa6f}"/>
+    <RecordField colName="tc_aag03" fieldIdRef="3" fieldType="TABLE_COLUMN" name="tc_aag_file.tc_aag03" sqlTabName="tc_aag_file" sqlType="VARCHAR" table_alias_name="" uid="{5c715617-5a17-474d-bead-358d3bac704c}"/>
+    <RecordField colName="tc_aag04" fieldIdRef="4" fieldType="TABLE_COLUMN" name="tc_aag_file.tc_aag04" sqlTabName="tc_aag_file" sqlType="VARCHAR" table_alias_name="" uid="{5f546c14-45d8-403a-b768-f500d72872ad}"/>
+  </Record>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{9f19216b-0af2-4d6d-a41e-87e57a43c44e}" where="">
+    <RecordField colName="azf02" fieldIdRef="1" fieldType="TABLE_COLUMN" name="azf_file.azf02" sqlTabName="azf_file" sqlType="VARCHAR" table_alias_name="" uid="{438fe846-0ec6-4730-b041-a7ba4f2b575e}"/>
+    <RecordField colName="" fieldIdRef="21" fieldType="NON_DATABASE" name="cn2" sqlTabName="" sqlType="SMALLINT" table_alias_name="" uid="{193a4192-8a9c-4083-9b2a-d7dbbc658c70}"/>
+  </Record>
+  <Form gridHeight="22" gridWidth="89" name="cooi304" spacing="normal" text="cooi304">
+    <VBox gridHeight="22" gridWidth="87" name="vb10" posX="1" posY="0">
+      <Folder gridHeight="5" gridWidth="87" hidden="true" lstrcomment="false" name="folder01" posX="0" posY="1">
+        <Page lstrtext="false" name="page01" text="Page01">
+          <Grid gridHeight="4" gridWidth="38" lstrcomment="false" name="gr4643" posX="0" posY="0">
+            <Group gridHeight="3" gridWidth="37" hidden="true" lstrcomment="false" lstrtext="false" name="group01" posX="1" posY="0">
+              <Label posX="1" posY="1" text="Category"/>
+              <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="azf02" columnCount="" comment="No Blank  , Enter 2 5 6 8 A D E F G" fieldId="1" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" items="Reason Code, Bnd.Scrp.Rsn, Req.Code, QC Code, Mat.Cate, Wtdw Bnd.Mat, Othr Group Code 1, Othr Group Code 2, Othr Group Code 3, Cost Group" lstrcomment="false" lstrtitle="false" name="azf_file.azf02" noEntry="true" posX="21" posY="1" rowCount="" sqlTabName="azf_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="1" table_alias_name="" widget="ComboBox">
+                <Item lstrtext="" name="2" text="Reason Code"/>
+                <Item lstrtext="" name="3" text="Bnd.Scrp.Rsn"/>
+                <Item lstrtext="" name="5" text="Req.Code"/>
+                <Item lstrtext="" name="6" text="QC Code"/>
+                <Item lstrtext="" name="8" text="Mat.Cate"/>
+                <Item lstrtext="" name="A" text="Wtdw Bnd.Mat"/>
+                <Item lstrtext="" name="D" text="Othr Group Code 1"/>
+                <Item lstrtext="" name="E" text="Othr Group Code 2"/>
+                <Item lstrtext="" name="F" text="Othr Group Code 3"/>
+                <Item lstrtext="" name="G" text="Cost Group"/>
+              </ComboBox>
+            </Group>
+          </Grid>
+        </Page>
+      </Folder>
+      <Table gridHeight="11" gridWidth="87" lstrcomment="false" name="s_tc_aag" posX="0" posY="6" totalRows="10">
+        <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_aag01" columnCount="" fieldId="25" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="13" image="zoom" name="tc_aag_file.tc_aag01" notNull="true" posX="0" posY="0" rowCount="" sqlTabName="tc_aag_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="4" table_alias_name="" title="tc_aag01" widget="ButtonEdit"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="azf03" columnCount="" comment="&lt;^P&gt;Qry Account No. " fieldId="10" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="18" lstrcomment="false" lstrtitle="false" name="azf_file.azf03" noEntry="true" posX="13" posY="0" rowCount="" sqlTabName="azf_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="Desc" widget="Edit"/>
+        <CheckBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_aag02" columnCount="" defaultValue="N" fieldId="2" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="9" name="tc_aag_file.tc_aag02" noEntry="false" notNull="true" posX="31" posY="0" rowCount="" sqlTabName="tc_aag_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="5" table_alias_name="" text="" title="tc_aag02" valueChecked="Y" valueUnchecked="N" widget="CheckBox"/>
+        <ComboBox aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_aag03" columnCount="" fieldId="3" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="10" items="" name="tc_aag_file.tc_aag03" notNull="true" posX="40" posY="0" rowCount="" sqlTabName="tc_aag_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="6" table_alias_name="" title="tc_aag03" widget="ComboBox"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="tc_aag04" columnCount="" fieldId="4" fieldType="TABLE_COLUMN" gridHeight="1" gridWidth="29" name="tc_aag_file.tc_aag04" notNull="true" posX="50" posY="0" rowCount="" sqlTabName="tc_aag_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="7" table_alias_name="" title="tc_aag04" widget="Edit"/>
+      </Table>
+      <Grid gridHeight="4" gridWidth="87" lstrcomment="false" name="gr4644" posX="0" posY="17">
+        <HLine gridWidth="10" name="hl1452" posX="2" posY="0"/>
+        <Label posX="13" posY="0" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="21" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" noEntry="true" posX="19" posY="0" rowCount="" sqlTabName="" sqlType="SMALLINT" stepX="" stepY="" tabIndex="3" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl1453" posX="27" posY="0"/>
+      </Grid>
+    </VBox>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewBiAGMAYgAxADEAYgA5ADQALQBmAGYAMQBmAC0ANAAzAGMANwAtAGEAOABkADkALQA0AGUAOQA5ADgAZAA5AGMAZAA1ADUAMQB9AAAAAAAAAAAAAAAAAAAAAD+GhysCDEm8AQAAAEwAewA1AGMANwAxADUANgAxADcALQA1AGEAMQA3AC0ANAA3ADQAZAAtAGIAZQBhAGQALQAzADUAOABkADMAYgBhAGMANwAwADQAYwB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewAwADAANgA2ADMANABmADIALQBiAGMANgBhAC0ANAAyADgANgAtAGEANwA3ADEALQA4AGIAOQBlADUAZABiAGUANwBiADYAMQB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewAxADkAMwBhADQAMQA5ADIALQA4AGEAOQBjAC0ANAAwADgAMwAtADkAYgAyAGEALQBkADcAZABiAGIAYwA2ADUAOABjADcAMAB9QBQAAAAAAABARwAAAAAAAAAAAAAAAAAAAQAAAEwAewA1AGYANQA0ADYAYwAxADQALQA0ADUAZAA4AC0ANAAwADMAYQAtAGIANwA2ADgALQBmADUAMAAwAGQANwAyADgANwAyAGEAZAB9QCQAAAAAAABAX0AAAAAAAAAAAAAAAAAAAQAAAEwAewA5AGYAMQA5ADIAMQA2AGIALQAwAGEAZgAyAC0ANABkADYAZAAtAGEANAAxAGUALQA4ADcAZQA1ADcAYQA0ADMAYwA0ADQAZQB9wHuQAAAAAABAIAAAAAAAAD9QYk3S8an8AQAAAEwAewA0ADMAOABmAGUAOAA0ADYALQAwAGUAYwA2AC0ANAA3ADMAMAAtAGIAMAA0ADEALQBhADcAYgBhADQAZgAyAGIANQA3ADUAZQB9QBQAAAAAAABAOAAAAAAAAAAAAAAAAAAAAQAAAEwAewBhAGQAZAA2AGQAZQA5ADEALQAyADQANABkAC0ANAA4ADQANwAtAGIAMwA0AGEALQAwADUANAA5AGMANwBiADQAMwAwADUAZQB9QCQAAAAAAABAQoAAAAAAAD+CbpeNT988AQAAAEwAewA5AGYAOQBkADkAMwAyAGMALQAyAGUAZQA4AC0ANAA2ADYAMAAtAGIAMwBjAGYALQAyADIANgBjAGIAZAA3ADUAYQBhADYAZgB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>

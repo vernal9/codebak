@@ -80,6 +80,9 @@
 # Modify.........: NO:2103316054 20210413 By momo 增加「資料拋轉」、「資料拋轉歷史」
 # Modify.........: NO:2106026315 20210629 By momo 增加檢核取替料件是否存在cooi103
 # Modify.........: No:2205168074 20220530 By momo 取替代失效時，更新BOM狀態
+# Modify.........: No:24110006   20241111 By momo KR新增、複製卡控
+# Moidfy.........: NO:26010003   20260114 By momo 新增 ta_bmd02 標準否 
+# Modify.........: NO:26040017   20260413 By momo 查詢欄位增加 生失效說明、取替代日
 
 DATABASE ds
  
@@ -106,6 +109,7 @@ DEFINE
         bmd09       LIKE bmd_file.bmd09,   #Date
         bmd07       LIKE bmd_file.bmd07,   #QPA
         ta_bmd01    LIKE bmd_file.ta_bmd01,#生失效原因 20200701
+        ta_bmd02    LIKE bmd_file.ta_bmd02,#標準否 20260114
         bmduser   LIKE bmd_file.bmduser,
         bmdgrup   LIKE bmd_file.bmdgrup,
         bmdmodu   LIKE bmd_file.bmdmodu,
@@ -123,6 +127,7 @@ DEFINE
         bmd09       LIKE bmd_file.bmd09,   #Date
         bmd07       LIKE bmd_file.bmd07,   #QPA
         ta_bmd01    LIKE bmd_file.ta_bmd01,#生失效原因 20200701
+        ta_bmd02    LIKE bmd_file.ta_bmd02,#標準否 20260114
         bmduser   LIKE bmd_file.bmduser,
         bmdgrup   LIKE bmd_file.bmdgrup,
         bmdmodu   LIKE bmd_file.bmdmodu,
@@ -167,7 +172,11 @@ DEFINE   g_bmd_1        DYNAMIC ARRAY OF RECORD
                            bmd02_1     LIKE bmd_file.bmd02,
                            bmd08_1     LIKE bmd_file.bmd08,
                            ima02_02_l  LIKE ima_file.ima02,
-                           ima021_02_l LIKE ima_file.ima021
+                           ima021_02_l LIKE ima_file.ima021,
+                           bmd04_l     LIKE bmd_file.bmd04,
+                           ima02_03_l  LIKE ima_file.ima02,
+                           ima021_03_l LIKE ima_file.ima021,
+                           ta_bmd02    LIKE bmd_file.ta_bmd02 
                                        END RECORD
 ##---- 20190708 -- (E)
 ##---- 20210413 add by momo (S)
@@ -267,11 +276,17 @@ FUNCTION i604_cs()
    INITIALIZE g_bmd08 TO NULL    #No.FUN-750051
    INITIALIZE g_bmd02 TO NULL    #No.FUN-750051
    INITIALIZE g_bmd10 TO NULL    #No.TQC-B90236
-    	CONSTRUCT g_wc ON bmd01,bmd08,bmd02,bmd10,bmd03,bmd04,
+    	CONSTRUCT g_wc ON bmd01,bmd08,bmd02,bmd10,
+                          bmd09,ta_bmd01,        #20260413
+                          ta_bmd02,              #20260114
+                          bmd03,bmd04,
                           bmd05,bmd06,           #20190703
                           bmd11,bmduser,bmdgrup, #NO.TQC-B90236 add bmd10,bmd11
                           bmdmodu,bmddate,bmdacti    #螢幕上取條件
-        	FROM bmd01,bmd08,bmd02,bmd10,s_bmd[1].bmd03,s_bmd[1].bmd04,
+        	FROM bmd01,bmd08,bmd02,bmd10,
+                     s_bmd[1].bmd09,s_bmd[1].ta_bmd01,        #20260413
+                     s_bmd[1].ta_bmd02,                       #20260114
+                     s_bmd[1].bmd03,s_bmd[1].bmd04,
                      s_bmd[1].bmd05,s_bmd[1].bmd06,  #20190703
                      s_bmd[1].bmd11, #NO.TQC-B90236 add bmd10,bmd11
                      s_bmd[1].bmduser,s_bmd[1].bmdgrup,s_bmd[1].bmdmodu,
@@ -416,7 +431,9 @@ FUNCTION i604_menu()
             END IF
          WHEN "output"
             IF cl_chk_act_auth() THEN
-               CALL i604_out()
+               #CALL i604_out()                                      #20260114
+               LET g_cmd = 'p_query "abmi604"'                       #20260114
+               CALL cl_cmdrun(g_cmd)                                 #20260114
             END IF
          WHEN "help"
             CALL cl_show_help()
@@ -524,10 +541,10 @@ FUNCTION i604_a()
         CALL g_bmd.clear()
 	LET g_rec_b = 0
         DISPLAY g_rec_b TO FORMONLY.cn2
-        CALL i604_b()                   #輸入單身
-        LET g_bmd01_t = g_bmd01            #保留舊值
-        LET g_bmd08_t = g_bmd08            #保留舊值
-        LET g_bmd02_t = g_bmd02            #保留舊值
+        CALL i604_b()                    #輸入單身
+        LET g_bmd01_t = g_bmd01          #保留舊值
+        LET g_bmd08_t = g_bmd08          #保留舊值
+        LET g_bmd02_t = g_bmd02          #保留舊值
         LET g_bmd10_t = g_bmd10          #No.TQC-B90236 add
         EXIT WHILE
     END WHILE
@@ -569,11 +586,12 @@ FUNCTION i604_u()
             EXIT WHILE
         END IF
         IF g_bmd01 != g_bmd01_t OR g_bmd08 != g_bmd08_t OR
-           g_bmd02 != g_bmd02_t OR g_bmd10 != g_bmd10_t  THEN #更改單頭值 #No.TQC-B90236 Modify
+           g_bmd02 != g_bmd02_t OR g_bmd10 != g_bmd10_t 
+        THEN #更改單頭值 #No.TQC-B90236 Modify
             UPDATE bmd_file SET bmd01 = g_bmd01,  #更新DB
 		                bmd08 = g_bmd08,
 		                bmd02 = g_bmd02,
-                                bmd10 = g_bmd10    #No.TQC-B90236 add
+                                bmd10 = g_bmd10  #No.TQC-B90236 add
                 WHERE bmd01 = g_bmd01_t          #COLAUTH?
 	          AND bmd08 = g_bmd08_t
 	          AND bmd02 = g_bmd02_t
@@ -606,7 +624,7 @@ DEFINE  l_num       LIKE type_file.num5      #MOD-C30538 add
  
  
 	BEFORE FIELD bmd01  # 是否可以修改 key
-	    IF g_chkey = 'N' AND p_cmd = 'u' THEN RETURN END IF
+	   IF g_chkey = 'N' AND p_cmd = 'u' THEN RETURN END IF 
  
         AFTER FIELD bmd01            #
             IF NOT cl_null(g_bmd01) THEN
@@ -877,6 +895,19 @@ FUNCTION i604_bmd08(p_cmd)
            l_ima25   LIKE ima_file.ima25,
            l_ima08   LIKE ima_file.ima08,
            l_imaacti LIKE ima_file.imaacti
+    DEFINE g_flag2   LIKE type_file.chr1           #20241111
+     ##---- 20241111 (S)
+     IF p_cmd = 'a' THEN
+        CALL s_field_chk(g_bmd08,'1',g_plant,'ima01') RETURNING g_flag2
+        IF g_flag2 = '0' THEN
+           CALL cl_err(g_bmd08,'aoo-043',1)
+           LET g_bmd08 = ''
+           DISPLAY BY NAME g_bmd08
+           RETURN 
+        END IF
+     END IF
+     ##---- 20241111 (E)
+
  
     LET g_errno = ' '
 	IF g_bmd08=g_bmd01 THEN LET g_errno='mfg2633' RETURN END IF
@@ -934,12 +965,12 @@ FUNCTION i604_q()
     MESSAGE ""
     CALL cl_opmsg('q')
     CALL i604_cs()                    #取得查詢條件
-    IF INT_FLAG THEN                       #使用者不玩了
+    IF INT_FLAG THEN                  #使用者不玩了
         LET INT_FLAG = 0
         INITIALIZE g_bmd01 TO NULL
         INITIALIZE g_bmd08 TO NULL
         INITIALIZE g_bmd02 TO NULL
-        INITIALIZE g_bmd10 TO NULL  #No.TQC-B90236
+        INITIALIZE g_bmd10 TO NULL    #No.TQC-B90236
         RETURN
     END IF
     OPEN i604_bcs                    #從DB產生合乎條件TEMP(0-30秒)
@@ -948,7 +979,7 @@ FUNCTION i604_q()
         INITIALIZE g_bmd01 TO NULL
         INITIALIZE g_bmd08 TO NULL
         INITIALIZE g_bmd02 TO NULL
-        INITIALIZE g_bmd10 TO NULL  #No.TQC-B90236
+        INITIALIZE g_bmd10 TO NULL   #No.TQC-B90236
     ELSE
         FOREACH i604_count INTO l_bmd01,l_bmd08,l_bmd02
             LET g_row_count = g_row_count + 1
@@ -972,10 +1003,10 @@ DEFINE
  
     MESSAGE ""
     CASE p_flag
-        WHEN 'N' FETCH NEXT     i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10
-        WHEN 'P' FETCH PREVIOUS i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10
-        WHEN 'F' FETCH FIRST    i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10
-        WHEN 'L' FETCH LAST     i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10
+        WHEN 'N' FETCH NEXT     i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10 
+        WHEN 'P' FETCH PREVIOUS i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10 
+        WHEN 'F' FETCH FIRST    i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10 
+        WHEN 'L' FETCH LAST     i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10 
         WHEN '/'
             IF (NOT g_no_ask) THEN
                 CALL cl_getmsg('fetch',g_lang) RETURNING g_msg
@@ -998,15 +1029,15 @@ DEFINE
                 IF INT_FLAG THEN LET INT_FLAG = 0 EXIT CASE END IF
             END IF
             LET g_no_ask = FALSE
-            FETCH ABSOLUTE g_jump i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10
+            FETCH ABSOLUTE g_jump i604_bcs INTO g_bmd01,g_bmd08,g_bmd02,g_bmd10 #TQC-B90236 add g_bmd10 
     END CASE
  
     IF SQLCA.sqlcode THEN                         #有麻煩
         CALL cl_err(g_bmd01,SQLCA.sqlcode,1)
-        INITIALIZE g_bmd01 TO NULL  #TQC-6B0105
-        INITIALIZE g_bmd02 TO NULL  #TQC-6B0105
-        INITIALIZE g_bmd08 TO NULL  #TQC-6B0105
-        INITIALIZE g_bmd10 TO NULL  #TQC-B90236
+        INITIALIZE g_bmd01 TO NULL     #TQC-6B0105
+        INITIALIZE g_bmd02 TO NULL     #TQC-6B0105
+        INITIALIZE g_bmd08 TO NULL     #TQC-6B0105
+        INITIALIZE g_bmd10 TO NULL     #TQC-B90236
         RETURN
     ELSE
         CASE p_flag
@@ -1024,10 +1055,10 @@ END FUNCTION
  
 #將資料顯示在畫面上
 FUNCTION i604_show()
-    DISPLAY g_bmd01 TO bmd01      #單頭
-    DISPLAY g_bmd08 TO bmd08      #單頭
-    DISPLAY g_bmd02 TO bmd02      #單頭
-    DISPLAY g_bmd10 TO bmd10      #No.TQC-B90236 add
+    DISPLAY g_bmd01 TO bmd01       #單頭
+    DISPLAY g_bmd08 TO bmd08       #單頭
+    DISPLAY g_bmd02 TO bmd02       #單頭
+    DISPLAY g_bmd10 TO bmd10       #No.TQC-B90236 add
     CALL i604_bmd01('d')
     CALL i604_bmd08('d')
     CALL i604_bf(g_wc)                 #單身
@@ -1219,7 +1250,7 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
     CALL cl_opmsg('b')
     LET g_forupd_sql =
       " SELECT bmd03,bmd04,'','',bmd11,bmd05,bmd06,bmd09,bmd07, ",   #TQC-B90236 add bmd11
-      "        ta_bmd01, ",                                 #20200701
+      "        ta_bmd01,ta_bmd02, ",                                 #20200701 #20260114
       "        bmduser,bmdgrup,bmdmodu,bmddate,bmdacti ",   #TQC-730102
       " FROM bmd_file ",
       "  WHERE bmd01 = ? ",
@@ -1290,6 +1321,7 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
               (bmd01, bmd02, bmd03, bmd04,
                bmd05, bmd06, bmd07, 
                ta_bmd01,                                          #20200701 
+               ta_bmd02,                                          #20260114 
                bmd08, bmd09,
                bmd10,bmd11,                                       #TQC-B90236 add bmd10,bmd11
                bmduser,bmdgrup,bmddate,bmdacti,bmdoriu,bmdorig)   #TQC-730102 
@@ -1297,6 +1329,7 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
                    g_bmd[l_ac].bmd03,g_bmd[l_ac].bmd04,
                    g_bmd[l_ac].bmd05,g_bmd[l_ac].bmd06,g_bmd[l_ac].bmd07,
                    g_bmd[l_ac].ta_bmd01,                                            #20200701
+                   g_bmd[l_ac].ta_bmd02,                                            #20260114
                    g_bmd08,                                                         #TQC-7B0080
                    g_bmd[l_ac].bmd09,g_bmd10,g_bmd[l_ac].bmd11,                     #TQC-B90236 
                    g_bmd[l_ac].bmduser,g_bmd[l_ac].bmdgrup,   #TQC-730102
@@ -1359,6 +1392,7 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
             LET g_bmd[l_ac].bmdgrup = g_grup
             LET g_bmd[l_ac].bmddate = g_today
             LET g_bmd[l_ac].bmdacti = 'Y'
+            LET g_bmd[l_ac].ta_bmd02 = 'N'        #20260116
             LET g_bmd_t.* = g_bmd[l_ac].*         #新輸入資料
             CALL cl_show_fld_cont()     #FUN-550037(smin)
             NEXT FIELD bmd03
@@ -1467,20 +1501,21 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
             CALL cl_err('',g_errno,0)
             NEXT FIELD bmd05
           END IF
- 
+
         AFTER FIELD bmd06
-             IF NOT cl_null(g_bmd[l_ac].bmd06) THEN
-                IF g_bmd[l_ac].bmd06 < g_bmd[l_ac].bmd05 THEN
-                   CALL cl_err(g_bmd[l_ac].bmd06,'mfg2604',0)
-                   NEXT FIELD bmd06
-                END IF
-             END IF
+           IF NOT cl_null(g_bmd[l_ac].bmd06) THEN
+              IF g_bmd[l_ac].bmd06 < g_bmd[l_ac].bmd05 THEN
+                 CALL cl_err(g_bmd[l_ac].bmd06,'mfg2604',0)
+                 NEXT FIELD bmd06
+              END IF
+              LET g_bmd[l_ac].ta_bmd02='N'   #20260114
+           END IF
  
-            CALL i604_chk_date_range('e')
-            IF NOT cl_null(g_errno) THEN
+           CALL i604_chk_date_range('e')
+           IF NOT cl_null(g_errno) THEN
               CALL cl_err('',g_errno,0)
               NEXT FIELD bmd06
-            END IF
+           END IF
  
         AFTER FIELD bmd07
            IF g_bmd[l_ac].bmd07 < 0 THEN
@@ -1520,6 +1555,14 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
            END IF
           #MOD-C30538 -- add - end
 #TQC-B90236--------add--------end
+        ##---- 20260130 (S)
+        AFTER FIELD ta_bmd02
+            IF cl_null(g_bmd[l_ac].ta_bmd02) THEN
+               LET g_bmd[l_ac].ta_bmd02='N'
+            END IF
+            DISPLAY BY NAME g_bmd[l_ac].ta_bmd02
+        ##---- 20260130 (E)
+
  
         BEFORE DELETE                            #是否取消單身
             IF g_bmd_t.bmd03 > 0 AND
@@ -1625,7 +1668,8 @@ DEFINE  l_bmd02     LIKE bmd_file.bmd02      #MOD-D20004
                        bmdmodu=g_bmd[l_ac].bmdmodu,   #TQC-730102
                        bmddate=g_bmd[l_ac].bmddate,   #TQC-730102
                        bmdacti=g_bmd[l_ac].bmdacti,   #TQC-730102
-                       ta_bmd01=g_bmd[l_ac].ta_bmd01  #20200701 
+                       ta_bmd01=g_bmd[l_ac].ta_bmd01, #20200701 
+                       ta_bmd02=g_bmd[l_ac].ta_bmd02  #20260114 
                  WHERE bmd01=g_bmd01
                    AND bmd08=g_bmd08
                    AND bmd02=g_bmd02
@@ -1844,7 +1888,7 @@ DEFINE
  
     LET g_sql =
        "SELECT bmd03, bmd04, ima02,ima021,bmd11,bmd05, bmd06, bmd09, bmd07, ", #TQC-B90236 add bmd11
-       "       ta_bmd01, ",                                 #20200701
+       "       ta_bmd01,ta_bmd02, ",                                 #20200701 #20260114
        "       bmduser,bmdgrup,bmdmodu,bmddate,bmdacti ",   #TQC-730102
        " FROM bmd_file, OUTER ima_file",
        " WHERE bmd01 = '",g_bmd01,"' AND bmd08 = '",g_bmd08,"'",
@@ -2053,6 +2097,7 @@ DEFINE
             IF cl_null(l_newno2) THEN
                 NEXT FIELD bmd08
             END IF
+            CALL i604_bmd08('a')    #20241111
            #FUN-AA0059 ---------------------add start----------------------------
             IF NOT s_chk_item_no(l_newno2,'') THEN
                CALL cl_err('',g_errno,1)
@@ -2134,6 +2179,7 @@ DEFINE
         INTO TEMP x
     UPDATE x
         SET bmd08=l_newno2
+           ,ta_bmd02='N'      #20260112  COPY DEFAULT N
            ,bmd06=''          #20210409  複製時失效日應為空
            ,bmd09=''          #20210409  複製時取替代日應為空
            ,bmd05=g_today     #20210409
@@ -2151,6 +2197,7 @@ DEFINE
         MESSAGE 'ROW(',g_msg,') O.K'
         LET l_oldno2 = g_bmd08
         LET g_bmd08 = l_newno2
+        LET g_bmd[l_ac].ta_bmd02 = 'N'                #20260130
         CALL i604_upd_bmb16()                     #MOD-E70134 add
         IF g_chkey = 'Y' THEN CALL i604_u() END IF
         CALL i604_b()
@@ -2650,10 +2697,12 @@ DEFINE l_bmd10        LIKE bmd_file.bmd10
          CALL cl_err('foreach item_cur',SQLCA.sqlcode,1)
          CONTINUE FOREACH
       END IF
-      SELECT bmd01,a.ima02,a.ima021,a.ima25,a.ima08,bmd02,bmd08,b.ima02,b.ima021
+      SELECT bmd01,a.ima02,a.ima021,a.ima25,a.ima08,bmd02,bmd08,b.ima02,b.ima021,
+             bmd04,c.ima02,c.ima021,ta_bmd02                                        #20260114
         INTO g_bmd_1[l_cnt].*
         FROM bmd_file LEFT JOIN ima_file a ON bmd01 = a.ima01
                       LEFT JOIN ima_file b ON bmd08 = b.ima01
+                      LEFT JOIN ima_file c ON bmd04 = c.ima01
        WHERE bmd01 = l_bmd01
          AND bmd08 = l_bmd08
          AND bmd02 = l_bmd02
@@ -2726,3 +2775,4 @@ FUNCTION i604_carry()
 END FUNCTION
 
 ##--- 20210413 -------------(E)
+
