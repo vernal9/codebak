@@ -25,6 +25,7 @@
 # Modify.........: No.MOD-C70273 12/07/27 By ck2yuan 將最後一行空白刪除
 # Modify.........: No.MOD-G80065 16/08/12 By fionchen 調整串occ_file的sql語法 
 # Modify.........: No.2103246005 20210325 By momo 增加顯示訂單排交日 oeb16
+# Modify.........: NO.26040023   20260420 By momo 增加顯示 ged02 交運方式
  
 DATABASE ds
  
@@ -55,7 +56,8 @@ GLOBALS "../../../tiptop/config/top.global"
             		oeb912  LIKE oeb_file.oeb912,
                         #FUN-570175  --end
             		on_order LIKE oeb_file.oeb12,
-            		oeb05    LIKE oeb_file.oeb05
+            		oeb05    LIKE oeb_file.oeb05,
+                        ged02    LIKE ged_file.ged02 #20260420 交運方式
             		END RECORD
 DEFINE g_factor         LIKE oeb_file.oeb05_fac
 DEFINE p_row,p_col      LIKE type_file.num5    #No.FUN-690026 SMALLINT
@@ -382,10 +384,13 @@ FUNCTION q201_b_fill()              #BODY FILL UP
        "SELECT oeb01,oeb03,oea03,occ02,oeb15,",
        "       oeb16,",                                  #20210325 add
        "       oeb12,oeb913,oeb915,oeb910,oeb912,",
-       "       oeb12-oeb24+oeb25-oeb26,oeb05,oeb05_fac", #BugNo:5723 
+       "       oeb12-oeb24+oeb25-oeb26,oeb05,",
+       "       ged02,",                                  #20260420
+       "       oeb05_fac", #BugNo:5723 
       #FUN-570175  --end
       #"  FROM oeb_file, oea_file, occ_file",                                      #MOD-G80065 mark
        "  FROM oeb_file, oea_file LEFT OUTER JOIN occ_file on oea03 = occ01 ",     #MOD-G80065 add
+       "  LEFT JOIN ged_file ON ged01 = oea43 ",                                   #20260420
        " WHERE oeb04 = '",g_ima.ima01,"' AND ", g_wc2 CLIPPED,
 #      "   AND oeb01 = oea01 AND oea03 = occ01 AND oea00='1' ",
       #"   AND oeb01 = oea01 AND oea03 = occ01 AND oea00<>'0' ",                   #MOD-G80065 mark
