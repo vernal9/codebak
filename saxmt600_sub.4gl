@@ -506,6 +506,8 @@
 # Modify.........:               19/03/25 By Ruby 修改出貨數量檢查公式，需加入驗退量
 # Modify.........: No.23050006   20230510 By momo 確認出貨量數量大於原訂單數量檢核移至送簽前
 # Modify.........: No.23050014   23/06/15 By Ruby 檢核出貨與出通數量之錯誤項次一次性顯示                                          
+# Modify.........: NO.25120039   20260505 By momo 檢核是否有訂金未付
+
 DATABASE ds
  
 GLOBALS "../../../tiptop/config/top.global"
@@ -1347,18 +1349,26 @@ END IF
               LET l_oea261=0
            END IF
 
+           ##--- 20260505 (S) ---- 尚有未收訂金
+           IF (l_oma54t > l_oma55) OR (l_oea261 > l_oma55) THEN
+              CALL cl_err('','axm-135',1)
+              LET g_success='N'
+              RETURN                   
+           END IF
+           ##--- 20260505 (E) ----
+
            IF l_oga.oga00 != '3' THEN #TQC-C20023 add
 #TQC-B30120 --begin--
               CASE 
                 WHEN (l_oea213 = 'Y')
                   #IF g_plant <> 'EC' AND g_plant <> 'EC_TEST' AND g_plant <> 'TY' THEN           #180807 add by ruby 
-                  IF l_oga.oga08='2' THEN                                                        #200318 add by ruby
+                  #IF l_oga.oga08='2' THEN                                                        #200318 add by ruby #20260505 mark
                    IF l_oma54t <> l_oea261 THEN 
                       CALL cl_err('','axm-135',1)
                       LET g_success='N'
                       RETURN                   
                    END IF
-                  END IF                                                     #180807 add by ruby
+                 # END IF                                                     #180807 add by ruby #20260505 mark
                                     
                 WHEN (l_oea213 = 'N')
                    #MOD-F70057 mark---start---
@@ -1374,24 +1384,24 @@ END IF
                    #MOD-F70057 add---start---
                    IF g_ooz.ooz33 = 'Y' THEN            #應收訂金不含稅
                     #IF g_plant <> 'EC' AND g_plant <> 'EC_TEST' AND g_plant <> 'TY' THEN               #180807 add by ruby
-                    IF l_oga.oga08='2' THEN                                                        #200318 add by ruby
+                    IF l_oga.oga08='2' THEN                                                        #200318 add by ruby 
                       IF l_oma54 <> l_oea261 THEN
                          CALL cl_err('','axm-135',1)
                          LET g_success = 'N'
                          RETURN
                       END IF
-                    END IF                                     #180807 add by ruby
+                    END IF                                     #180807 add by ruby 
                    ELSE                                 #應收訂金含稅==>當訂單訂金不含稅時，轉入應收金額為訂金*(1+稅率)
                       LET l_oea261 = l_oea261 * (1+l_oea211/100)
                       LET l_oea261 = cl_digcut(l_oea261,t_azi04)
                       #IF g_plant <> 'EC' AND g_plant <> 'EC_TEST' AND g_plant <> 'TY' THEN              #180807 add by ruby
-                      IF l_oga.oga08='2' THEN                                                        #200318 add by ruby
+                      IF l_oga.oga08='2' THEN                                                        #200318 add by ruby 
                         IF l_oma54 <> l_oea261 THEN
                          CALL cl_err('','axm-135',1)
                          LET g_success = 'N'
                          RETURN
                         END IF
-                      END IF                                   #180807 add by ruby
+                      END IF                                   #180807 add by ruby 
                    END IF
                    #MOD-F70057 add---end---
                END CASE                            
@@ -1403,12 +1413,31 @@ END IF
 #              END IF
 #              #-----No:FUN-A50103 END-----
 #TQC-B30120    --end--
-            #IF g_plant <> 'EC' AND g_plant <> 'EC_TEST' AND g_plant <> 'TY' THEN                   #180807 add by ruby
+            LET l_cnt=0                                                                    #250205 add by ruby
+            #IF g_plant <> 'EC' AND g_plant <> 'EC_TEST' AND g_plant <> 'TY' THEN          #180807 add by ruby
             IF l_oga.oga08='2' THEN                                                        #200318 add by ruby
               IF (l_oma55<l_oma54t) OR (l_oma54t=0) THEN
-                CALL cl_err('','axm-135',1) #MOD-780163
-                LET g_success='N'
-                RETURN
+                #250205 mark by ruby --s--
+                #CALL cl_err('','axm-135',1) #MOD-780163                                  
+                #LET g_success='N'
+                #RETURN
+                #250205 mark by ruby --e--
+                #250205 add by ruby --s--              
+                IF l_oga.oga09='1' THEN                                                    
+                  SELECT count(*) INTO l_cnt FROM ogb_file,ima_file WHERE ogb04=ima01 AND ima12='M' AND ogb01=l_oga.oga01
+                  IF l_cnt>0 THEN
+                    CALL cl_err('','axm-135',1) 
+                    LET g_success='N'
+                    RETURN                  
+                  ELSE
+                    CALL cl_err('','cxm-043',1)                   
+                  END IF
+                ELSE
+                  CALL cl_err('','axm-135',1) #MOD-780163
+                  LET g_success='N'
+                  RETURN
+                END IF                   
+                #250205 add by ruby --e--                                                  
               END IF
             END IF
            END IF #TQC-C20023 add                          #180807 add by ruby
@@ -6997,6 +7026,14 @@ DEFINE l_ogc091        LIKE ogc_file.ogc091 #MOD-GB0038 add
  
    #在判斷拆併箱之後還原舊值,因拆併箱也用此變數
     LET g_success = l_success
+
+  #240808 add by ruby --s-- 扣帳後發信通知
+  IF g_success = 'Y' THEN                               #260203 add by ruby --s--
+  IF g_plant='TY' AND l_oga.oga09 MATCHES '[26]' THEN 
+    CALL t600sub_mail(l_oga.*) 
+  END IF        
+  END IF                                                #260203 add by ruby --e--
+  #240808 add by ruby --e--
  
 END FUNCTION
  
@@ -14977,3 +15014,119 @@ DEFINE l_rvbs   RECORD LIKE rvbs_file.*
 END FUNCTION
 #FUN-E60056---add---end------
 #DEV-D40013 --add
+
+FUNCTION  t600sub_mail(l_oga)
+  DEFINE l_cmd          STRING #LIKE type_file.chr1000 
+  DEFINE l_oce03        LIKE   oce_file.oce03          #連絡人
+  DEFINE l_oce05        LIKE   oce_file.oce05          #Email
+  DEFINE l_zo02         LIKE   zo_file.zo02
+  DEFINE l_subject      STRING   #主旨
+  DEFINE l_body         STRING   #內文路徑
+  DEFINE l_recipient    STRING   #收件者
+  DEFINE l_cnt          LIKE   type_file.num5 
+  DEFINE l_cnt1         LIKE   type_file.num5  
+  DEFINE l_wc           STRING
+  DEFINE l_sql          STRING
+  DEFINE ls_context        STRING
+  DEFINE ls_temp_path      STRING
+  DEFINE ls_context_file   STRING
+  DEFINE ls_unix_cmd       STRING  
+  DEFINE l_oga          RECORD LIKE oga_file.*
+  DEFINE i              LIKE type_file.num5      
+  DEFINE l_d  LIKE type_file.chr1 
+  DEFINE l_gen06        LIKE gen_file.gen06 
+  DEFINE l_gen02        LIKE gen_file.gen02 
+  DEFINE l_occ21        LIKE occ_file.occ21
+
+  SELECT occ21 INTO l_occ21 FROM occ_file WHERE occ01=l_oga.oga03
+
+       #收件者
+         LET l_recipient = ''
+         LET l_gen06=''
+         LET l_gen02='' 
+           SELECT gen06,gen02 INTO l_gen06,l_gen02 FROM gen_file
+             WHERE gen01 = l_oga.oga14                             
+         DECLARE r600_oce_c CURSOR FOR
+                 SELECT oce03,oce05 FROM oce_file
+                   WHERE oce01 = l_oga.oga03
+                     AND oce05 IS NOT NULL
+                     AND nvl(oce02,' ') <> '電子發票'                         
+                   ORDER BY oce03
+         LET i = 0                                                           
+         FOREACH r600_oce_c INTO l_oce03,l_oce05
+           LET i = i + 1
+           IF i = 1 THEN
+              LET l_recipient = l_recipient CLIPPED,l_oce05 CLIPPED,":",l_oce03 CLIPPED ,":","1" CLIPPED
+           ELSE
+              LET l_recipient = l_recipient CLIPPED ,";",l_oce05 CLIPPED,":",l_oce03 CLIPPED ,":","1" CLIPPED
+           END IF
+         END FOREACH
+         
+           LET l_cnt=0
+           SELECT COUNT(*) INTO l_cnt FROM oce_file 
+             WHERE oce01 = l_oga.oga03 AND oce05 IS NOT NULL AND nvl(oce02,' ') <> '電子發票'   
+             IF l_cnt>0 THEN                                     
+              LET l_recipient =l_recipient CLIPPED ,";",l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED 
+             ELSE
+              LET l_recipient =l_recipient CLIPPED ,l_gen06 CLIPPED,":",l_gen02 CLIPPED ,":","1" CLIPPED  
+             END IF  
+           IF g_plant='TY' THEN         
+             LET l_recipient =l_recipient CLIPPED ,";assistant@toyorobot.com:業助:","1" CLIPPED                        
+           END IF
+         LET g_xml.recipient = l_recipient
+           
+  #出貨通知 --s--
+       #主旨                                            #要發 出貨單(axmr600)/INVOICE()
+        #SELECT zo02 INTO l_zo02  FROM zo_file  WHERE zo01 = g_lang
+        #LET l_subject = cl_getmsg("apm-795",g_lang) CLIPPED,l_zo02 CLIPPED,
+        #                cl_getmsg("axm-796",g_lang) CLIPPED,l_oga.oga01  
+        IF l_occ21='TW' OR l_occ21='CN' THEN
+          #LET l_subject = "東佑達(",l_oga.oga032 CLIPPED ,")出貨通知-",l_oga.oga01                                #260203 mark by ruby
+          LET l_subject = "東佑達(",l_oga.oga032 CLIPPED ,")出貨通知-",l_oga.oga01 CLIPPED ," / ",l_oga.oga16      #260203 add by ruby
+          LET g_xml.subject = l_subject 
+          LET g_xml.body = ' '          
+        END IF
+        IF l_occ21='JP' THEN
+          #LET l_subject = "TOYO(",l_oga.oga032 CLIPPED ,")発送のお知らせ-",l_oga.oga01                            #260203 mark by ruby
+          LET l_subject = "TOYO(",l_oga.oga032 CLIPPED ,")発送のお知らせ-",l_oga.oga01 CLIPPED ," / ",l_oga.oga16  #260203 add by ruby
+          LET g_xml.subject = l_subject  
+          LET g_xml.body = ' '                  
+        END IF                  
+        IF l_occ21<>'TW' AND l_occ21<>'CN' AND l_occ21<>'JP' THEN
+          #LET l_subject = "TOYO(",l_oga.oga032 CLIPPED ,")Shipping notice-",l_oga.oga01                           #260203 mark by ruby
+          LET l_subject = "TOYO(",l_oga.oga032 CLIPPED ,")Shipping notice-",l_oga.oga01 CLIPPED ," / ",l_oga.oga16 #260203 add by ruby
+          LET g_xml.subject = l_subject   
+          LET g_xml.body = ' '                 
+        END IF
+ 
+       #內文
+       #LET ls_context = cl_getmsg("apm-799",g_lang) CLIPPED   
+       #LET ls_temp_path = FGL_GETENV("TEMPDIR")
+       #LET ls_context_file = ls_temp_path,"/axmr400_context_" || FGL_GETPID() || ".txt"
+       #LET ls_unix_cmd = "echo '" || ls_context || "' > " || ls_context_file
+       #RUN ls_unix_cmd WITHOUT WAITING
+       #LET g_xml.file = "axmr400_cn_" || FGL_GETPID() || ".xml"
+       #LET g_xml.body = ls_context_file       
+                    
+          IF l_occ21='TW' THEN             
+          LET l_wc = "oga01='",l_oga.oga01 CLIPPED,"'",
+                     " AND oga02='",l_oga.oga02 CLIPPED,"'"
+          LET l_wc = cl_replace_str(l_wc,"'","\"")
+          CALL FGL_SETENV("MAIL_TO",l_recipient)            
+           LET l_cmd = "axmr600 '",                                             #出貨單
+                        g_today,"' '",g_user CLIPPED,"' '",
+                        g_rlang,"' 'Y' 'A' '1' '",l_wc CLIPPED,
+                        "' '1' 'Y' 'Y' 'N' 'N' 'N' 'N' 'default' 'default' 'axmr600' '",g_xml.subject,"' '",g_xml.body,"' '",g_xml.recipient,"' 'axmr600_0_std'"                                  
+           CALL cl_cmdrun(l_cmd)
+          ELSE
+          LET l_wc = "ofa01='",l_oga.oga27 CLIPPED,"'"
+          LET l_wc = cl_replace_str(l_wc,"'","\"")
+          CALL FGL_SETENV("MAIL_TO",l_recipient)            
+           LET l_cmd = "axmr551 '",                                             #INVOICE
+                        g_today,"' '",g_user CLIPPED,"' '",
+                        g_rlang,"' 'Y' 'A' '1' '",l_wc CLIPPED,
+                        "' 'N' 'Y' 'Y' 'Y' 'N' 'default' 'default' 'axmr551' '",g_xml.subject,"' '",g_xml.body,"' '",g_xml.recipient,"' 'axmr551_0_std'"                                  
+           CALL cl_cmdrun(l_cmd)         
+          END IF
+  #出貨通知--e--                                                
+END FUNCTION

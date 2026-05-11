@@ -165,9 +165,9 @@ FUNCTION i605_cs()
 
    INITIALIZE g_tc_bmd01 TO NULL    
    INITIALIZE g_tc_bmd08 TO NULL    
-    	CONSTRUCT g_wc ON tc_bmd01,tc_bmd08,tc_bmd02,tc_bmd03,tc_bmd04,
+    	CONSTRUCT g_wc ON tc_bmd01,tc_bmd08,tc_bmd02,tc_bmdnote,tc_bmd03,tc_bmd04,
                           tc_bmd05,tc_bmd06
-        	FROM tc_bmd01,tc_bmd08,tc_bmd02,s_tc_bmd[1].tc_bmd03,s_tc_bmd[1].tc_bmd04,
+        	FROM tc_bmd01,tc_bmd08,tc_bmd02,tc_bmdnote,s_tc_bmd[1].tc_bmd03,s_tc_bmd[1].tc_bmd04,
                  s_tc_bmd[1].tc_bmd05,s_tc_bmd[1].tc_bmd06
                     
  

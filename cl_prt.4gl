@@ -236,6 +236,9 @@
 # Modify.........: No:APV-000012 18/06/22 By tomcheng   營運監控平台背景執行增加excel檔案格式
 # Modify.........: NO:1909173633 20190917 By momo    送簽退回時不應列印出簽核人員
 # Modify.........: NO:           20240627 By momo    信件內文特殊客製段還原，並搬移至指定位置，避免其他程式信件異常
+# Modify.........: No:25080021   20250821 By momo    cxmr401 地址依執行營運中心抓取後帶入 
+# Modify.........: NO:26010042   20260123 By momo    jmail 特殊字元調整
+# Modify.........: No:26040022   20260422 By momo    p_cron 執行時，也可動態取得 MAIL
 
 IMPORT util
 IMPORT os      #FUN-8B0011
@@ -369,6 +372,7 @@ DEFINE g_zaw15          LIKE zaw_file.zaw15   #FUN-BB0157 ADD紙張方向
 DEFINE l_zaw02          LIKE zaw_file.zaw02   #FUN-BB0099
 DEFINE m_fso            LIKE type_file.num10  #FUN-D60093 add
 DEFINE g_create_qry_close    LIKE type_file.num5   #FUN-F50032
+DEFINE g_zo041          LIKE zo_file.zo041    #20250821 ADDRESS
 
 FUNCTION cl_prt(p_name,p_prtway,p_copies,p_len)
    DEFINE p_name                LIKE type_file.chr20,  #No.FUN-690005 VARCHAR(20),
@@ -503,9 +507,20 @@ FUNCTION cl_prt(p_name,p_prtway,p_copies,p_len)
       #No.FUN-720003--end
       #No.FUN-570132 --start--
       ELSE
+       ##----20260423 判斷是否已有值，無值才覆蓋 (S)
+       IF NOT cl_null(g_xml.recipient) THEN
+          LET g_receiver_list = g_xml.recipient
+       END IF
+       IF cl_null(g_receiver_list) THEN 
          LET g_receiver_list = FGL_GETENV("MAIL_TO")
+       END IF
+       IF cl_null(g_cc_list) THEN
          LET g_cc_list = FGL_GETENV("MAIL_CC")
+       END IF
+       IF cl_null(g_bcc_list) THEN
          LET g_bcc_list = FGL_GETENV("MAIL_BCC")
+       END IF
+       ##----20260423 判斷是否已有值，無值才覆蓋 (E)
 
          IF ( NOT cl_null(g_receiver_list) ) OR
             ( NOT cl_null(g_cc_list) ) OR
@@ -780,9 +795,29 @@ FUNCTION cl_prt(p_name,p_prtway,p_copies,p_len)
 # While backgound job, notify user automatically when finished
 #----------
    IF g_cron_job = 'Y' THEN
-      LET g_receiver_list = FGL_GETENV("MAIL_TO")
-      LET g_cc_list = FGL_GETENV("MAIL_CC")
-      LET g_bcc_list = FGL_GETENV("MAIL_BCC")
+      ##----20260423 判斷是否已有值，無值才覆蓋 (S)
+      #LET g_receiver_list = FGL_GETENV("MAIL_TO")
+      #LET g_cc_list = FGL_GETENV("MAIL_CC")
+      #LET g_bcc_list = FGL_GETENV("MAIL_BCC")
+      ##----20260423 判斷是否已有值，無值才覆蓋 (S)
+      IF NOT cl_null(g_xml.recipient) AND cl_null(g_receiver_list) THEN
+         LET g_receiver_list = g_xml.recipient
+      END IF
+
+      IF cl_null(g_receiver_list) AND cl_null(g_xml.recipient) THEN
+         LET g_receiver_list = FGL_GETENV("MAIL_TO")
+         LET g_xml.recipient = g_receiver_list
+      END IF
+
+      IF cl_null(g_cc_list) THEN
+        LET g_cc_list = FGL_GETENV("MAIL_CC")
+      END IF
+      IF cl_null(g_bcc_list) THEN
+        LET g_bcc_list = FGL_GETENV("MAIL_BCC")
+      END IF
+      
+      DISPLAY "DEBUG: recipient=", g_xml.recipient DISPLAY "DEBUG: receiver=", g_receiver_list
+      ##----20260423 判斷是否已有值，無值才覆蓋 (E)
 
       IF ( NOT cl_null(g_receiver_list) ) OR
          ( NOT cl_null(g_cc_list) ) OR
@@ -2577,6 +2612,9 @@ FUNCTION cl_prt_cs1(p_prog,p_rep_template,p_sql,param_str)
     #FUN-890056 --start
     IF g_bgjob = 'Y' AND g_prtway = 'A' THEN
        LET l_zax29 = FGL_GETENV("MAIL_TO")
+       IF cl_null(l_zax29) THEN               #20260423
+          LET l_zax29 = g_xml.recipient       #20260423
+       END IF                                 #20260423
        LET l_zax30 = FGL_GETENV("MAIL_CC")
        LET l_zax31 = FGL_GETENV("MAIL_BCC")
     ELSE
@@ -2622,19 +2660,34 @@ FUNCTION cl_prt_cs1(p_prog,p_rep_template,p_sql,param_str)
        IF cl_null(l_mail_text) or l_mail_text='' THEN
           LET l_mail_text=cl_getmsg(g_xml.body,1)
        END IF
+       ##---- 20250821 (S) 依據執行營運中心帶出 地址
+       IF g_prog='cxmr401' THEN
+          SELECT zo041 INTO g_zo041 FROM zo_file WHERE zo01=g_lang
+          LET l_mail_text= l_mail_text,g_zo041
+       END IF
+       ##---- 20250821 (E)
+
     ##--20240627 Ruby客製段上移 (S)
     LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
                      #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
                      #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add       #210526 mark by ruby
                      cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #210526 add by ruby 夾入g_xml.body內文參數
     ##--20240627 Ruby客製段上移 (E)
-    END IF
+    ELSE
     #210526 add by ruby --e--
      
     LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
                      #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
                      cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add       #210526 mark by ruby #20240627 remark
                      #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #210526 add by ruby 夾入g_xml.body內文參數 #20240627 mark
+
+    END IF
+
+    ##--- 20260423 (S) ----- p_ze 無主旨時直接顯示 參數值
+    IF (cl_null(l_mail_text) or l_mail_text='') AND NOT cl_null(g_xml.body) THEN
+       LET ls_context = g_xml.body CLIPPED,"|", ls_context
+    END IF
+    ##--- 20260423 (E) -----
 
     IF l_havedata = "Y" THEN
        LET ls_context = ls_context CLIPPED, cl_getmsg("lib-284",g_lang) CLIPPED, "|"
@@ -3481,25 +3534,43 @@ FUNCTION cl_prt_cs3(p_prog,p_rep_template,p_sql,param_str)
     
     #210526 add by ruby --s--
     #LET l_mail_text=''                                                                             #20240627 mark
-    IF NOT cl_null(g_xml.body) AND (g_prog='axmr400' or g_prog='cxmr401' or g_prog='axmr211') THEN
-       LET l_mail_text=''                                                                           #20240627 modify
+
+    #IF NOT cl_null(g_xml.body) AND (g_prog='axmr400' or g_prog='cxmr401' or g_prog='axmr211') THEN
+    #   LET l_mail_text=''                                                                           #20240627 modify
+    #   LET l_mail_text=cl_getmsg(g_xml.body,g_lang)
+    #   IF cl_null(l_mail_text) THEN
+    #      LET l_mail_text=cl_getmsg(g_xml.body,1)
+    #   END IF    
+    ###--20240627 Ruby客製段上移 (S)
+    #   LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
+    #                 #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
+    #                 #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add        #210526 mark by ruby
+    #                 cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"      #210526 add by ruby 夾入g_xml.body內文參數
+    ###--20240627 Ruby客製段上移 (E)
+    #ELSE                               #240807 add by ruby
+    #LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
+    #                 #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
+    #                 cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add        #210526 mark by ruby  #20240627 remak
+    #                 #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"      #210526 add by ruby 夾入g_xml.body內文參數 #20240627 mark
+    #END IF                             #240807 modify by ruby 下移
+    #210526 add by ruby --e-- 
+
+    IF NOT cl_null(g_xml.body) THEN
+       LET l_mail_text=''
        LET l_mail_text=cl_getmsg(g_xml.body,g_lang)
        IF cl_null(l_mail_text) THEN
-          LET l_mail_text=cl_getmsg(g_xml.body,1)
-       END IF    
-    ##--20240627 Ruby客製段上移 (S)
-       LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
-                     #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
-                     #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add        #210526 mark by ruby
-                     cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"      #210526 add by ruby 夾入g_xml.body內文參數
-    ##--20240627 Ruby客製段上移 (E)
-    ELSE                               #240807 add by ruby
-    LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
-                     #cl_getmsg("lib-279",g_lang) CLIPPED,"|",TODAY CLIPPED," ",TIME ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"       #FUN-D40054 mark
-                     cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",cl_getmsg("lib-281",g_lang) CLIPPED,"|"    #FUN-D40054 add        #210526 mark by ruby  #20240627 remak
-                     #cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"|",l_mail_text CLIPPED,"|",cl_getmsg("lib-281",g_lang) CLIPPED,"|"      #210526 add by ruby 夾入g_xml.body內文參數 #20240627 mark
-    END IF                             #240807 modify by ruby 下移
-    #210526 add by ruby --e--   
+          LET l_mail_text = g_xml.body
+       END IF
+    ELSE
+       LET l_mail_text = cl_getmsg("lib-282",g_lang)
+    END IF 
+
+
+    LET ls_context = l_mail_text CLIPPED,"|", cl_getmsg("lib-227",g_lang) CLIPPED,"|", 
+                     cl_getmsg("lib-229",g_lang) CLIPPED,"|", cl_get_progname(g_prog,g_lang) CLIPPED,"(",g_prog,")", "|",
+                     cl_getmsg("lib-279",g_lang) CLIPPED,"|",g_pdate CLIPPED," ",l_time ,"|",l_mailtpl CLIPPED,"||",
+                     cl_getmsg("lib-281",g_lang) CLIPPED,"|"    
+
     
     IF l_havedata = "Y" THEN
        LET ls_context = ls_context CLIPPED, cl_getmsg("lib-284",g_lang) CLIPPED, "|"
@@ -6095,6 +6166,7 @@ FUNCTION cl_prt_j(p_name,p_maillist)
          DISPLAY ls_context #afer testing, delete
       ELSE
       #No.FUN-7C0078 --end--
+      ##----20250514 (E)
          LET ls_context = cl_getmsg("lib-282",g_lang) CLIPPED,"\n\n",
                           cl_getmsg("lib-227",g_lang) CLIPPED," : " ,cl_get_progname(g_prog,g_lang),"\(",g_prog CLIPPED,"\)\n" ,
                           cl_getmsg("lib-229",g_lang) CLIPPED," : " ,g_user CLIPPED , "\n" ,
@@ -6103,6 +6175,8 @@ FUNCTION cl_prt_j(p_name,p_maillist)
                           cl_getmsg("lib-281",g_lang) CLIPPED," : " ,cl_getmsg("lib-284",g_lang),"\n",
                           "<br><br><br>",cl_getmsg("lib-287",g_lang) CLIPPED   # No:FUN-CA0016
       END IF #No.FUN-7C0078
+      
+
       LET ls_temp_path = FGL_GETENV("TEMPDIR")
       LET ls_context_file = ls_temp_path,"/report_context_" || FGL_GETPID() || ".txt"
       LET l_cmd = "echo '" || ls_context || "' > " || ls_context_file
@@ -6151,9 +6225,17 @@ FUNCTION cl_prt_j(p_name,p_maillist)
       SELECT mlj13,mlj14 INTO l_mlj13,l_mlj14 FROM mlj_file WHERE mlj01 = "DEFAULT"
    END IF
    IF l_mlj13 = "0" THEN   #若不加密就走原流程，若加密則收件者要拆開寄送
-      LET g_xml.recipient = g_receiver_list
-      LET g_xml.cc        = g_cc_list
-      LET g_xml.bcc       = g_bcc_list
+      ##--- 20260423 By momo  --- (S) 增加判斷空值時才處理
+      IF cl_null(g_xml.recipient) THEN            
+         LET g_xml.recipient = g_receiver_list
+      END IF
+      IF cl_null(g_xml.cc) THEN 
+         LET g_xml.cc        = g_cc_list
+      END IF
+      IF cl_null(g_xml.bcc) THEN
+         LET g_xml.bcc       = g_bcc_list
+      END IF
+      ##--- 20260423 By momo  --- (E)
       IF NOT g_rep_err AND l_is_cr = 'N' THEN
          LET g_xml.attach = l_mail_filename
       END IF
@@ -6525,6 +6607,15 @@ FUNCTION cl_jmail()
    LET l_xml.notification =  l_mlj.mlj12
   
 #######給予l_xml.* default值
+
+   ##---20260123 By momo 特殊字元調整 (S)---
+   LET g_xml.subject = cl_replace_str(g_xml.subject,"&","&amp;")
+   LET g_xml.subject = cl_replace_str(g_xml.subject,"<","&lt;")
+   LET g_xml.subject = cl_replace_str(g_xml.subject,">","&gt;")
+   LET g_xml.subject = cl_replace_str(g_xml.subject,"""""","&gt;")
+   LET g_xml.subject = cl_replace_str(g_xml.subject,".","&gt;")
+   ##---20260123 By momo 特殊字元調整 (E)---
+
    LET l_xml.subject = g_xml.subject
 
    #FUN-BA0009 start

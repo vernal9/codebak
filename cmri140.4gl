@@ -6,6 +6,7 @@
 # Modify.........: 20210624 By momo 
 # Modify.........: NO.23070026   20230717 By momo 增加取替代資訊顯示
 # Modify.........: No.23120034   20231225 By momo 單身調整後，停留在原行數  
+# Modify.........: No.26040046   20260505 BY momo 增加顯示 ima41 平均用量、批次更新日期功能
 
 DATABASE ds
  
@@ -20,6 +21,7 @@ DEFINE
 	mss09       LIKE mss_file.mss09,
 	mss08       LIKE mss_file.mss08,  
         ima27       LIKE ima_file.ima27,    #20210624
+        ima41       LIKE ima_file.ima41,    #20260505
         atp_qty     LIKE type_file.num10,   #20210624
         mss00       LIKE mss_file.mss00,   
 	mss01       LIKE mss_file.mss01,
@@ -44,6 +46,7 @@ DEFINE
 	mss09       LIKE mss_file.mss09,
 	mss08       LIKE mss_file.mss08, 
         ima27       LIKE ima_file.ima27,    #20210624
+        ima41       LIKE ima_file.ima41,    #20260505
         atp_qty     LIKE type_file.num10,   #20210624
         mss00       LIKE mss_file.mss00,      
 	mss01       LIKE mss_file.mss01,
@@ -69,6 +72,7 @@ DEFINE
         mss09       STRING,
         mss08       STRING,
         ima27       STRING,    
+        ima41       STRING, #20260505    
         atp_qty     STRING,   
         mss00       STRING,
         mss01       STRING,
@@ -174,8 +178,10 @@ FUNCTION i140_curs()
 
     
     CONSTRUCT g_wc ON mss_v,mss09,ima08,mss01,mss03 FROM mss_v,s_mss[1].mss09,s_mss[1].ima08,s_mss[1].mss01,s_mss[1].mss03             
-              BEFORE CONSTRUCT
-                 CALL cl_qbe_init()
+       BEFORE CONSTRUCT
+         CALL cl_qbe_init()
+         DISPLAY '>0' TO mss09   #20290507
+
       ON ACTION controlp
            CASE
               WHEN INFIELD(mss_v)
@@ -232,6 +238,14 @@ FUNCTION i140_menu()
    WHILE TRUE
       CALL i140_bp("G")
       CASE g_action_choice
+
+         ##--- 20260505 (S)
+         WHEN "batch_detail_date"
+            IF cl_chk_act_auth() THEN
+               CALL i140_d(g_wc)
+            END IF
+         ##--- 20260505 (E)
+         
          WHEN "query"
             IF cl_chk_act_auth() THEN
                CALL i140_q()
@@ -475,7 +489,7 @@ DEFINE
     CALL cl_opmsg('b')
  
     LET g_forupd_sql =
-      " SELECT mss11,mss09,mss08,ima27,0,", #20210624
+      " SELECT mss11,mss09,mss08,ima27,ima41,0,", #20210624 #20260505
       "        mss00,mss01,ima02,ima021,ima08,mss03,mss041,mss043,mss044,mss051,mss052,mss053,mss061,mss062,mss063,mss064,mss065 ",                      
       "   FROM mss_file,ima_file ",
       "   WHERE ima01=mss01 AND mss_v= ? ",
@@ -700,11 +714,14 @@ DEFINE p_wc           STRING
 DEFINE l_cnt          LIKE type_file.num5   
 
       LET g_sql =
-       "SELECT mss11,mss09,mss08,ima27,0,",         #20210624
-       "       mss00,mss01,ima02,ima021,ima08,mss03,mss041,mss043,mss044,mss051,mss052,mss053,mss061,mss062,mss063,mss064,mss065  ",                                           #FUN-D10004 add
-       " FROM mss_file,ima_file ",
+       "SELECT a.mss11,a.mss09,a.mss08,ima27,ima41,0,",         #20210624 #20260505
+       "       a.mss00,a.mss01,ima02,ima021,ima08,a.mss03,a.mss041,",
+       "       a.mss043,a.mss044,a.mss051,a.mss052,a.mss053,a.mss061,a.mss062,a.mss063,a.mss064,a.mss065 ", 
+       " FROM mss_file a ",
+       " LEFT JOIN ima_file ON ima01 = a.mss01 ",
        " WHERE mss_v = '",g_mss_v,"' ",
-       "   AND mss01=ima01 AND mss10='N' ",
+       "   AND mss03 = (SELECT max(mss03) FROM mss_file b WHERE a.mss_v=b.mss_v AND a.mss01=b.mss01) ",
+       "   AND mss10='N' ",
        "   AND ",p_wc CLIPPED ,
        " ORDER BY 5,1"
 
@@ -788,6 +805,11 @@ FUNCTION i140_bp(p_ud)
             CALL i140_bp2('')
          END IF
          #---- 20230717 add (E)
+
+       #---- 20260505 批次變更單身日期資料
+      ON ACTION batch_detail_date
+          LET g_action_choice="batch_detail_date"
+         EXIT DISPLAY
  
       ON ACTION query
          LET g_action_choice="query"
@@ -952,6 +974,224 @@ DEFINE g_cnt1   LIKE type_file.num10
     CALL g_bmd.deleteElement(g_cnt)
     LET g_rec_b2 = g_cnt1 - 1
  
+END FUNCTION
+
+#批次變更單身日期資料
+FUNCTION i140_d(p_wc)
+
+  DEFINE 
+         a         LIKE type_file.chr1,
+         l_mss03b  LIKE mss_file.mss03,
+         l_imzacti LIKE imz_file.imzacti,
+         q_ima06   LIKE ima_file.ima06,
+         l_mss03a  LIKE mss_file.mss03,        
+         p_cmd     LIKE type_file.chr1,
+         l_mss     RECORD LIKE mss_file.*,
+         l_cnt     LIKE type_file.num5,
+         l_sql     STRING,
+         p_wc      STRING,
+         p_row,p_col LIKE type_file.num5
+        
+
+ 
+   LET p_row = 2 LET p_col = 30
+   OPEN WINDOW i140_d AT p_row,p_col WITH FORM "cmr/42f/cmri140_d"
+         ATTRIBUTE (STYLE = g_win_style CLIPPED)
+
+   CALL cl_ui_locale("cmri140_d")
+
+   LET a='1'
+   LET q_ima06=NULL
+   LET l_mss03b=NULL
+   LET l_mss03a=NULL
+ 
+   INPUT a,q_ima06,l_mss03b,l_mss03a
+         WITHOUT DEFAULTS FROM FORMONLY.a,FORMONLY.q_ima06,FORMONLY.mss03b,FORMONLY.mss03a
+                              
+      BEFORE FIELD a
+         CALL i140_set_entry_d(a,l_mss03a)
+         CALL i140_set_no_entry_d(a,l_mss03a)
+
+      AFTER FIELD a
+         IF a NOT MATCHES "[123]" THEN
+            NEXT FIELD a
+         END IF    
+         
+      AFTER FIELD q_ima06
+         SELECT imzacti INTO l_imzacti
+           FROM imz_file
+          WHERE imz01 = q_ima06
+         IF cl_null(l_imzacti) THEN 
+            CALL cl_err(q_ima06,'mfg3179',0) 
+            NEXT FIELD q_ima06
+         END IF
+
+      #原始供需日期
+      AFTER FIELD mss03a   
+         IF NOT cl_null(l_mss03a) THEN
+            IF l_mss03a < g_today THEN
+               CALL cl_err('',"asr-049",0)         
+               NEXT FIELD mss03a
+            END IF
+         END IF
+         
+      ON CHANGE a
+         IF a != '2' THEN
+            LET l_mss03b = ' '           
+            DISPLAY l_mss03b TO FORMONLY.mss03b
+         END IF
+         IF a != '3' THEN
+            LET q_ima06 = ' ' 
+            DISPLAY q_ima06 TO FORMONLY.q_ima06
+         END IF
+         CALL i140_set_entry_d(a,l_mss03a)
+         CALL i140_set_no_entry_d(a,l_mss03a)
+
+      ON CHANGE mss03a
+         IF cl_null(l_mss03a) THEN
+            LET l_mss03a = ' '
+            DISPLAY l_mss03a TO FORMONLY.mss03a
+         END IF
+         CALL i140_set_entry_d(a,l_mss03a)
+         CALL i140_set_no_entry_d(a,l_mss03a)
+
+      ON ACTION controlp
+         CASE
+            WHEN INFIELD(q_ima06)
+                 CALL cl_init_qry_var()
+                 LET g_qryparam.form = "q_imz"
+                 CALL cl_create_qry() RETURNING q_ima06
+                 DISPLAY q_ima06 TO FORMONLY.q_ima06
+                 NEXT FIELD q_ima06
+            OTHERWISE EXIT CASE
+         END CASE
+
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE INPUT
+
+      ON ACTION about
+         CALL cl_about()
+
+      ON ACTION help
+         CALL cl_show_help()
+
+      ON ACTION controlg
+           CALL cl_cmdask()
+
+      ON ACTION CONTROLR
+         CALL cl_show_req_fields()
+
+      AFTER INPUT
+         IF INT_FLAG THEN           # 若按了DEL鍵
+            LET INT_FLAG = 0
+            EXIT INPUT
+         END IF
+         IF a = '3' THEN
+            IF cl_null(q_ima06) THEN
+               NEXT FIELD q_ima06
+            END IF
+         END IF
+         IF cl_null(l_mss03a)  THEN   #變更後日期不可完全空白
+            CALL cl_err('','apm1195',0) 
+            NEXT FIELD mss03a
+         ELSE
+            CASE a
+               WHEN "1"     #所有單身日期一併調整
+                  LET l_sql =" SELECT a.mss00,a.mss01,a.mss02,a.mss03 FROM mss_file a ",
+                             "  LEFT JOIN ima_file ON mss01 = ima01 ",
+                             "  WHERE mss_v = '",g_mss_v,"' ",
+                             "   AND mss03 = (SELECT max(mss03) FROM mss_file b WHERE a.mss_v=b.mss_v AND a.mss01=b.mss01) ",
+                             "   AND mss10='N' AND ",p_wc CLIPPED
+
+               WHEN "2"     #只調整變更前相同的單身日期
+                  LET l_sql =" SELECT a.mss00,a.mss01,a.mss02,a.mss03 FROM mss_file a ",
+                             "  LEFT JOIN ima_file ON mss01 = ima01 ",
+                             "  WHERE mss_v = '",g_mss_v,"' ",
+                             "   AND mss03 = '",l_mss03b,"' ",
+                             "   AND mss03 = (SELECT max(mss03) FROM mss_file b WHERE a.mss_v=b.mss_v AND a.mss01=b.mss01) ",
+                             "   AND mss10='N' AND ",p_wc CLIPPED
+
+               WHEN "3"     #依料件分群碼調整
+                  LET l_sql =" SELECT a.mss00,a.mss01,a.mss02,a.mss03 FROM mss_file a ",
+                             "  LEFT JOIN ima_file ON mss01 = ima01 ",
+                             "  WHERE mss_v = '",g_mss_v,"' ",
+                             "   AND mss10='N' AND ",p_wc CLIPPED ,   
+                             "   AND mss03 = (SELECT max(mss03) FROM mss_file b WHERE a.mss_v=b.mss_v AND a.mss01=b.mss01) ",
+                             "   AND ima06 = '",q_ima06,"' "
+
+               OTHERWISE EXIT CASE
+            END CASE            
+
+            PREPARE i140_pre_cs FROM l_sql
+            DECLARE i140_cs_mss01 CURSOR FOR i140_pre_cs
+
+            FOREACH i140_cs_mss01 INTO l_mss.mss00,l_mss.mss01,l_mss.mss02,l_mss.mss03
+
+               UPDATE mss_file SET mss03 = l_mss03a
+                WHERE mss_v = g_mss_v
+                  AND mss00 = l_mss.mss00
+                  AND mss01 = l_mss.mss01
+                  AND mss02 = l_mss.mss02
+                  AND mss03 = l_mss.mss03
+                  AND mss09 > 0
+
+            END FOREACH
+
+            
+         END IF
+   END INPUT
+
+   IF INT_FLAG THEN
+      LET INT_FLAG=0
+   END IF
+
+   CLOSE WINDOW i140_d
+   CALL i140_b_fill(g_wc)
+
+
+END FUNCTION
+
+FUNCTION i140_set_entry_d(p_a,p_mss03a)
+  DEFINE
+        p_a      LIKE  type_file.chr1,
+        p_mss03a LIKE  mss_file.mss03
+
+  CASE
+     WHEN p_a='2' 
+        IF NOT cl_null(p_mss03a) THEN
+           CALL cl_set_comp_required("mss03b",TRUE)
+        END IF        
+        CALL cl_set_comp_entry("mss03b",TRUE)
+        
+     WHEN p_a='3'
+        CALL cl_set_comp_required("q_ima06",TRUE)
+        CALL cl_set_comp_entry("q_ima06",TRUE)         
+     OTHERWISE EXIT CASE
+  END CASE
+
+END FUNCTION
+
+FUNCTION i140_set_no_entry_d(p_a,p_mss03a)
+  DEFINE 
+         p_a   LIKE  type_file.chr1,
+         p_mss03a LIKE  mss_file.mss03
+
+  CASE
+     WHEN p_a='1'
+        CALL cl_set_comp_entry("q_ima06,mss03b",FALSE) 
+     WHEN p_a='2'
+        CALL cl_set_comp_entry("q_ima06",FALSE)
+      
+        IF cl_null(p_mss03a) THEN
+           CALL cl_set_comp_required("mss03b",FALSE)
+        END IF
+       
+     WHEN p_a='3'
+        CALL cl_set_comp_entry("mss03b",FALSE)
+     OTHERWISE EXIT CASE
+  END CASE
+
 END FUNCTION
  
  

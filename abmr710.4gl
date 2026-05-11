@@ -175,7 +175,8 @@ MAIN
    #備註
    LET g_sql ="bmx01.bmx_file.bmx01,",
               "bmg02.bmg_file.bmg02,",
-              "bmg03.bmg_file.bmg03"
+              "bmg03.bmg_file.bmg03,",
+              "ta_bmg01.bmg_file.ta_bmg01"           #20240119
    LET l_table2 = cl_prt_temptable('abmr7102',g_sql) CLIPPED
    IF l_table2 = -1 THEN EXIT PROGRAM END IF
  
@@ -422,6 +423,7 @@ FUNCTION r710()
    DEFINE l_name	LIKE type_file.chr20,   #No.FUN-680096 VARCHAR(20)
 #       l_time          LIKE type_file.chr8	    #No.FUN-6A0060
           l_sql 	LIKE type_file.chr1000, # RDSQL STATEMENT        #No.FUN-680096 VARCHAR(1000)
+          l_ta_bmg01    LIKE bmg_file.ta_bmg01, #20240119 類別
           l_bmg02       LIKE bmg_file.bmg02,    #No.CHI-7A0012 add
           l_bmg03       LIKE bmg_file.bmg03,    #No.FUN-710089
           l_bmw04       LIKE bmw_file.bmw04,    #No.FUN-710089
@@ -526,7 +528,7 @@ FUNCTION r710()
  
    #備註
    LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table2 CLIPPED,
-               " VALUES(?,?,?)"
+               " VALUES(?,?,?,?)"                                      #20240119 add 1?
    PREPARE insert_prep2 FROM g_sql
    IF STATUS THEN
       CALL cl_err('insert_prep2:',status,1)
@@ -777,14 +779,22 @@ FUNCTION r710()
       #備註
       DECLARE r710_c1 CURSOR FOR
         #SELECT bmg03 FROM bmg_file WHERE bmg01=sr.bmx01 ORDER BY bmg02         #CHI-7A0012 mark
-         SELECT bmg02,bmg03 FROM bmg_file WHERE bmg01=sr.bmx01 ORDER BY bmg02   #CHI-7A0012
-     #FOREACH r710_c1 INTO l_bmg03           #071003 mark
-      FOREACH r710_c1 INTO l_bmg02,l_bmg03   #071003
+        #SELECT bmg02,bmg03 FROM bmg_file WHERE bmg01=sr.bmx01 ORDER BY bmg02   #CHI-7A0012 #20240119 mark
+        ##---- 20240119 modify (S)
+        SELECT bmg02,bmg03,tc_dic05
+          FROM bmg_file 
+          LEFT JOIN tc_dic_file ON tc_dic04=ta_bmg01 and tc_dic01='abmi701'
+         WHERE bmg01=sr.bmx01 
+        ORDER BY bmg02    
+        ##---- 20240119 modify (E)
+       
+     #FOREACH r710_c1 INTO l_bmg03                      #071003 mark
+      FOREACH r710_c1 INTO l_bmg02,l_bmg03,l_ta_bmg01   #071003 #20240119
          IF STATUS THEN CALL cl_err('for bmg:',STATUS,1) EXIT FOREACH END IF
         #str CHI-7A0012 mod
         #EXECUTE insert_prep USING 
         #   sr.*,l_bmg03,'','','','','',l_ima02_1,l_ima021_1   #FUN-750057 add l_ima021_1   
-         EXECUTE insert_prep2 USING sr.bmx01,l_bmg02,l_bmg03
+         EXECUTE insert_prep2 USING sr.bmx01,l_bmg02,l_bmg03,l_ta_bmg01                    #20240119
         #end CHI-7A0012 mod
       END FOREACH
  

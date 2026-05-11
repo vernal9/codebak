@@ -315,6 +315,7 @@
 # Modify.........: No:24120032   20241227 By momo 變異別為 取代時，底數bmy07與組成用量bmy06不帶入預設1
 # MOdify.........: No:25030016 　20250325 By momo 增加判斷BOM是否存在KS 
 # Modify.........: No:25090016   20250910 By momo 單身輸入切換功能，無下拉可貼上
+# Modify.........: NO:26040041   20260429 By momo 變更別為 3:舊元件修改時 底數、組成用量、作業編號為空時帶入BOM對應值
 
 DATABASE ds
  
@@ -2094,6 +2095,7 @@ DEFINE
     l_ima35,l_ima36 LIKE ima_file.ima35,     #No.FUN-680096 VARCHAR(10),
     l_bmb06         LIKE bmb_file.bmb06,
     l_bmb07         LIKE bmb_file.bmb07,
+    l_bmb09         LIKE bmb_file.bmb09,     #20260429
     l_bmb16         LIKE bmb_file.bmb16,     #No.MOD-8B0109 add
     l_flag          LIKE type_file.num10,    #No.FUN-680096 INTEGER,
     l_lock_sw       LIKE type_file.chr1,     #單身鎖住否    #No.FUN-680096 VARCHAR(1)
@@ -2605,6 +2607,7 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
            #CHI-DC0019-End-Add  
            
            AFTER FIELD bmy06    #組成用量不可小于零
+              LET g_bmy_t.bmy06 = g_bmy[l_ac].bmy06
               ##------ 20190502 mark by momo (S)
               #CHI-DC0019-Start-Add
               #IF g_ima147='Y' AND g_bmy[l_ac].bmy06 != g_bmy_t.bmy06
@@ -2655,8 +2658,9 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                    END IF
                    LET g_bmy_t.bmy07 = g_bmy[l_ac].bmy07
                ELSE
-                  IF g_bmy[l_ac].bmy03 != '4' THEN   #MOD-A40058 add 
-                  LET g_bmy[l_ac].bmy07 = 1
+                 #IF g_bmy[l_ac].bmy03 != '4' THEN   #MOD-A40058 add #20260429
+                  IF g_bmy[l_ac].bmy03 MATCHES '[256]' THEN          #20260429
+                     LET g_bmy[l_ac].bmy07 = 1
                   END IF   #MOD-A40058 add     
                END IF
               #CHI-DC0019-Start-Mark 
@@ -2935,11 +2939,31 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                                                         AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)
                                                         AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)
                                                   ELSE
-                                                     SELECT COUNT(*) INTO l_cnt FROM bmb_file
+                                                     #SELECT COUNT(*) INTO l_cnt FROM bmb_file         #20260429
+                                                     SELECT 1,bmb06,bmb07,bmb09                        #20260429
+                                                       INTO l_cnt,l_bmb06,l_bmb07,l_bmb09  #20260422
+                                                       FROM bmb_file
                                                       WHERE bmb01 = l_bmy.bmy14
                                                         AND bmb03 = l_bmy.bmy05
                                                         AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)
                                                         AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)
+                                                        AND rownum=1                                   #20260429
+                                                     ##---- 20260429 (S)
+                                                     IF l_bmy.bmy03='3' THEN
+                                                        IF cl_null(g_bmy[l_ac].bmy06) THEN
+                                                           LET l_bmy.bmy06 = l_bmb06
+                                                           LET g_bmy[l_ac].bmy06 = l_bmy.bmy06 
+                                                        END IF 
+                                                        IF cl_null(g_bmy[l_ac].bmy07) THEN
+                                                           LET l_bmy.bmy07 = l_bmb07
+                                                           LET g_bmy[l_ac].bmy07 = l_bmy.bmy07
+                                                        END IF 
+                                                        IF cl_null(g_bmy[l_ac].bmy09) THEN
+                                                           LET l_bmy.bmy09 = l_bmb09
+                                                           LET g_bmy[l_ac].bmy09 = l_bmy.bmy09
+                                                        END IF 
+                                                     END IF
+                                                     ##---- 20260429 (S)
                                                   END IF
                                                   IF  l_cnt = 0 THEN
                                                       CALL cl_err('sel bmb','mfg2631',0)
@@ -3223,7 +3247,8 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                      DISPLAY BY NAME g_bmy[l_ac].ima021
                      IF g_bmy[l_ac].bmy03 MATCHES '[1346]' THEN    
                         IF g_argv1_str='1' THEN 
-                           SELECT bmb06,bmb07,bmb16,bmb14 INTO l_bmb06,l_bmb07,l_bmb16,l_bmb14 FROM bmb_file     #No.MOD-8B0109 modify  #TQC-AC0171 add bmb14
+                           SELECT bmb06,bmb07,bmb16,bmb14,bmb09                             #20260429
+                             INTO l_bmb06,l_bmb07,l_bmb16,l_bmb14,l_bmb09 FROM bmb_file     #No.MOD-8B0109 modify  #TQC-AC0171 add bmb14 #20260429
                             WHERE bmb01 = g_bmy[l_ac].bmy14
                               AND bmb03 = g_bmy[l_ac].bmy05
                               AND bmb02 = g_bmy[l_ac].bmy04
@@ -3246,13 +3271,26 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                      END IF
                      #LET g_bmy[l_ac].bmy06 = l_bmb06   #20250106 mark
                      #LET g_bmy[l_ac].bmy07 = l_bmb07   #20250106 mark 
-                     IF g_bmy[l_ac].bmy03 MATCHES '[13]' THEN  
+                     IF g_bmy[l_ac].bmy03 MATCHES '[13]' AND cl_null(g_bmy[l_ac].bmy16) THEN  
                         LET g_bmy[l_ac].bmy16 = l_bmb16  
                      END IF   
-                     IF g_bmy[l_ac].bmy03 MATCHES '[13]' THEN       
+                     IF g_bmy[l_ac].bmy03 MATCHES '[13]' AND cl_null(g_bmy[l_ac].bmy35) THEN       
                         LET g_bmy[l_ac].bmy35 = l_bmb14 
                      END IF
-                     DISPLAY BY NAME g_bmy[l_ac].bmy35      
+                     DISPLAY BY NAME g_bmy[l_ac].bmy35     
+                     ##---- 20260429 (S) ------
+                     IF g_bmy[l_ac].bmy03 = '3' THEN
+                        IF cl_null(g_bmy[l_ac].bmy06) THEN
+                           LET g_bmy[l_ac].bmy06 = l_bmb06
+                        END IF
+                        IF cl_null(g_bmy[l_ac].bmy07) THEN
+                           LET g_bmy[l_ac].bmy07 = l_bmb07
+                        END IF
+                        IF cl_null(g_bmy[l_ac].bmy09) THEN
+                           LET g_bmy[l_ac].bmy09 = l_bmb09
+                        END IF
+                     END IF
+                     ##---- 20260429 (E) ------ 
                      ##---- 20241227 modify 不給預設 bmy06 bmy07 (S)  
                      #   LET g_bmy[l_ac].bmy06 = ''    #20250601 mark
                      #   LET g_bmy[l_ac].bmy07 = ''    #20250106 mark
@@ -3297,15 +3335,31 @@ DEFINE l_bmy02      LIKE bmy_file.bmy02
                               AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)
                               AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)
                         ELSE
-                           SELECT COUNT(*) INTO l_cnt FROM bmb_file
+                          #SELECT COUNT(*) INTO l_cnt FROM bmb_file                         #20260429
+                           SELECT 1,bmb06,bmb07,bmb09 INTO l_cnt,l_bmb06,l_bmb07,l_bmb09    #20260429
+                             FROM bmb_file
                             WHERE bmb01 = g_bmy[l_ac].bmy14
                               AND bmb03 = g_bmy[l_ac].bmy05
                               AND (bmb04 <= g_bmx.bmx07 OR bmb04 IS NULL)
                               AND (bmb05 >  g_bmx.bmx07 OR bmb05 IS NULL)
-                        END IF
-                        IF  l_cnt = 0 THEN
-                            CALL cl_err('sel bmb','mfg2631',0) 
-                            NEXT FIELD bmy14
+                              AND rownum = 1
+                           IF l_cnt = 0 THEN
+                               CALL cl_err('sel bmb','mfg2631',0) 
+                               NEXT FIELD bmy14
+                           END IF
+                           ##---- 20260429 (S)----
+                           IF g_bmy[l_ac].bmy03 = '3' THEN
+                              IF cl_null(g_bmy[l_ac].bmy06) THEN
+                                 LET g_bmy[l_ac].bmy06 = l_bmb06
+                              END IF
+                              IF cl_null(g_bmy[l_ac].bmy07) THEN
+                                 LET g_bmy[l_ac].bmy07 = l_bmb07
+                              END IF
+                              IF cl_null(g_bmy[l_ac].bmy09) THEN
+                                 LET g_bmy[l_ac].bmy09 = l_bmb09
+                              END IF
+                           END IF
+                           ##---- 20260429 (E)----
                         END IF
                         END IF  #No.FUN-A60008
                         #No.FUN-A60008--begin
@@ -6002,7 +6056,9 @@ FUNCTION i720_bmy14()
    DEFINE l_bmy07  LIKE bmy_file.bmy07
    DEFINE l_bmy16  LIKE bmy_file.bmy16
    DEFINE l_bmy30  LIKE bmy_file.bmy30 #FUN-550014
-   SELECT bmb03,bmb06,bmb07,bmb16,bmb30 INTO l_bmy05,l_bmy06,l_bmy07,l_bmy16,l_bmy30 #FUN-550014 add bmy30
+
+   SELECT bmb03,bmb06,bmb07,bmb16,bmb30
+     INTO l_bmy05,l_bmy06,l_bmy07,l_bmy16,l_bmy30 #FUN-550014 add bmy30 
      FROM bmb_file
     WHERE bmb01=g_bmy[l_ac].bmy14
       AND bmb02=g_bmy[l_ac].bmy04
