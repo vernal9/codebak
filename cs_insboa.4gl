@@ -6,7 +6,7 @@
 # Input Parameter: p_bma01 主件               
 # Return Code....: 
 # Modify.........: NO.26010003 20260116 增加 標準取替代自動新增，BOM調整s
-
+# Modify.........: NO.26040013 20260421 By momo 調整SQL錯誤提示
  
 DATABASE ds
  
@@ -25,6 +25,7 @@ DEFINE g_bob         RECORD LIKE bob_file.*
 DEFINE i_bma01       LIKE bma_file.bma01  #符合條件的主件
 DEFINE n_boa02       LIKE boa_file.boa02  #群組編號取最大值
    
+     WHENEVER ERROR CONTINUE   #20260421
      LET l_cnt = 0
    
         
@@ -97,8 +98,9 @@ DEFINE n_boa02       LIKE boa_file.boa02  #群組編號取最大值
            WHERE bma01 = i_bma01
              AND boa01 = g_boa.boa01 AND boa02=g_boa.boa02
           GROUP BY bma01,boa03,boa04,boa05,boa06,boa07,boa08
-          IF SQLCA.sqlcode THEN
-             CALL cl_err('insert boa',i_bma01,1)
+          IF SQLCA.SQLCODE OR STATUS THEN
+             CALL cl_err3("ins","boa_file",i_bma01,g_boa.boa02,SQLCA.sqlcode,"","",1)
+             ROLLBACK WORK
              EXIT FOREACH
           END IF
           MESSAGE 'ins boa:',i_bma01
@@ -111,8 +113,9 @@ DEFINE n_boa02       LIKE boa_file.boa02  #群組編號取最大值
            WHERE bma01 = i_bma01
              AND bob01 = g_boa.boa01 AND bob02=g_boa.boa02 
           GROUP BY bma01,bob03,bob04,bob05,bob06,bob07,bob08,bob09,bob10,bob14
-          IF SQLCA.sqlcode THEN
-             CALL cl_err('insert bob',i_bma01,1)
+          IF SQLCA.SQLCODE OR STATUS THEN
+             CALL cl_err3("ins","bob_file",i_bma01,g_boa.boa02,SQLCA.sqlcode,"","",1)
+             ROLLBACK WORK
              EXIT FOREACH
           END IF
           MESSAGE 'ins bob:',i_bma01
@@ -124,8 +127,9 @@ DEFINE n_boa02       LIKE boa_file.boa02  #群組編號取最大值
                             AND boa03=bmb03)
              AND bmb01 = i_bma01
 
-          IF SQLCA.sqlcode THEN
-             CALL cl_err('update bmb',i_bma01,1)
+          IF SQLCA.SQLCODE OR STATUS THEN
+             CALL cl_err3("upd","bmb_file",i_bma01,g_boa.boa02,SQLCA.sqlcode,"","",1)
+             ROLLBACK WORK
              EXIT FOREACH
           END IF
           MESSAGE 'upd bmb16:',i_bma01
@@ -145,7 +149,8 @@ DEFINE
        l_cnt         LIKE type_file.num5
 DEFINE g_bmd         RECORD LIKE bmd_file.*
 DEFINE g_bmb         RECORD LIKE bmb_file.*
-   
+
+     WHENEVER ERROR CONTINUE   #20260421
      LET l_cnt = 0
            
      #取出符合條件的取替代資料
@@ -170,25 +175,26 @@ DEFINE g_bmb         RECORD LIKE bmb_file.*
         MESSAGE 'bmd08:',g_bmd.bmd08 ||' bmd04:' ||g_bmd.bmd04 CLIPPED
 
         #---判斷BOM元件有效否，取替代特性需為 0
-        SELECT bmb01,bmb04 INTO g_bmb.bmb01,g_bmb.bmb04 
+        SELECT bmb01,bmb03 INTO g_bmb.bmb01,g_bmb.bmb03
             FROM bmb_file
          WHERE bmb01 = p_bma01
-                AND bmb03 = g_bmd.bmd04
+                AND bmb03 = g_bmd.bmd01
                 AND bmb05 IS NULL
                 AND bmb16 =  '0'
         
           #---INSERT bmd_file 取替資料
           IF NOT cl_null(g_bmb.bmb01) THEN
               LET g_bmd.bmd08 = p_bma01
-              LET g_bmd.bmd05 = g_today()
-              LET g_bmd.bmdoriu='tiptop'
+              LET g_bmd.bmd05 = g_today
+              LET g_bmd.bmduser='tiptop'
               LET g_bmd.bmd09=''
               LET g_bmd.bmddate=''
               LET g_bmd.ta_bmd02='N'
           INSERT INTO bmd_file VALUES g_bmd.*
           
-          IF SQLCA.sqlcode THEN
-             CALL cl_err('insert bmd',p_bma01,1)
+          IF SQLCA.SQLCODE OR STATUS THEN
+             CALL cl_err3("ins","bmd_file",p_bma01,g_bmd.bmd01,SQLCA.sqlcode,"","",1)
+             ROLLBACK WORK
              EXIT FOREACH
           END IF
           MESSAGE 'ins bmd:',p_bma01
@@ -196,12 +202,13 @@ DEFINE g_bmb         RECORD LIKE bmb_file.*
 
           #--UPDATE bmb16 取替代特性 = bmd02
           UPDATE bmb_file SET bmb16=g_bmd.bmd02
-           WHERE bmb01 = p_bma01 AND bmb03 = g_bmd.bmd04
+           WHERE bmb01 = p_bma01 AND bmb03 = g_bmd.bmd01
                  AND bmb05 IS NULL
                  AND bmb16='0'
 
-          IF SQLCA.sqlcode THEN
-             CALL cl_err('update bmb',p_bma01,1)
+          IF SQLCA.SQLCODE OR STATUS THEN
+             CALL cl_err3("upd","bmb_file",p_bma01,g_bmd.bmd01,SQLCA.sqlcode,"","",1)
+             ROLLBACK WORK
              EXIT FOREACH
           END IF
           MESSAGE 'upd bmb16:',p_bma01

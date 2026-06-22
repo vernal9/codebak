@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ManagedForm databaseName="ds" gstVersion="22800" name="Root" uid="{664c1034-0000-4000-a20e-3f90d4c52de2}">
+  <AGSettings/>
+  <Record additionalTables="" joinLeft="" joinOperator="" joinRight="" name="Undefined" order="" uid="{4753f8d4-0000-4000-9f8a-2a9ff09e69b5}" where="">
+    <RecordField colName="" fieldIdRef="15" name="a" sqlTabName="" table_alias_name="" uid="{140a9c6a-694f-49cc-8049-086a5cff607b}"/>
+    <RecordField colName="ima06" fieldIdRef="16" fieldType="NON_DATABASE" name="q_ima06" sqlTabName="ima_file" sqlType="VARCHAR" table_alias_name="" uid="{9d5f1f7f-8f7b-4de3-8de9-d9ffbeb875bd}"/>
+    <RecordField colName="pmn33" fieldIdRef="1" fieldType="NON_DATABASE" name="mss03b" sqlTabName="pmn_file" sqlType="DATE" table_alias_name="" uid="{d983e3b3-87e1-4de1-b53c-58cbfdf0d2cc}"/>
+    <RecordField colName="pmn33" fieldIdRef="4" fieldType="NON_DATABASE" name="mss03a" sqlTabName="pmn_file" sqlType="DATE" table_alias_name="" uid="{8eacddda-65e5-4dd4-8795-8e258d69c045}"/>
+  </Record>
+  <Form gridHeight="21" gridWidth="90" name="cmri140_d" spacing="normal" text="cmri140_d">
+    <Group gridHeight="19" gridWidth="88" lstrcomment="false" lstrtext="false" name="group01" posX="1" posY="1" text="">
+      <VBox gridHeight="17" gridWidth="84" name="VBox1" posX="1" posY="1">
+        <Grid gridHeight="7" gridWidth="84" name="Grid2" posX="0" posY="1">
+          <Group gridHeight="6" gridWidth="39" lstrcomment="false" lstrtext="false" name="Group1" posX="1" posY="0" text="Data Option">
+            <RadioGroup aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="15" gridHeight="4" gridWidth="36" items="By All Detail, By The Same Original, By Main Group Code" lstrcomment="false" name="a" noEntry="false" posX="1" posY="1" required="true" rowCount="" sqlTabName="" stepX="" stepY="" tabIndex="1" table_alias_name="" title="RadioGroup1" widget="RadioGroup">
+              <Item lstrtext="false" name="1" text="By All Detail"/>
+              <Item lstrtext="false" name="2" text="By The Same Original"/>
+              <Item lstrtext="false" name="3" text="By Main Group Code"/>
+            </RadioGroup>
+          </Group>
+        </Grid>
+        <Group gridHeight="8" gridWidth="84" lstrcomment="false" lstrtext="false" name="Group4" posX="0" posY="8" text="">
+          <Grid gridHeight="6" gridWidth="81" lstrcomment="false" name="Grid3" posX="1" posY="1">
+            <Label posX="2" posY="1" text="Group Code"/>
+            <ButtonEdit action="controlp" aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="ima06" columnCount="" comment="Get Def.Val aft Entr  &lt;^P&gt;Query Group Cd   &lt;^Y&gt;Crt Item Grp Code " fieldId="16" fieldType="NON_DATABASE" gridHeight="1" gridWidth="11" image="zoom" lstrcomment="false" name="q_ima06" posX="15" posY="1" rowCount="" sqlTabName="ima_file" sqlType="VARCHAR" stepX="" stepY="" tabIndex="2" table_alias_name="" title="Edit1" widget="ButtonEdit"/>
+            <Group gridHeight="3" gridWidth="36" lstrcomment="false" lstrtext="false" name="Group2" posX="1" posY="2" text="Original">
+              <Label posX="1" posY="1" text="Original Supply Date"/>
+              <DateEdit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="pmn33" columnCount="" fieldId="1" fieldType="NON_DATABASE" gridHeight="1" gridWidth="11" lstrcomment="false" name="mss03b" posX="24" posY="1" rowCount="" sqlTabName="pmn_file" sqlType="DATE" stepX="" stepY="" tabIndex="3" table_alias_name="" title="Edit1" widget="DateEdit"/>
+            </Group>
+            <Group gridHeight="3" gridWidth="37" lstrcomment="false" lstrtext="false" name="Group3" posX="39" posY="2" text="New">
+              <Label posX="1" posY="1" text="New Supply Date"/>
+              <DateEdit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="pmn33" columnCount="" fieldId="4" fieldType="NON_DATABASE" gridHeight="1" gridWidth="10" lstrcomment="false" name="mss03a" posX="22" posY="1" rowCount="" sqlTabName="pmn_file" sqlType="DATE" stepX="" stepY="" tabIndex="4" table_alias_name="" title="Edit4" widget="DateEdit"/>
+            </Group>
+          </Grid>
+        </Group>
+      </VBox>
+    </Group>
+  </Form>
+  <DiagramLayout>
+    <![CDATA[AAAAAgAAAEwAewA5AGQANQBmADEAZgA3AGYALQA4AGYANwBiAC0ANABkAGUAMwAtADgAZABlADkALQBkADkAZgBmAGIAZQBiADgANwA1AGIAZAB9QCQAAAAAAABATYAAAAAAAAAAAAAAAAAAAQAAAEwAewA0ADcANQAzAGYAOABkADQALQAwADAAMAAwAC0ANAAwADAAMAAtADkAZgA4AGEALQAyAGEAOQBmAGYAMAA5AGUANgA5AGIANQB9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAEwAewBkADkAOAAzAGUAMwBiADMALQA4ADcAZQAxAC0ANABkAGUAMQAtAGIANQAzAGMALQA1ADgAYwBiAGYAZABmADAAZAAyAGMAYwB9QCQAAAAAAABAVEAAAAAAAAAAAAAAAAAAAQAAAEwAewA4AGUAYQBjAGQAZABkAGEALQA2ADUAZQA1AC0ANABkAGQANAAtADgANwA5ADUALQA4AGUAMgA1ADgAZAA2ADkAYwAwADQANQB9QCQAAAAAAABAWcAAAAAAAAAAAAAAAAAAAQAAAEwAewAxADQAMABhADkAYwA2AGEALQA2ADkANABmAC0ANAA5AGMAYwAtADgAMAA0ADkALQAwADgANgBhADUAYwBmAGYANgAwADcAYgB9QCQAAAAAAABAQoAAAAAAAAAAAAAAAAAAAQ==]]>
+  </DiagramLayout>
+</ManagedForm>

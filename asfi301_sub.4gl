@@ -211,6 +211,9 @@
 # Modify.........: No:2010295372 20201030 By momo 比對若有建立客戶取代料不論是否有庫存一律強迫更換
 # Modify.........: No:2106026314 20210607 By momo 比對若有建立客戶不可取代需卡控
 # Modify.........: No:2203077698 20220307 By momo 客戶直接取替增加 帳款客戶為條件之一
+# Modify.........: No:25090065   20250930 By momo BOM取客供數量時，需排除失效元件
+# Modify.........: No:26030016   20250311 By momo 客戶直接取代需排除重覆備料
+# Modify.........: No:26050013   20260513 By momo 特殊取替代處理 cbmi606
 
 DATABASE ds
  
@@ -301,6 +304,7 @@ FUNCTION i301sub_firm1_chk(l_sfb01,p_inTransaction)      #FUN-8C0081   #No.FUN-9
    DEFINE l_ima140  LIKE ima_file.ima140       #MOD-E90115 add
    DEFINE l_ima1401 LIKE ima_file.ima1401      #MOD-E90115 add
    DEFINE l_tc_bmd04 LIKE tc_bmd_file.tc_bmd04 #20201030 客戶取代料
+   DEFINE l_msg3     LIKE sfa_file.sfaud01
 
    WHENEVER ERROR CALL cl_err_msg_log   #No.TQC-9B0094
 
@@ -370,6 +374,7 @@ FUNCTION i301sub_firm1_chk(l_sfb01,p_inTransaction)      #FUN-8C0081   #No.FUN-9
     WHERE bmb01 = sfb05
       AND bmb03 LIKE '5%'
       AND sfb01 = l_sfb01
+      AND bmb05 IS NULL                        #排除失效 20250930
 
    IF l_num_y - l_num_z - l_num_b <> 0 THEN    #20231023 modify
       CALL cl_err(l_sfb01,'csf-021',1)
@@ -413,9 +418,11 @@ FUNCTION i301sub_firm1_chk(l_sfb01,p_inTransaction)      #FUN-8C0081   #No.FUN-9
        RETURN
    END IF
    #MOD-E90115-------add-----end---
-
+   CALL i301sub_tc_bmd_chk(l_sfb.sfb01)   #20260514
+   IF g_success = 'N' THEN RETURN END IF  #20260514
    ##---- 20201030 add by momo (S) 確認是否有客戶指定取代料，直接更換
-   DECLARE i301sub_tc_bmd CURSOR FOR SELECT sfa03,tc_bmd04 
+   IF g_plant <> 'TY_TEST' THEN
+   DECLARE i301sub_tc_bmd CURSOR FOR SELECT DISTINCT sfa03,tc_bmd04                  #20250311 過濾重覆
                                        FROM sfa_file,tc_bmd_file,sfb_file,oea_file 
                                       WHERE sfa01 = l_sfb.sfb01
                                         AND sfa03 = tc_bmd01
@@ -426,9 +433,10 @@ FUNCTION i301sub_firm1_chk(l_sfb01,p_inTransaction)      #FUN-8C0081   #No.FUN-9
                                         AND tc_bmd02 = '3'                            #20210607
 
       FOREACH i301sub_tc_bmd INTO l_sfa03,l_tc_bmd04
+            LET l_msg3 = l_sfa03,">",l_tc_bmd04,",3"
             UPDATE sfa_file SET sfa03 = l_tc_bmd04,
                                 sfa27 = l_tc_bmd04, #20201116
-                                sfaud01='cbmi605客戶取代料'
+                                sfaud01=l_msg3
              WHERE sfa01 = l_sfb.sfb01 AND sfa27 = l_sfa03
             IF STATUS OR SQLCA.sqlerrd[3]=0 THEN
                CALL cl_err3("upd","sfa_file",l_tc_bmd04,"",STATUS,"","upd sfa03",1) 
@@ -453,6 +461,7 @@ FUNCTION i301sub_firm1_chk(l_sfb01,p_inTransaction)      #FUN-8C0081   #No.FUN-9
       CALL cl_err(l_tc_bmd04,'cbm-012',1)
       LET g_success='N'
       RETURN
+   END IF
    END IF
    ##---- 20210607 add by momo (E) 確認客戶是否有不可用料
 
@@ -1425,7 +1434,7 @@ DEFINE l_result        LIKE type_file.num5     #No.FUN-680121 LIKE type_file.num
        SELECT COUNT(*) INTO l_cnt FROM sfa_file
           WHERE sfa01=p_sfa01
             AND sfa27=p_sfa27
-            AND (sfa26='3' OR sfa26='4' OR sfa26 = '8')   #FUN-A20037 add '8'
+            AND (sfa26='3' OR sfa26='4' OR sfa26 = '8' OR sfa26 = '5')   #FUN-A20037 add '8' #20240913
     WHEN p_sfa26 MATCHES '[6]' #MOD-5A0032改成 WHEN p_sfa26 MATCHES '[6]'
        SELECT COUNT(*) INTO l_cnt FROM sfa_file
           WHERE sfa01=p_sfa01
@@ -5882,3 +5891,4 @@ FUNCTION i301sub_barcode_z(p_sfb01)
    END IF
 END FUNCTION
 #DEV-D30045--add--end
+
