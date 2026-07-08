@@ -32,6 +32,7 @@
 # (1)拆分出料件庫存單位和倉庫庫存單位相同時,一個SQL直接算出庫存量即:imk09+(SUM(tlf907*tlf10*tlf60),0)
 # (2)      料件庫存單位和倉庫庫存單位不同時,原程式算出庫存量是用imk09加上每一筆的tlf907*tlf10*tlf60,亦改成直接imk09+SUM(tlf907*tlf10*tlf60),但是因需透過單位轉換,故無法一個SQL就算出,仍需經過二層的FOREACH
 # Modify.........: No:25050017   20250519 By momo 增加顯示  【首次入库日】【呆滞日期】【储位名称】 
+# Modify.........: No:26060049   20260701 By momo 料號、倉、儲、批 可對應上時帶出調撥單備註imm09
 
 DATABASE ds
  
@@ -494,7 +495,7 @@ FUNCTION r106()
                  " WHERE ", tm.wc CLIPPED,
                  "   AND ima01 = img01 ",
                  "   AND ima25 = img09 ",    #料件庫存單位和倉庫庫存單位相同
-                 "   AND img10 > 0 ",        #20180529 add
+                 #"   AND img10 > 0 ",        #20180529 add   #250903 mark by ruby
                  " GROUP BY img01,img02,img03,img04,ima25,ima02,ima021,imk09 "
      PREPARE r106_prepare3 FROM l_sql
      IF SQLCA.sqlcode THEN CALL cl_err('prepare3:',SQLCA.sqlcode,1) 
@@ -582,7 +583,8 @@ SELECT imk09,img09 INTO sr.imk09,l_img09 FROM img_file LEFT OUTER JOIN imk_file
      LET l_sql = " SELECT tlf01,tlf902,tlf903,tlf904, ",
                        # " (tlf907*tlf10),' ',0,0,0,tlf11 ",        #MOD-620087  #No.MOD-710183 delete mark #MOD-970290 mark 
                        #" (tlf907*tlf10*tlf60),' ',0,0,0,tlf11 ",        #MOD-620087  #No.MOD-710183 delete mark #MOD-970290 add   #FUN-G70001 mark
-                     " SUM(tlf907*tlf10*tlf60),' ',0,0,0,tlf11 ",                                                                  #FUN-G70001 add
+                       #" SUM(tlf907*tlf10*tlf60),' ',0,0,0,tlf11 ",                                                               #FUN-G70001 add  #20250518 mark
+                       " SUM(tlf907*tlf10*tlf60),' ',0,0,0,0,tlf11 ",                                                              #FUN-G70001 add  #20250818 add0
                        #" (tlf907*tlf10*tlf60),' ',0,0,0,tlf11 ",  #MOD-620087  #No.MOD-710183 mark
                  " FROM img_file,tlf_file",
                  " WHERE img01 = tlf01 ",
@@ -684,6 +686,7 @@ SELECT imk09,img09 INTO sr.imk09,l_img09 FROM img_file LEFT OUTER JOIN imk_file
     #FUN-G70001---add----str----
      FOREACH r106_curs3 INTO sr1.*
         IF  SQLCA.sqlcode THEN CALL cl_err('foreach:r106_curs3',SQLCA.sqlcode,1) END IF
+        IF sr1.img10+sr1.imk09 <> 0 THEN    #250903 add by ruby        
         ##------ 20180529 add
         LET sr1.sig05 = 0
         SELECT sig05 INTO sr1.sig05 FROM sig_file
@@ -709,10 +712,12 @@ SELECT imk09,img09 INTO sr.imk09,l_img09 FROM img_file LEFT OUTER JOIN imk_file
            AND img03 = sr1.img03
            AND img03 = ime02
         ##----- 20250519 (E) 
+
         EXECUTE insert_prep USING sr1.img01,sr1.ima02,sr1.ima021,sr1.img02,sr1.img03,
                                   sr1.img04,sr1.img10,sr1.imk09,sr1.ima25,
                                   l_ima1013,l_img37,l_ime03,                     #20250519
                                   sr1.sig05    #20180529 add sig05
+        END IF                    #250903 add by ruby      
      END FOREACH
     #FUN-G70001---add----end----
 

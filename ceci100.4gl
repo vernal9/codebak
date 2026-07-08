@@ -9,8 +9,15 @@ DATABASE ds
 GLOBALS "../../../tiptop/config/top.global"
 
 DEFINE tm RECORD 
-       azp01  LIKE azp_file.azp01  END RECORD
-DEFINE plant_visible LIKE type_file.chr1
+       azp01          LIKE azp_file.azp01  
+          END RECORD
+DEFINE plant_visible  LIKE type_file.chr1
+DEFINE w    ui.Window
+DEFINE f    ui.Form
+DEFINE page om.DomNode
+DEFINE g_action_flag  STRING
+DEFINE g_rec_b1       LIKE type_file.num10
+DEFINE l_ac1          LIKE type_file.num10
 DEFINE
     g_ecb01_i       LIKE ecb_file.ecb01,   #
     g_ecb           DYNAMIC ARRAY OF RECORD    #程式變數(Program Variables)
@@ -62,7 +69,17 @@ DEFINE g_forupd_sql STRING                  #SELECT ... FOR UPDATE SQL
 DEFINE g_cnt        LIKE type_file.num10    
 DEFINE g_msg        LIKE ze_file.ze03       
 DEFINE g_row_count  LIKE type_file.num10    
-DEFINE g_curs_index LIKE type_file.num10    
+DEFINE g_curs_index LIKE type_file.num10   
+DEFINE g_ecu        DYNAMIC ARRAY OF RECORD
+       ecu01        LIKE ecu_file.ecu01,
+       ima02        LIKE ima_file.ima02,
+       ima021       LIKE ima_file.ima021,
+       ima55        LIKE ima_file.ima55,
+       ecu02        LIKE ecu_file.ecu02,
+       worktime     LIKE ecb_file.ecb19,
+       ecuacti      LIKE ecb_file.ecbacti
+       END RECORD
+ 
  
 MAIN
     OPTIONS                                #改變一些系統預設值
@@ -551,5 +568,126 @@ FUNCTION i100_bp(p_ud)
    &include "qry_string.4gl" 
    END DISPLAY
    CALL cl_set_act_visible("accept,cancel", TRUE)
+END FUNCTION
+
+FUNCTION i100_bp1(p_ud)
+   DEFINE   p_ud   LIKE type_file.chr1         
+ 
+   IF p_ud <> "G" OR g_action_choice = "detail" THEN
+      RETURN
+   END IF
+ 
+   LET g_action_choice = " "
+ 
+   CALL cl_set_act_visible("accept,cancel", FALSE)
+   DISPLAY ARRAY g_ecu TO s_ecu.* ATTRIBUTE(COUNT=g_rec_b1,UNBUFFERED)
+ 
+      BEFORE DISPLAY
+         CALL cl_navigator_setting( g_curs_index, g_row_count )
+      BEFORE ROW
+         LET l_ac1 = ARR_CURR()
+        
+         CALL cl_show_fld_cont()                  
+ 
+      ON ACTION query
+         LET g_action_choice="query"
+         EXIT DISPLAY
+
+      ON ACTION plant
+         LET g_action_choice="plant"
+         LET plant_visible = 'Y' 
+         EXIT DISPLAY
+ 
+      ON ACTION detail
+         LET g_action_choice="detail"
+         LET l_ac1 = 1
+         EXIT DISPLAY
+     
+      ON ACTION exit
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+ 
+      ON ACTION controlg
+         LET g_action_choice="controlg"
+         EXIT DISPLAY
+ 
+      ON ACTION locale
+         CALL cl_dynamic_locale()
+          CALL cl_show_fld_cont()                  
+         EXIT DISPLAY
+ 
+      ON ACTION accept
+         LET g_action_choice="detail"
+         LET l_ac1 = ARR_CURR()
+         EXIT DISPLAY
+ 
+      ON ACTION cancel
+             LET INT_FLAG=FALSE 		
+         LET g_action_choice="exit"
+         EXIT DISPLAY
+ 
+      ON IDLE g_idle_seconds
+         CALL cl_on_idle()
+         CONTINUE DISPLAY
+ 
+      ON ACTION about         
+         CALL cl_about()      
+ 
+      ON ACTION exporttoexcel 
+         LET g_action_choice = 'exporttoexcel'
+         EXIT DISPLAY
+ 
+      AFTER DISPLAY
+         CONTINUE DISPLAY
+ 
+      ON ACTION controls                                   
+         CALL cl_set_head_visible("","AUTO")      
+ 
+   &include "qry_string.4gl" 
+   END DISPLAY
+   CALL cl_set_act_visible("accept,cancel", TRUE)
+END FUNCTION
+
+FUNCTION i100_b1_fill(g_wc)              #BODY FILL UP
+DEFINE g_wc,g_wc2 STRING 
+    
+    LET g_plant_new= tm.azp01
+    
+    LET g_sql =
+       "SELECT ecu01,ima02,ima021,ima55,imaud08,ecu02,0,ecuacti",
+       " FROM ",cl_get_target_table(g_plant_new,'ecu_file'),
+       " LEFT JOIN ",cl_get_target_table(g_plant_new,'ima_file'),"  ON ima01=ecu01 ",
+       " LEFT JOIN ",cl_get_target_table(g_plant_new,'shb_file')," ON shb10= ecu01 AND ",
+       "    EXISTS (SELECT 1 FROM ",cl_get_target_table(g_plant_new,'sfb_file')," WHERE sfb01 = shb05 AND sfb06=ecu02 ) ",
+       " WHERE  ", g_wc CLIPPED,
+       " ORDER BY 1,2"
+    PREPARE i100_prepare3 FROM g_sql      #預備一下
+    DECLARE ecu_cs CURSOR FOR i100_prepare3
+    CALL g_ecu.clear()
+    LET g_cnt1 = 1
+    LET g_rec_b1=0
+    LET g_max_rec = 6000
+    FOREACH ecu_cs INTO g_ecu[g_cnt1].*   #單身 ARRAY 填充
+        IF SQLCA.sqlcode THEN
+            CALL cl_err('foreach:',SQLCA.sqlcode,1)
+            EXIT FOREACH
+        END IF
+        IF g_ecu[g_cnt1].imaud08 = 0 THEN
+           SELECT smd04 INTO g_ecu[g_cnt1].imaud08
+             FROM smd_file
+            WHERE smd01 = g_ecu[g_cnt1].ecb01
+              AND smd02 = g_ecu[g_cnt1].ecb45
+        END IF
+        
+        LET g_cnt1 = g_cnt1 + 1
+        IF g_cnt > g_max_rec THEN
+           CALL cl_err( '', 9035, 0 )
+           EXIT FOREACH
+        END IF
+    END FOREACH
+    CALL g_ecb.deleteElement(g_cnt)
+    LET g_rec_b=g_cnt-1
+    DISPLAY g_rec_b TO FORMONLY.cn2
+    LET g_cnt = 0
 END FUNCTION
  

@@ -306,6 +306,10 @@
 # Modify.........: No:24110009   20241108 By momo 增加 cbmi604 檢核機制
 # Modify.........: No:24120031   20241230 By momo bmy06 bmy07 不帶預設值
 # Modify.........: No:23050015   20250325 By momo 增加判斷 ECN 是否存在 KS
+# Modify.........: NO:25090018   20250911 By momo abmi710b自動開窗取消，bmy09作業編號不因 abmi710b開窗清空
+# Modify.........: No:26040054   20260508 By momo 增加判斷 ECN 是否存在 JP
+# Modify.........: No:26060066   20260622 By momo 增加判斷 ECN 是否存在 TY
+# Modify.........: NO:26070009   20260707 By momo bmz02=ima01 修正
 
 DATABASE ds
  
@@ -1240,6 +1244,11 @@ DEFINE l_cmd          STRING #No.FUN-820027  #20180820 modify
                CALL s_abm_memo(g_bmx.bmx01,'u')
                CALL i710_bmg03()
             END IF  #FUN-B80071 add        
+       ##--- 20260508 (S)--
+         WHEN "cbmr715"
+            LET g_msg = "cbmr715 '",g_bmx.bmx01,"' "
+            CALL cl_cmdrun(g_msg)
+       ##--- 20260508 (E)--
        #@WHEN "作廢"
          WHEN "void"
             IF cl_chk_act_auth() THEN
@@ -2102,20 +2111,55 @@ FUNCTION i710_show()
     DEFINE n     om.DomNode                #20241115
     DEFINE l_cnt LIKE type_file.num5       #20241115
     
-    ##---20250325 add (S)
+    ##---20250325 add (S) TY ECN exists KS
     LET l_cnt = 0
     SELECT 1 INTO l_cnt 
-      FROM ks.bma_file,bmz_file
-     WHERE bma01 = bmz02
+      FROM ks.bmb_file,bmz_file
+     WHERE bmb01 = bmz02
+       AND bmb05 IS NULL
 　　   AND bmz01 = g_bmx.bmx01
+       AND bmz01 LIKE 'T%'
+       AND EXISTS (SELECT 1 FROM ima_file WHERE bmz02=ima01 AND ima916 <> 'KS') #20260707
        AND rownum = 1
     IF l_cnt = 1 THEN
        DISPLAY 'Y' TO FORMONLY.ksyn
     ELSE
        DISPLAY 'N' TO FORMONLY.ksyn
     END IF
-      
     ##---20250325 add (E)
+
+    ##---20260508 add (S) TY ECN exists JP
+    LET l_cnt = 0
+    SELECT 1 INTO l_cnt
+      FROM jp.bmb_file,bmy_file
+     WHERE bmb03 = bmy05
+       AND bmb05 IS NULL
+　　   AND bmy01 = g_bmx.bmx01
+       AND bmy01 LIKE 'T%'
+       AND rownum = 1
+    IF l_cnt = 1 THEN
+       DISPLAY 'Y' TO FORMONLY.jpyn
+    ELSE
+       DISPLAY 'N' TO FORMONLY.jpyn
+    END IF
+    ##---20250325 add (E)
+
+    ##---20260622 (S) KS ECN exists TY 
+    LET l_cnt = 0
+    SELECT 1 INTO l_cnt
+      FROM ty.bmb_file,bmy_file
+     WHERE bmb03 = bmy05
+       AND bmb05 IS NULL
+　　   AND bmy01 = g_bmx.bmx01
+       AND EXISTS (SELECT 1 FROM ima_file WHERE ima01=bmy05 AND ima916='KS')
+       AND bmy01 LIKE 'S%'
+       AND rownum = 1
+    IF l_cnt = 1 THEN
+       DISPLAY 'Y' TO FORMONLY.tyyn
+    ELSE
+       DISPLAY 'N' TO FORMONLY.tyyn
+    END IF
+    ##---20260622 (E)
 
     LET g_bmx_t.* = g_bmx.*                #保存單頭舊值
     LET g_data_keyvalue = g_bmx.bmx01      #No:FUN-F50016
@@ -2563,13 +2607,13 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
  
             CALL i710_b_move_back()
 
-            ##---- 20250828 (S) MARK 移至單身處理不需每行開窗 
+            ##---- 20250911 (S) MARK 移至單身處理不需每行開窗 
             IF b_bmy.bmy03 MATCHES '[2345]' THEN    #CHI-960004 add 5
                LET g_flag3 = 'Y'         #MOD-D90028 add
                CALL i710_b_more('w') #No:7826      #No.MOD-670125 modify
                LET g_flag3 = 'N'         #MOD-D90028 add
             END IF
-            ##---- 20250828 (E) 
+            ##---- 20250911 (E) 
 
 
             IF b_bmy.bmy03 MATCHES '[2456]' THEN    #No.MOD-840026 add #CHI-960004 add 5 #CHI-C20060
@@ -4009,6 +4053,7 @@ DEFINE l_bma05      LIKE bma_file.bma05      #MOD-H10002 add
         ON ACTION CONTROLG CALL cl_cmdask()
  
         ON ACTION mntn_item_detail
+           LET g_action_choice = "mntn_item_detail" #20250911
            CALL i710_b_more(p_cmd)
  
         ON ACTION mntn_insert_loc
@@ -4253,8 +4298,10 @@ FUNCTION i710_b_more(p_cmd)
    END IF
  
    LET p_row = 4 LET p_col = 3
-   OPEN WINDOW i710_b_more_w AT p_row,p_col WITH FORM "abm/42f/abmi710b"
-    ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
+   IF g_action_choice = "mntn_item_detail" THEN                #-20250911 點選ACTION才開窗
+      OPEN WINDOW i710_b_more_w AT p_row,p_col WITH FORM "abm/42f/abmi710b"
+       ATTRIBUTE (STYLE = g_win_style CLIPPED) #No.FUN-580092 HCN
+   END IF                                                      #-20250911
  
    CALL cl_ui_locale("abmi710b")
    IF g_argv1='2' THEN   #CHI-CA0035 mod g_argv3->g_argv1
@@ -4355,7 +4402,7 @@ FUNCTION i710_b_more(p_cmd)
               LET b_bmy.bmy082=1
               LET b_bmy_t.bmy082=1
            END IF
-           ##---- 20250828 (S) --- 移至單身處理
+           ##---- 20250911 (S) --- 移至單身處理
            IF NOT cl_null(l_bmb.bmb09) THEN
               LET b_bmy.bmy09=l_bmb.bmb09
               LET b_bmy_t.bmy09=l_bmb.bmb09
@@ -4363,7 +4410,7 @@ FUNCTION i710_b_more(p_cmd)
            #   LET b_bmy.bmy09=''
            #   LET b_bmy_t.bmy09=''
            END IF
-           ##---- 20250828 (S) --- 
+           ##---- 20250911 (S) --- 
          #TQC-DA0052-End-Add
 
          #TQC-DA0052-Start-Mark
@@ -4730,8 +4777,10 @@ FUNCTION i710_b_more(p_cmd)
       CALL cl_set_act_visible("exit,cancel,close", TRUE)  #MOD-D90028 add
    END IF                                                 #MOD-D90028 add
  
-   CLOSE WINDOW i710_b_more_w
- 
+   IF g_action_choice = "mntn_item_detail" THEN                #-20250911 點選ACTION才開窗
+      CLOSE WINDOW i710_b_more_w
+   END IF                                                      #-20250911 
+
    LET g_bmy[l_ac].bmy22 = b_bmy.bmy22
  
 END FUNCTION
@@ -5071,6 +5120,13 @@ FUNCTION i710_bp(p_ud)
       ON ACTION memo
          LET g_action_choice="memo"
          EXIT DIALOG  #FUN-D80022 DISPLAY -> DIALOG
+
+     ##--- 20260508 (S)--
+      ON ACTION cbmr715
+         LET g_msg = "cbmr715 '",g_bmx.bmx01,"' "
+         CALL cl_cmdrun(g_msg)
+         EXIT DIALOG
+     ##--- 20260508 (E)--
 
     #@ON ACTION 作廢
       ON ACTION void
@@ -6554,6 +6610,12 @@ FUNCTION i710_out()
                      " 'Y' ' ' '1' ", 
                      " '",g_msg CLIPPED,"' "   #No.MOD-950055 add CLIPPED 
           CALL cl_cmdrun(g_msg)
+
+       ##--- 20260508 (S)--
+       ON ACTION cbmr715
+          LET g_msg = "cbmr715 '",g_bmx.bmx01,"' "
+          CALL cl_cmdrun(g_msg)
+       ##--- 20260508 (E)--
  
        ON ACTION cancel   #TQC-6C0056 add
           EXIT MENU       #TQC-6C0056 add

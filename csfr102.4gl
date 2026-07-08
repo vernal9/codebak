@@ -62,6 +62,8 @@
 # Modify.........: NO.2109166959 20210923 By momo QBE 工單編號限定字數最長 15碼
 # Modify.........: No.2206208305 20220623 By momo 增加顯示客戶料號 obk03
 # Modify.........: No.22080027   20220811 By momo 增加國別 occ21
+# Modify.........: NO.26010017   20260113 By momo JP 製造批號為 客戶專案號
+# Modify.........: NO.26060040   20260630 By momo 增加指定分群取上階主件特注
 
 DATABASE ds
  
@@ -69,6 +71,7 @@ GLOBALS "../../../tiptop/config/top.global"
  
 DEFINE tm  RECORD                          # Print condition RECORD #TQC-BA0010
             wc     STRING,                 #No.TQC-630166 VARCHAR(600) #Where condition
+            wc2    STRING,                 #No.TQC-630166 VARCHAR(600) #Where condition
             a      LIKE type_file.chr5,    #No.FUN-680121 VARCHAR(1)# XYZ軸
             b      LIKE type_file.chr1,    #No.FUN-680121 VARCHAR(1)# 是否列印製程資料
             c      LIKE type_file.chr1,    #No.FUN-680121 VARCHAR(1)# 是否列印訂單memo
@@ -102,6 +105,7 @@ DEFINE l_oea032    LIKE oea_file.oea032   #20190315
 DEFINE l_ta_sfb01  LIKE sfb_file.ta_sfb01 #20190510
 DEFINE l_sfbud13   LIKE sfb_file.sfbud13  #20191225 檢測書列印日
 DEFINE l_ima021    LIKE ima_file.ima021   #20210514 規格
+DEFINE l_bmb01     LIKE bmb_file.bmb01    #20260630 主件
 #FUN-E40035 add end-------------------------------------------------------------
 DEFINE aa  RECORD
       sfb01    LIKE sfb_file.sfb01,
@@ -201,19 +205,7 @@ MAIN
    display "g_prtway =",g_prtway
    display "g_copies =",g_copies
    display "tm.wc    =",tm.wc
-   display "tm.a     =",tm.a
-   display "tm.b     =",tm.b
-   display "tm.c     =",tm.c
-   display "tm.d     =",tm.d
-   display "tm.e     =",tm.e
-   display "tm.f     =",tm.f
-   display "tm.g     =",tm.g     #FUN-E40035
-
-  #LET g_argv1 = ARG_VAL(10)     #NO:6882
-  #LET g_argv2 = ARG_VAL(11)     #NO:6882
-  #LET g_rpt_name = ARG_VAL(12)  #No.FUN-7C0078  #TQC-D60054
- 
-
+   display "tm.wc2   =",tm.wc2
 
    #FUN-E40035 add--------------------------------------------------------------
    #主報表
@@ -350,42 +342,28 @@ DEFINE p_row,p_col    LIKE type_file.num5,        #No.FUN-680121 SMALLINT
   CALL cl_opmsg('p')
  
   INITIALIZE tm.* TO NULL     # Default condition
-  LET tm.a    = ''
-  LET tm.b='N'
-  #IF g_sma.sma54 = 'N' THEN
-  #   LET tm.b = 'N'
-  #ELSE
-  #   LET tm.b = 'Y'
-  #END IF
-  LET tm.c    = 'N'
-  LET tm.d    = 'N'
   LET tm.e    = 'Y'
-  LET tm.f    = 'N'           #FUN-750047 add
-  LET tm.g    = 'N'           #FUN-E40035
   LET tm.more = 'N'
   LET g_pdate = g_today
   LET g_rlang = g_lang
   LET g_bgjob = 'N'
   LET g_copies = '1'
 
-
   WHILE TRUE
-    CONSTRUCT BY NAME tm.wc ON sfb01,sfb05,sfb82 #20210514 add 
-       #No.FUN-580031 --start--
+
+
+    CONSTRUCT BY NAME tm.wc ON sfb01               #20210514 add 
        BEFORE CONSTRUCT
+     #     CALL cl_qbe_display_condition(lc_qbe_sn)
           CALL cl_qbe_init()
-       #No.FUN-580031 ---end---
        AFTER FIELD sfb01
          LET aa.sfb01 = GET_FLDBUF(sfb01) #20190318 add            
          LET aa.sfb01 = aa.sfb01[1,15]    #20210923
          DISPLAY aa.sfb01 TO sfb01        #20210923
+         CALL r102_wo()                   #20260630
 
-       ##--- 20210514 add by momo (S)
-       #AFTER FIELD ta_sfb01
-       #  LET l_ta_sfb01 = GET_FLDBUF(ta_sfb01)
-       #  LET l_ta_sfb01 = l_ta_sfb01[1,18]
-       #  DISPLAY l_ta_sfb01 TO ta_sfb01
-       ##--- 20210514 add by momo (E)
+       ON ACTION set_ima06                #20260630
+          CALL r102_set_ima06()           #20260630
 
        ON ACTION CONTROLP        #FUN-4B0001
           IF INFIELD(sfb01) THEN
@@ -410,19 +388,17 @@ DEFINE p_row,p_col    LIKE type_file.num5,        #No.FUN-680121 SMALLINT
           LET INT_FLAG = 1
           EXIT CONSTRUCT
 
-       #No.FUN-580031 --start--
        ON ACTION qbe_select
           CALL cl_qbe_select()
-       #No.FUN-580031 ---end---
  
-       #MOD-F90107 add start ------------ 
        ON ACTION controlg      
          CALL cl_cmdask()     
-       #MOD-F90107 add end   ------------ 
 
        ON ACTION b_note              #20190510
           CALL r102_q1(l_ta_sfb01)
     END CONSTRUCT
+
+    ##--- 20260630 (S)
 
     IF g_action_choice = "locale" THEN
        LET g_action_choice = ""
@@ -441,124 +417,18 @@ DEFINE p_row,p_col    LIKE type_file.num5,        #No.FUN-680121 SMALLINT
     END IF
 
 
-    DISPLAY BY NAME tm.a,tm.b,tm.c,tm.d,tm.e,tm.f,tm.g,tm.more                  #FUN-750047 add tm.f #FUN-E40035 add tm.g
-    INPUT BY NAME tm.a,tm.b,tm.c,tm.d,tm.e,tm.f,tm.g,tm.more WITHOUT DEFAULTS   #FUN-750047 add tm.f #FUN-E40035 add tm.g
+    DISPLAY BY NAME tm.e,tm.more                  
+    INPUT BY NAME tm.e,tm.more WITHOUT DEFAULTS   
        #No.FUN-580031 --start--
        BEFORE INPUT
-          CALL cl_qbe_display_condition(lc_qbe_sn)
+     #     CALL cl_qbe_display_condition(lc_qbe_sn)
        #No.FUN-580031 ---end---
-
-    ##---- 20190318 add by momo 顯示客戶簡稱(S)
-    ##---- 20191225 add by momo 顯示檢測書列印日期
-       BEFORE FIELD a
-          LET l_oea032 = ''
-          LET l_sfbud13 = ''
-          LET l_ima021 = ''  #20210514 add
-
-          ##---- 20210514 modify by momo (S)
-          #IF NOT cl_null(l_ta_sfb01) THEN
-          #   SELECT oea032,ima021
-          #     INTO l_oea032, l_ima021
-          #     FROM oea_file,oeb_file,ima_file
-          #    WHERE oea01=oeb01
-          #      AND oeb04 = ima01
-          #      AND oeb01||LPAD(oeb03,3,'0') = l_ta_sfb01
-
-          #   SELECT MAX(sfbud13) INTO l_sfbud13
-          #     FROM sfb_file
-          #    WHERE ta_sfb01 = l_ta_sfb01
-          #      AND sfb87 = 'Y'
-          #ELSE
-
-          SELECT oea032,ta_sfb01,sfbud13,ima021    #20210514    
-            INTO l_oea032,l_ta_sfb01,l_sfbud13,l_ima021     #20190510 #20210514
-            FROM oea_file,sfb_file,ima_file
-           WHERE oea01= SUBSTR(ta_sfb01,1,15)
-             AND sfb01 = aa.sfb01
-             AND ima01 = sfb05
-          #END IF
-
-          DISPLAY l_oea032 TO oea032
-          DISPLAY l_ta_sfb01 TO ta_sfb01
-          DISPLAY l_ima021 TO ima021
-
-       IF NOT cl_null(l_sfbud13) OR l_sfbud13 > '1899/12/31' THEN
-          DISPLAY l_sfbud13 TO sfbud13 ATTRIBUTE(REVERSE,RED)
-       ELSE
-          DISPLAY ' ' TO sfbud13
-       END IF
-    ##---- 20190318 add by momo 顯示客戶簡稱(E)
-
-    ##---- 20190510 add by momo 顯示客戶重要備註(E)
-       ##判斷是否存在重要備註 20190510
-       SELECT COUNT(*) INTO l_cnt
-         FROM oea_file,tc_oao_file
-        WHERE oea01 = SUBSTR(l_ta_sfb01,1,15)
-          AND (oea03 = tc_oao01 OR oea04=tc_oao01 OR oea916=tc_oao01)
-      IF l_cnt=0 THEN
-         SELECT COUNT(*) INTO l_cnt
-           FROM oeb_file,oao_file
-          WHERE oeb01||LPAD(oeb03,3,'0')=l_ta_sfb01
-            AND oeb01=oao01 AND oeb03=oao03
-            AND oao05 IN ('1','2')
-          IF l_cnt > 0 THEN
-             DISPLAY l_ta_sfb01 TO ta_sfb01 ATTRIBUTE(REVERSE,BOLD,RED)
-          END IF
-      ELSE
-         DISPLAY l_ta_sfb01 TO ta_sfb01 ATTRIBUTE(REVERSE,BOLD,RED)
-      END IF
-
-    ##---- 20190510 add by momo 顯示客戶簡稱(E)
-
-       AFTER FIELD a
-          #IF tm.a NOT MATCHES "[XYZ]" THEN
-          #   NEXT FIELD a
-          #END IF
-          #LET l_dir = 'D'
-
-       BEFORE FIELD b
-          IF g_sma.sma54 = 'N' THEN
-             IF l_dir = 'D' THEN
-                LET l_dir = 'U'
-                NEXT FIELD c
-             ELSE
-                NEXT FIELD a
-             END IF
-          END IF
-
-       AFTER FIELD b
-          IF tm.b NOT MATCHES "[YN]" THEN
-             NEXT FIELD b
-          END IF
-
-       AFTER FIELD c
-          IF tm.c NOT MATCHES "[YN]" THEN
-             NEXT FIELD c
-          END IF
-
-       AFTER FIELD d
-          IF tm.d NOT MATCHES "[YN]" THEN
-             NEXT FIELD d
-          END IF
 
        AFTER FIELD e
           IF tm.e NOT MATCHES "[YN]" THEN
              NEXT FIELD e
           END IF
 
-       #str FUN-750047 add
-       AFTER FIELD f   #是否列印工單Barcode
-          IF tm.f NOT MATCHES "[YN]" THEN
-             NEXT FIELD f
-          END IF
-       #end FUN-750047 add
-
-       #FUN-E40035 add----------------------------------------------------------
-       AFTER FIELD g   #是否列印款式明細
-          IF tm.g NOT MATCHES "[YN]" THEN
-             NEXT FIELD g
-          END IF
-       #FUN-E40035 add end------------------------------------------------------
 
        AFTER FIELD more
           IF tm.more = 'Y' THEN
@@ -577,12 +447,8 @@ DEFINE p_row,p_col    LIKE type_file.num5,        #No.FUN-680121 SMALLINT
        ON ACTION exit
           LET INT_FLAG = 1
           EXIT INPUT
-       #No.FUN-580031 --start--
-       ON ACTION qbe_save
-          CALL cl_qbe_save()
-       #No.FUN-580031 ---end---
-       ON ACTION b_note              #20190510
-          CALL r102_q1(l_ta_sfb01)
+  #     ON ACTION b_note              #20190510
+  #        CALL r102_q1(l_ta_sfb01)
     END INPUT
 
     IF INT_FLAG THEN
@@ -1010,7 +876,7 @@ DEFINE    sr1       RECORD
    END IF
    IF tm.e ='Y' THEN #特註
       LET l_sql = " SELECT imc03,imc04 FROM imc_file ",
-                  "  WHERE imc02='CI01' AND imc01 = ? ",
+                  "  WHERE imc02='CI01' AND imc01 = ? ", 
                   "  ORDER BY imc03 "
      PREPARE r102_memo1_2 FROM l_sql
      DECLARE r102_memo1_c CURSOR FOR r102_memo1_2
@@ -1099,7 +965,7 @@ DEFINE    sr1       RECORD
  
       FOR l_next = 1 TO sr.sfb.sfb08
 
-  	  #客戶名稱add by ruby 2018/01/24
+      #客戶名稱add by ruby 2018/01/24
       SELECT oea03,oea032,oea04 INTO l_oea03,l_oea032,l_oea04 #20220811 add oea04 
         FROM oea_file 
        WHERE oea01=substr(sr.sfb.ta_sfb01,1,15)
@@ -1135,6 +1001,12 @@ DEFINE    sr1       RECORD
         WHERE rvbs022=l_next
           AND rvbs01 = shb01 AND shb05=sr.sfb.sfb01
           AND rvbs02 = shb06
+      #--- 20260113 By momo (S) 客戶專案號 
+      IF cl_null(sr.rvbs04) THEN
+         SELECT oebud02 INTO sr.rvbs04 FROM oeb_file
+          WHERE oeb01||LPAD(oeb03,3,'0') = l_ta_sfb01
+      END IF
+      #--- 20260113 By momo (E) 客戶專案號 
 
       ##--- 20181120 add by momo 增加馬達規格與轉速
       SELECT imc04 INTO sr.imc04_1 FROM imc_file
@@ -1423,7 +1295,13 @@ DEFINE    sr1       RECORD
    ##---- 20250414 (E)
 
    END FOREACH
-      IF tm.e = 'Y' THEN #工單備註
+      IF tm.e = 'Y' THEN #特註備註
+
+         ##--- 20260630 (S) -----取上階特注
+         IF NOT cl_null(l_bmb01) THEN
+            LET sr.sfb.sfb05 = l_bmb01
+         END IF
+         ##--- 20260630 (E) -----
 
          FOREACH r102_memo1_c USING sr.sfb.sfb05 INTO l_sfw02,l_sfw03 #No.FUN-670104
             IF SQLCA.sqlcode THEN
@@ -1493,9 +1371,6 @@ FUNCTION r102_ocf_c(str)
  END FUNCTION
 ##
 #Patch....NO.TQC-610037 <001,002> #
-#TQC-A60097
-#FUN-E50024
-
 
 
 ##---- 2019510 add by momo 重要備註（S）
@@ -1599,4 +1474,116 @@ FUNCTION r102_q1(p_ta_sfb01) #20190510
 
    CLOSE WINDOW t700_q1_w
 
+END FUNCTION
+
+##--- 20260630 (S) --
+FUNCTION r102_wo()
+
+    ##---- 20190318 add by momo 顯示客戶簡稱(S)
+    ##---- 20191225 add by momo 顯示檢測書列印日期
+    LET l_oea032 = ''
+    LET l_sfbud13 = ''
+    LET l_ima021 = ''  #20210514 add
+    LET aa.sfb05 = ''
+
+    SELECT oea032,ta_sfb01,sfbud13,ima021,sfb05               #20210514   
+      INTO l_oea032,l_ta_sfb01,l_sfbud13,l_ima021,aa.sfb05    #20190510 #20210514 
+      FROM ima_file,sfb_file
+    LEFT JOIN oea_file ON oea01= SUBSTR(ta_sfb01,1,15)
+     WHERE sfb01 = aa.sfb01
+       AND ima01 = sfb05
+
+     DISPLAY l_oea032 TO oea032
+     DISPLAY l_ta_sfb01 TO ta_sfb01
+     DISPLAY l_ima021 TO ima021
+     DISPLAY aa.sfb05 TO bmb01
+
+     IF NOT cl_null(l_sfbud13) OR l_sfbud13 > '1899/12/31' THEN
+        DISPLAY l_sfbud13 TO sfbud13 ATTRIBUTE(REVERSE,RED)
+     ELSE
+        DISPLAY ' ' TO sfbud13
+     END IF
+    ##---- 20190318 add by momo 顯示客戶簡稱(E)
+    ##---- 20190510 add by momo 顯示客戶重要備註(S)
+     ##判斷是否存在重要備註 20190510
+     SELECT COUNT(*) INTO l_cnt
+       FROM oea_file,tc_oao_file
+      WHERE oea01 = SUBSTR(l_ta_sfb01,1,15)
+        AND (oea03 = tc_oao01 OR oea04=tc_oao01 OR oea916=tc_oao01)
+     IF l_cnt=0 THEN
+        SELECT COUNT(*) INTO l_cnt
+          FROM oeb_file,oao_file
+         WHERE oeb01||LPAD(oeb03,3,'0')=l_ta_sfb01
+           AND oeb01=oao01 AND oeb03=oao03
+           AND oao05 IN ('1','2')
+         IF l_cnt > 0 THEN
+            DISPLAY l_ta_sfb01 TO ta_sfb01 ATTRIBUTE(REVERSE,BOLD,RED)
+         END IF
+     ELSE
+         DISPLAY l_ta_sfb01 TO ta_sfb01 ATTRIBUTE(REVERSE,BOLD,RED)
+     END IF
+    ##---- 20190510 add by momo 顯示客戶簡稱(E)
+    CALL r102_bmb01()
 END FUNCTION 
+
+##--- 20260630 (S) -- 依分群取主件 tm.wc2 r102_set_ima06()
+FUNCTION r102_bmb01()
+
+  LET g_sql = "SELECT bmb01 FROM bmb_file ",
+              "  LEFT JOIN ima_file ON bmb03=ima01 ",
+              " WHERE ta_ima08='Y' AND bmb05 IS NULL ",
+              "   AND bmb03='",aa.sfb05,"' AND ",tm.wc2 CLIPPED
+  PREPARE r102_bmb01 FROM g_sql
+  DECLARE r102_bmb01cur CURSOR FOR r102_bmb01
+  FOREACH r102_bmb01cur INTO l_bmb01
+  END FOREACH
+  IF cl_null(l_bmb01) THEN
+     LET l_bmb01 = aa.sfb05
+  END IF
+  DISPLAY l_bmb01 TO bmb01
+END FUNCTION
+##--- 20260630 (E) --
+
+##--- 20260630 (S) ---- 分群設定
+FUNCTION r102_set_ima06()
+  CONSTRUCT BY NAME tm.wc2 ON ima06  
+     BEFORE CONSTRUCT
+       CALL cl_qbe_init()
+
+       AFTER FIELD ima06
+
+       ON ACTION CONTROLP        
+          IF INFIELD(ima06) THEN
+             CALL cl_init_qry_var()
+             LET g_qryparam.state    = "c"
+             LET g_qryparam.form     = "q_imz"
+             CALL cl_create_qry() RETURNING g_qryparam.multiret
+             DISPLAY g_qryparam.multiret TO ima06
+             NEXT FIELD ima06
+          END IF    
+
+       ON ACTION locale
+          LET g_action_choice = "locale"
+          CALL cl_show_fld_cont()      
+          EXIT CONSTRUCT
+
+       ON IDLE g_idle_seconds
+          CALL cl_on_idle()
+          CONTINUE CONSTRUCT
+
+       ON ACTION exit
+          LET INT_FLAG = 1
+          EXIT CONSTRUCT
+
+       ON ACTION qbe_select
+          CALL cl_qbe_select()
+       ON ACTION qbe_save
+          CALL cl_qbe_save()
+
+       ON ACTION controlg
+         CALL cl_cmdask()
+
+    END CONSTRUCT
+
+END FUNCTION
+##--- 20260630 (S) ---- 分群設定
