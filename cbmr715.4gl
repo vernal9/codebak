@@ -26,6 +26,7 @@ DEFINE  g_sql      STRING
 DEFINE  l_table    STRING
 DEFINE  l_table1   STRING   
 DEFINE  l_table2   STRING   
+DEFINE  l_table3   STRING   
 DEFINE  g_str      STRING
 DEFINE  g_count    LIKE type_file.num5
 DEFINE  g_argv1    LIKE bmx_file.bmx01  
@@ -105,6 +106,20 @@ MAIN
               "ta_bmg01.bmg_file.ta_bmg01"        
    LET l_table2 = cl_prt_temptable('cbmr7152',g_sql) CLIPPED
    IF l_table2 = -1 THEN EXIT PROGRAM END IF
+
+   #特殊取替代設定
+   LET g_sql ="tc_bmd01.tc_bmd_file.tc_bmd01,",
+              "tc_bmd02.tc_bmd_file.tc_bmd02,",
+              "tc_bmd03.tc_bmd_file.tc_bmd03,",
+              "tc_bmd04.tc_bmd_file.tc_bmd04,",
+              "tc_bmd05.tc_bmd_file.tc_bmd05,",
+              "tc_bmd06.tc_bmd_file.tc_bmd06,",
+              "tc_bmd07.tc_bmd_file.tc_bmd07,",
+              "tc_bmd08.tc_bmd_file.tc_bmd08,",
+              "tc_bmdnote.tc_bmd_file.tc_bmdnote,",
+              "existy.tc_bmd_file.tc_bmd01"
+   LET l_table3 = cl_prt_temptable('cbmr7153',g_sql) CLIPPED
+   IF l_table3 = -1 THEN EXIT PROGRAM END IF
  
 
    CALL cl_used(g_prog,g_time,1) RETURNING g_time 
@@ -306,31 +321,32 @@ FUNCTION r715()
           l_bmb01       LIKE bmb_file.bmb01, 
           l_order	ARRAY[5] OF LIKE type_file.chr20,  
 
-          bmw		RECORD LIKE bmw_file.*,    
-          sr               RECORD
-                                   bmx01  LIKE bmx_file.bmx01,
-                                   bmx02  LIKE bmx_file.bmx02,
-                                   bmx07  LIKE bmx_file.bmx07,
-                                   bmb03  LIKE bmb_file.bmb03,
-                                   bmy01  LIKE bmy_file.bmy01,
-                                   bmy02  LIKE bmy_file.bmy02,
-                                   bmy03  LIKE bmy_file.bmy03,
-                                   bmy04  LIKE bmy_file.bmy04,
-                                   bmy05  LIKE bmy_file.bmy05,
-                                   bmy06  LIKE bmy_file.bmy06,
-                                   bmy07  LIKE bmy_file.bmy07,
-                                   bmy16  LIKE bmy_file.bmy16,
-                                   bmy38  LIKE bmy_file.bmy38,
-                                   bmy27  LIKE bmy_file.bmy27,
-                                   ima02  LIKE ima_file.ima02,
-                                   ima021 LIKE ima_file.ima021,  
-                                   ima25  LIKE ima_file.ima25,
-                                   ima02_3  LIKE ima_file.ima02,
-                                   ima021_3 LIKE ima_file.ima021,
-                                   bmy14    LIKE bmy_file.bmy14,
-                                   ima02_4  LIKE ima_file.ima02,
-                                   ima021_4 LIKE ima_file.ima021
-                           END RECORD
+          l_tc_bmd	RECORD LIKE tc_bmd_file.*,   
+          l_existy      LIKE bmy_file.bmy27,         #新料件建立否 
+          sr            RECORD
+                        bmx01  LIKE bmx_file.bmx01,
+                        bmx02  LIKE bmx_file.bmx02,
+                        bmx07  LIKE bmx_file.bmx07,
+                        bmb03  LIKE bmb_file.bmb03,
+                        bmy01  LIKE bmy_file.bmy01,
+                        bmy02  LIKE bmy_file.bmy02,
+                        bmy03  LIKE bmy_file.bmy03,
+                        bmy04  LIKE bmy_file.bmy04,
+                        bmy05  LIKE bmy_file.bmy05,
+                        bmy06  LIKE bmy_file.bmy06,
+                        bmy07  LIKE bmy_file.bmy07,
+                        bmy16  LIKE bmy_file.bmy16,
+                        bmy38  LIKE bmy_file.bmy38,
+                        bmy27  LIKE bmy_file.bmy27,
+                        ima02  LIKE ima_file.ima02,
+                        ima021 LIKE ima_file.ima021,  
+                        ima25  LIKE ima_file.ima25,
+                        ima02_3  LIKE ima_file.ima02,
+                        ima021_3 LIKE ima_file.ima021,
+                        bmy14    LIKE bmy_file.bmy14,
+                        ima02_4  LIKE ima_file.ima02,
+                        ima021_4 LIKE ima_file.ima021
+                        END RECORD
 
 
    DEFINE l_img_blob     LIKE type_file.blob
@@ -373,6 +389,16 @@ FUNCTION r715()
    IF STATUS THEN
       CALL cl_err('insert_prep2:',status,1)
       CALL cl_used(g_prog,g_time,2) RETURNING g_time 
+      EXIT PROGRAM
+   END IF
+
+   #特殊取替代
+   LET g_sql = "INSERT INTO ",g_cr_db_str CLIPPED,l_table3 CLIPPED,
+               " VALUES(?,?,?,?,?, ?,?,?,?,?)"
+   PREPARE insert_prep3 FROM g_sql
+   IF STATUS THEN
+      CALL cl_err('insert_prep3:',status,1)
+      CALL cl_used(g_prog,g_time,2) RETURNING g_time
       EXIT PROGRAM
    END IF
  
@@ -429,9 +455,41 @@ FUNCTION r715()
          END IF
       END FOREACH
       LET sr.bmb03 = sr.bmb03,l_bmb01
-      
 
-      EXECUTE insert_prep USING sr.* 
+      EXECUTE insert_prep USING sr.*
+
+      ##---特殊取替代顯示 
+      LET l_sql = "SELECT tc_bmd_file.*,bmy27 ",
+                  " FROM ",tm.source,".tc_bmd_file ",
+                  " LEFT JOIN bmy_file ON bmy27 = tc_bmd01 AND bmy01='",sr.bmx01,"' ",
+                  " WHERE tc_bmd01 = '",sr.bmy05,"' "
+      PREPARE r715_pretcbmd FROM l_sql
+      IF STATUS THEN CALL cl_err('prepare:',STATUS,1)
+         CALL cl_used(g_prog,g_time,2) RETURNING g_time
+         EXIT PROGRAM
+      END IF
+      DECLARE r715_ctcbmd CURSOR FOR r715_pretcbmd
+      FOREACH r715_ctcbmd INTO l_tc_bmd.*
+         #---新料判斷
+         
+         LET l_sql = "SELECT 'Y' ",
+                  " FROM ",tm.source,".tc_bmd_file ",
+                  " WHERE tc_bmd01 = '",sr.bmy27,"' ",
+                  "   AND tc_bmd02 = '",l_tc_bmd.tc_bmd02,"' AND  tc_bmd08 = '",l_tc_bmd.tc_bmd08,"'"
+         PREPARE r715_prebmy27 FROM l_sql
+         IF STATUS THEN CALL cl_err('prepare:',STATUS,1)
+            CALL cl_used(g_prog,g_time,2) RETURNING g_time
+            EXIT PROGRAM
+         END IF
+         DECLARE r715_cbmy27 CURSOR FOR r715_prebmy27
+         FOREACH r715_cbmy27 INTO l_existy
+         END FOREACH
+         
+         EXECUTE insert_prep3 USING l_tc_bmd.tc_bmd01,l_tc_bmd.tc_bmd02,l_tc_bmd.tc_bmd03,
+                                    l_tc_bmd.tc_bmd04,l_tc_bmd.tc_bmd05,l_tc_bmd.tc_bmd06,
+                                    l_tc_bmd.tc_bmd07,l_tc_bmd.tc_bmd08,l_tc_bmd.tc_bmdnote,
+                                    l_existy
+      END FOREACH 
 
    END FOREACH
  
@@ -496,7 +554,8 @@ FUNCTION r715()
  
      LET l_sql = "SELECT * FROM ",g_cr_db_str CLIPPED, l_table CLIPPED,"|",
                  "SELECT * FROM ",g_cr_db_str CLIPPED, l_table1 CLIPPED,"|",
-                 "SELECT * FROM ",g_cr_db_str CLIPPED, l_table2 CLIPPED
+                 "SELECT * FROM ",g_cr_db_str CLIPPED, l_table2 CLIPPED,"|",
+                 "SELECT * FROM ",g_cr_db_str CLIPPED, l_table3 CLIPPED
  
     LET g_cr_table = l_table                 #主報表的temp table名稱
     LET g_cr_apr_key_f = "bmx01"             #報表主鍵欄位名稱，用"|"隔開  
