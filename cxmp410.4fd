@@ -115,18 +115,13 @@
         </Page>
       </Folder>
       <Grid gridHeight="8" gridWidth="374" lstrcomment="false" name="gr2170" posX="0" posY="20">
-        <HLine gridWidth="10" name="hl835" posX="1" posY="0"/>
-        <Label posX="12" posY="0" text="Rows"/>
-        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="19" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" posX="17" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="35" table_alias_name="" widget="Edit"/>
-        <HLine gridWidth="10" name="hl836" posX="24" posY="0"/>
-        <Label gridHeight="1" gridWidth="127" name="Label1" posX="35" posY="0" text="1. 「代工」為 「JP002」 且 （型別符合 「xxx22」或是 行程 &gt;=1500） 時為 “木箱”     2. 「多軸-C TYPE」且「外銷」 時為 “木箱”；「多軸-C TYPE」且「內銷」 時為 “木棧板”"/>
-        <Label gridHeight="1" gridWidth="127" name="Label3" posX="35" posY="1" text="3. 「線馬」 (判斷 ima151=&apos;05&apos; 或 ima09 =01012、01013) 時為 &quot;紙箱&quot;                                  4. 「多軸-K TYPE」且「內銷」 時為 “單軸”"/>
-        <Label blink="false" gridHeight="2" gridWidth="25" name="Label8" posX="9" posY="2" text="包材顯示判斷依序為右說明&#10;當有新增邏輯時請洽MIS"/>
-        <Label gridHeight="1" gridWidth="40" name="Label9" posX="35" posY="2" text="5. 「多軸-K TYPE」不符合 2.、4.時 為 「連結待確認」"/>
-        <Label gridHeight="1" gridWidth="83" name="Label4" posX="35" posY="3" text="6. 「型別」 符合 MH、MK65 且 「行程」 &gt;= 1500 或 「型別」 符合 MK85、MK110 且「行程」 &gt;=1000 時為 “紙箱(2支1箱)”"/>
-        <Label gridHeight="1" gridWidth="119" name="Label5" posX="35" posY="4" text="7. 「型別」 符合 ETH22、ECH22、ETB22M、ECB22、ETH22M、ECH22M、 ETK15、ETK22、ETK30 為 “紙箱”"/>
-        <Label gridHeight="1" gridWidth="119" name="Label2" posX="35" posY="5" text="8. 「型別」 符合 GTH12M 、ETH17M、ECH17M且「行程」&gt;=1200 時為 &quot;紙箱&quot;"/>
-        <Label gridHeight="1" gridWidth="24" name="Label6" posX="35" posY="6" text="9. 「行程」 &gt;= 1500 時為 “紙箱”"/>
+        <HLine gridWidth="4" name="hl835" posX="1" posY="0"/>
+        <Label posX="6" posY="0" text="Rows"/>
+        <Edit aggregateColName="" aggregateName="" aggregateTableAliasName="" aggregateTableName="" colName="" columnCount="" fieldId="19" fieldType="NON_DATABASE" gridHeight="1" gridWidth="6" lstrcomment="false" lstrtitle="false" name="cn2" posX="11" posY="0" rowCount="" sqlTabName="" sqlType="CHAR" stepX="" stepY="" tabIndex="35" table_alias_name="" widget="Edit"/>
+        <HLine gridWidth="10" name="hl836" posX="18" posY="0"/>
+        <Label gridHeight="5" gridWidth="65" name="Label2" posX="30" posY="0" text="1. 「代工」為 「JP002」 且 （型別符合 「xxx22」或是 行程 &gt;=1500） 時為 “木箱”     &#10;2. 「多軸-C TYPE」且「外銷」 時為 “木箱”；「多軸-C TYPE」且「內銷」 時為 “木棧板”&#10;3. 「線馬」 (判斷 ima151=&apos;05&apos; 或 ima09 =01012、01013) 時為 &quot;紙箱&quot;&#10;4. 「多軸-K TYPE」且「內銷」 時為 “單軸”&#10;5. 「多軸-K TYPE」不符合 2.、4.時 為 「連結待確認」"/>
+        <Label gridHeight="5" gridWidth="84" name="Label1" posX="97" posY="0" text="6. 「型別」 符合 MH、MK65 且 「行程」 &gt;= 1500 或 「型別」 符合 MK85、MK110 且「行程」 &gt;=1000 時為 “紙箱(2支1箱)”&#10;7. 「型別」 符合 ETH22、ECH22、ETB22M、ECB22、ETH22M、ECH22M、 ETK15、ETK22、ETK30 為 “紙箱”&#10;8. 「型別」 符合 GTH12M 、ETH17M、ECH17M且「行程」&gt;=1200 時為 &quot;紙箱&quot;&#10;9. 「行程」 &gt;= 1500 時為 “紙箱”&#10;10.「包材」符合銷貨地為外銷，且BOM存在22015、22121，但不存在指定代用S時為&quot;外銷包材需確認&quot;"/>
+        <Label blink="false" gridHeight="2" gridWidth="25" name="Label8" posX="1" posY="2" text="包材顯示判斷依序為右說明&#10;當有新增邏輯時請洽MIS"/>
       </Grid>
     </VBox>
   </Form>

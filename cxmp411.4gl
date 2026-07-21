@@ -164,7 +164,7 @@ FUNCTION p411_b_askkey()
    END INPUT
  
 
-   CONSTRUCT g_wc2 ON oea02,oea49,oeb70d,oep04,oeb01,oeb03,oeb04,oeb06,oeb12,oeb24,
+   CONSTRUCT g_wc2 ON oea02,oea08,oea49,oeb70d,oep04,oeb01,oeb03,oeb04,oeb06,oeb12,oeb24,
                        ima021,
                        ima06,ima09,ima131,ima1007,
                        ta_ima02,ta_ima04,ta_ima06,
@@ -173,6 +173,7 @@ FUNCTION p411_b_askkey()
                        tc_ogauser,tc_oga05,
                        tc_oga07                                #20220627
                   FROM s_oeb[1].oea02,
+                       s_oeb[1].oea08,
                        s_oeb[1].oea49,
                        s_oeb[1].oeb70d,
                        s_oeb[1].oep04,
@@ -530,6 +531,18 @@ FUNCTION p411_b_fill(p_wc2)
                  LET g_oeb[g_cnt].packing = '8.紙箱'
               END IF  
            END IF
+
+           #--20260721 (S)外銷更換包材 指定BOM分群存在 22015/22121
+           IF g_oeb[g_cnt].oea08='2' THEN
+              SELECT '10.外銷包材確認:'||bmb03 INTO g_oeb[g_cnt].packing
+                FROM ty.bmb_file
+                LEFT JOIN ty.ima_file ON bmb03=ima01
+               WHERE bmb01 = g_oeb[g_cnt].oeb04
+                 AND ima06 IN ('22015','22121')
+                 AND bmb05 IS NULL
+                 AND NOT EXISTS (SELECT 1 FROM tc_bmd_file WHERE tc_bmd01=ima01 AND tc_bmd02='S')
+           END IF
+
         END IF
         #--判斷使用包材 (E)
 
